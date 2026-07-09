@@ -33,6 +33,7 @@ void main() {
     await tester.tap(find.byIcon(Icons.speed_outlined));
     await tester.pumpAndSettle();
 
-    expect(find.text('게이지 화면 준비 중'), findsOneWidget);
+    // 게이지 화면(화면3) AppBar 타이틀.
+    expect(find.text('세금 임계치'), findsOneWidget);
   });
 }

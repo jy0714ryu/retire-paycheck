@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'screens/calendar_screen.dart';
+import 'screens/gauge_screen.dart';
 import 'screens/input_screen.dart';
 import 'theme/app_colors.dart';
 
@@ -45,7 +46,7 @@ class _HomeShellState extends State<HomeShell> {
   static const List<Widget> _tabs = <Widget>[
     InputScreen(),
     CalendarScreen(),
-    _PlaceholderTab(title: '게이지', icon: Icons.speed),
+    GaugeScreen(),
   ];
 
   @override
@@ -71,27 +72,6 @@ class _HomeShellState extends State<HomeShell> {
             selectedIcon: Icon(Icons.speed),
             label: '게이지',
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PlaceholderTab extends StatelessWidget {
-  final String title;
-  final IconData icon;
-
-  const _PlaceholderTab({required this.title, required this.icon});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 48, color: AppColors.gray400),
-          const SizedBox(height: 12),
-          Text('$title 화면 준비 중', style: const TextStyle(color: AppColors.gray500)),
         ],
       ),
     );
