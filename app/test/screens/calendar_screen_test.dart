@@ -79,9 +79,9 @@ void main() {
 
     // 메인 카드: 실수령(net) 1,868,000 → 186만원.
     expect(find.text('186만원'), findsOneWidget);
-    // 서브: 세전 200만원 · 배당 42만 + 연금 144만.
+    // 서브: 세전 200만원 = 세전 배당 50만 + 세전 연금 150만 (세전끼리 합 일치).
     expect(
-      find.textContaining('세전 200만원 · 배당 42만 + 연금 144만'),
+      find.textContaining('세전 200만원 · 배당 50만 + 연금 150만'),
       findsOneWidget,
     );
 

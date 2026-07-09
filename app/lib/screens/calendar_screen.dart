@@ -110,8 +110,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         _MainCard(
           net: cf.totalNet,
           gross: cf.totalGross,
-          dividendNet: cf.dividendNet,
-          pensionNet: cf.pensionNet,
+          dividendGross: cf.dividendGross,
+          pensionGross: cf.pensionGross,
           overThreshold: overThreshold,
         ),
         const SizedBox(height: 20),
@@ -182,15 +182,15 @@ class _MonthNav extends StatelessWidget {
 class _MainCard extends StatelessWidget {
   final int net;
   final int gross;
-  final int dividendNet;
-  final int pensionNet;
+  final int dividendGross;
+  final int pensionGross;
   final bool overThreshold;
 
   const _MainCard({
     required this.net,
     required this.gross,
-    required this.dividendNet,
-    required this.pensionNet,
+    required this.dividendGross,
+    required this.pensionGross,
     required this.overThreshold,
   });
 
@@ -240,8 +240,8 @@ class _MainCard extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             '세전 ${CalendarScreenFmt.man(gross)}만원 · '
-            '배당 ${CalendarScreenFmt.man(dividendNet)}만 + '
-            '연금 ${CalendarScreenFmt.man(pensionNet)}만',
+            '배당 ${CalendarScreenFmt.man(dividendGross)}만 + '
+            '연금 ${CalendarScreenFmt.man(pensionGross)}만',
             style: const TextStyle(
               fontSize: 14,
               color: Colors.white70,
