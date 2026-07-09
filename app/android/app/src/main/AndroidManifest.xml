@@ -1,4 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 배당 API(api.quant-view.co.kr) 조회 — 릴리스 빌드 필수 (debug manifest에만 있으면
+         릴리스에서 네트워크 전면 차단됨. 2026-07-10 실기기 E2E에서 발견) -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="은퇴월급"
         android:name="${applicationName}"
