@@ -6,9 +6,11 @@ import '../models/dividend_event.dart';
 import '../models/holding.dart';
 import '../models/retirement_input.dart';
 import '../providers/app_providers.dart';
+import '../services/ad_service.dart';
 import '../services/cashflow_engine.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
+import '../widgets/banner_ad_widget.dart';
 
 /// 화면2 — 은퇴 월급 달력 (메인).
 ///
@@ -40,6 +42,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     setState(() {
       _month = DateTime(_month.year, _month.month + delta, 1);
     });
+    // 월 네비게이션 2회당 1회 전면 광고(첫 호출 면제 — ad_service 카운터).
+    AdService().showInterstitialIfEligible();
   }
 
   @override
@@ -61,6 +65,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         error: (e, _) => _ErrorView(onRetry: () => ref.invalidate(dividendEventsProvider)),
         data: (result) => _buildBody(holdings, input, result.events),
       ),
+      bottomNavigationBar: const SafeArea(child: BannerAdWidget()),
     );
   }
 

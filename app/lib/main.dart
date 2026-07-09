@@ -1,12 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'screens/calendar_screen.dart';
 import 'screens/gauge_screen.dart';
 import 'screens/input_screen.dart';
+import 'services/ad_service.dart';
 import 'theme/app_colors.dart';
+import 'widgets/disclaimer_dialog.dart';
+
+/// 첫 실행 면책 동의 여부 저장 키(SharedPreferences).
+const String kDisclaimerAcceptedKey = 'disclaimer_accepted';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  // AdMob SDK 초기화 (플랫폼 채널 부재 환경에서는 조용히 흡수).
+  AdService().initialize();
   runApp(const ProviderScope(child: RetirePaycheckApp()));
 }
 
@@ -48,6 +57,33 @@ class _HomeShellState extends State<HomeShell> {
     CalendarScreen(),
     GaugeScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _maybeShowDisclaimer();
+  }
+
+  /// 첫 실행 시(미동의) 면책 다이얼로그를 1회 표시한다.
+  Future<void> _maybeShowDisclaimer() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(kDisclaimerAcceptedKey) ?? false) return;
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => DisclaimerDialog(
+          onAccept: () async {
+            await prefs.setBool(kDisclaimerAcceptedKey, true);
+            if (!dialogContext.mounted) return;
+            Navigator.of(dialogContext).pop();
+          },
+        ),
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

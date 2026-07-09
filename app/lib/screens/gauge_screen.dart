@@ -9,6 +9,7 @@ import '../providers/app_providers.dart';
 import '../services/cashflow_engine.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
+import '../widgets/banner_ad_widget.dart';
 
 /// 화면3 — 세금 임계치 게이지 3종.
 ///
@@ -44,6 +45,7 @@ class GaugeScreen extends ConsumerWidget {
         data: (result) =>
             _buildBody(context, holdings, input, result.events, targetYear),
       ),
+      bottomNavigationBar: const SafeArea(child: BannerAdWidget()),
     );
   }
 
