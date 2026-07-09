@@ -109,4 +109,38 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('연 1,500만 초과 인출 → 연금 타일에 16.5% 절벽 캡션',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          holdingsProvider.overrideWith(
+            (ref) => HoldingsNotifier()
+              ..add(const Holding(corpCode: 'A', corpName: 'A사', shares: 1000)),
+          ),
+          retirementInputProvider.overrideWith(
+            (ref) => RetirementInputNotifier()
+              ..update((_) => const RetirementInput(
+                    pensionSavings: 100000000,
+                    irpBalance: 0,
+                    isaBalance: 0,
+                    currentAge: 60,
+                    monthlyPensionWithdrawal: 2000000, // ×12 = 2,400만 초과
+                    monthlyOtherWithdrawal: 500000,
+                    annualInterestIncome: 0,
+                  )),
+          ),
+          dividendEventsProvider.overrideWith((ref) async => DividendFetchResult(
+                events: [_eventA],
+                fetchedAt: DateTime(2026, 1, 1),
+                fromCache: false,
+              )),
+        ],
+        child: const MaterialApp(home: CalendarScreen(initialMonth: null)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('연 1,500만원 초과'), findsOneWidget);
+  });
 }

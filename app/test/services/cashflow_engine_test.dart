@@ -131,4 +131,67 @@ void main() {
     );
     expect(g.financialIncome.current, 500000); // 예측도 게이지에 포함
   });
+
+  group('사적연금 1,500만 절벽 (전액 16.5% 분리과세)', () {
+    test('경계값 월 125만(연 1,500만 정확) → 저율 5.5% 유지', () {
+      const input = RetirementInput(
+        pensionSavings: 100000000,
+        irpBalance: 0,
+        isaBalance: 0,
+        currentAge: 60,
+        monthlyPensionWithdrawal: 1250000, // ×12 = 15,000,000 (한도 정확)
+        monthlyOtherWithdrawal: 500000,
+        annualInterestIncome: 0,
+      );
+      final months = CashflowEngine.buildMonths(
+        holdings: const [],
+        events: const [],
+        input: input,
+        from: DateTime(2026, 1),
+        monthCount: 12,
+      );
+      // net = 1,250,000×0.945 + 500,000 = 1,181,250 + 500,000
+      expect(months.first.pensionNet, 1181250 + 500000);
+      // 모든 월 일관.
+      for (final m in months) {
+        expect(m.pensionNet, 1681250);
+      }
+    });
+
+    test('월 200만(연 2,400만 초과) → 전액 16.5% 절벽', () {
+      const input = RetirementInput(
+        pensionSavings: 100000000,
+        irpBalance: 0,
+        isaBalance: 0,
+        currentAge: 60,
+        monthlyPensionWithdrawal: 2000000, // ×12 = 24,000,000 (초과)
+        monthlyOtherWithdrawal: 500000,
+        annualInterestIncome: 0,
+      );
+      final months = CashflowEngine.buildMonths(
+        holdings: const [],
+        events: const [],
+        input: input,
+        from: DateTime(2026, 1),
+        monthCount: 12,
+      );
+      // net = 2,000,000×0.835 + 500,000 = 1,670,000 + 500,000
+      expect(months.first.pensionNet, 1670000 + 500000);
+      for (final m in months) {
+        expect(m.pensionNet, 2170000);
+      }
+    });
+
+    test('기존 월 100만(연 1,200만 ≤ 한도) → 저율 불변', () {
+      final months = CashflowEngine.buildMonths(
+        holdings: [_holdingA],
+        events: [_eventA],
+        input: _input,
+        from: DateTime(2026, 1),
+        monthCount: 12,
+      );
+      expect(months.first.pensionNet, 1445000); // 1,000,000×0.945 + 500,000
+    });
+  });
+
 }

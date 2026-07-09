@@ -94,6 +94,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final overThreshold = gauges.financialIncome.ratio > 1.0 ||
         gauges.pensionLowRate.ratio > 1.0;
 
+    // 사적연금 연 인출액이 저율 한도(1,500만원)를 초과하면 전액 16.5% 절벽 적용.
+    final pensionOverLowRate =
+        input.monthlyPensionWithdrawal * 12 > kPensionLowRateLimit;
+
     // 라인 상세(주당×수량) 재구성용 조회 맵.
     final sharesByName = {for (final h in holdings) h.corpName: h.shares};
     final perShareByName = {for (final e in events) e.corpName: e.perShare};
@@ -131,6 +135,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         _PensionTile(
           pensionNet: cf.pensionNet,
           pensionGross: cf.pensionGross,
+          overLowRate: pensionOverLowRate,
         ),
         const SizedBox(height: 20),
         _Notice(),
@@ -395,12 +400,17 @@ class _EmptyDividend extends StatelessWidget {
   }
 }
 
-/// 연금 인출 라인(고정 1개).
+/// 연금 인출 라인(고정 1개). 연 1,500만원 초과 시 16.5% 절벽 캡션 노출.
 class _PensionTile extends StatelessWidget {
   final int pensionNet;
   final int pensionGross;
+  final bool overLowRate;
 
-  const _PensionTile({required this.pensionNet, required this.pensionGross});
+  const _PensionTile({
+    required this.pensionNet,
+    required this.pensionGross,
+    required this.overLowRate,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -426,6 +436,23 @@ class _PensionTile extends StatelessWidget {
                   '세전 ${CalendarScreenFmt.man(pensionGross)}만원',
                   style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
                 ),
+                if (overLowRate) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.warning_amber_rounded,
+                          size: 14, color: AppColors.warning),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          '연 1,500만원 초과 — 16.5% 적용',
+                          style: AppTextStyles.caption
+                              .copyWith(color: AppColors.warning),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),

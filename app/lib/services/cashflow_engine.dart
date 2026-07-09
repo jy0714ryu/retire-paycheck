@@ -86,9 +86,15 @@ class CashflowEngine {
 
     final pensionGross =
         input.monthlyPensionWithdrawal + input.monthlyOtherWithdrawal;
+    // 사적연금 절벽: 연 인출액(과세분)이 1,500만원을 초과하면 저율(3.3~5.5%)이 아니라
+    // 전액 16.5% 분리과세 (분리과세 선택 가정, 종합과세 선택 시 달라질 수 있음
+    // — 연금나침반과 동일 규칙). 초과분이 아니라 전액에 16.5%를 적용한다.
+    final annualPensionTaxable = input.monthlyPensionWithdrawal * 12;
+    final pensionRate = annualPensionTaxable > kPensionLowRateLimit
+        ? kPensionCliffRate
+        : pensionTaxRate(input.currentAge);
     final pensionNet =
-        (input.monthlyPensionWithdrawal * (1 - pensionTaxRate(input.currentAge)))
-                .round() +
+        (input.monthlyPensionWithdrawal * (1 - pensionRate)).round() +
             input.monthlyOtherWithdrawal;
 
     final start = DateTime(from.year, from.month, 1);

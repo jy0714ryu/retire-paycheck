@@ -12,6 +12,10 @@ const int kHealthInsuranceIncomeThreshold = 20000000;
 /// 사적연금(연금저축·IRP) 저율 분리과세 한도 — 연간 인출액 15,000,000원 이하까지 저율(3.3~5.5%) 적용.
 const int kPensionLowRateLimit = 15000000;
 
+/// 사적연금 절벽 세율 — 연 인출액이 저율 한도(1,500만원)를 초과하면 전액 16.5% 분리과세
+/// (분리과세 선택 가정. 종합과세 선택 시 달라질 수 있음 — 연금나침반과 동일 규칙).
+const double kPensionCliffRate = 0.165;
+
 /// 건강보험 지역가입자 금융소득 산입 기준 — 연 10,000,000원 초과 시 금융소득 전액을 건보료 산정에 산입.
 /// (2022-09 개편 기준. 10,000,000원 이하는 건보료 산정에서 0원 산입.)
 const int kHealthInsFinancialFloor = 10000000;
