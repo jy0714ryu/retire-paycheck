@@ -92,7 +92,7 @@ class GaugeScreen extends ConsumerWidget {
           overWarning: '피부양자 자격에 영향을 줄 수 있습니다',
           isReference: true,
           referenceNote:
-              '공적연금·기타 소득 합산에 따라 달라질 수 있습니다 (기준: 2026-07 현행)',
+              '공적연금·기타 소득 합산에 따라 달라질 수 있으며, 사적연금 인출은 포함되지 않습니다 (기준: 2026-07 현행)',
         ),
         const SizedBox(height: 40),
       ],

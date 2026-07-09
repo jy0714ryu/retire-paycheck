@@ -5,7 +5,7 @@
 // 기대 게이지:
 //   금융소득 = 50만 ÷ 2,000만 = 2.5%   (초록, <80%)
 //   사적연금 = 1,200만 ÷ 1,500만 = 80%  (노랑, 0.8~1.0)
-//   건보     = (금융 1,000만 이하 → 산입 0) + 연금 1,200만 = 1,200만 ÷ 2,000만 = 60% (초록)
+//   건보     = 금융 1,000만 이하 → 산입 0 (사적연금 미산입) = 0 ÷ 2,000만 = 0% (초록)
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -110,19 +110,19 @@ void main() {
       findsOneWidget,
     );
 
-    // 건강보험: 1,200만 ÷ 2,000만 (60%) + 참고용 배지 + 디스클레이머 상시.
+    // 건강보험: 산입 0 → 0 ÷ 2,000만 (0%) + 참고용 배지 + 디스클레이머 상시.
     expect(find.text('건강보험 피부양자 소득'), findsOneWidget);
     expect(
-      find.textContaining('연간 1,200만원 ÷ 기준 2,000만원 (60%)'),
+      find.textContaining('연간 0만원 ÷ 기준 2,000만원 (0%)'),
       findsOneWidget,
     );
     expect(find.text('참고용'), findsOneWidget);
     expect(
-      find.text('공적연금·기타 소득 합산에 따라 달라질 수 있습니다 (기준: 2026-07 현행)'),
+      find.text('공적연금·기타 소득 합산에 따라 달라질 수 있으며, 사적연금 인출은 포함되지 않습니다 (기준: 2026-07 현행)'),
       findsOneWidget,
     );
 
-    // 색: 금융(2.5%)·건보(60%)=초록, 사적연금(80%)=노랑.
+    // 색: 금융(2.5%)·건보(0%)=초록, 사적연금(80%)=노랑.
     expect(_barColorForCard(tester, '금융소득 종합과세'), AppColors.success);
     expect(_barColorForCard(tester, '건강보험 피부양자 소득'), AppColors.success);
     expect(_barColorForCard(tester, '사적연금 저율과세 한도'), AppColors.warning);

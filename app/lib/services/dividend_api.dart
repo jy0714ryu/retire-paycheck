@@ -54,7 +54,11 @@ class DividendApi {
     if (cachedAtMs != null && cachedBody != null) {
       final cachedAt = DateTime.fromMillisecondsSinceEpoch(cachedAtMs);
       if (DateTime.now().difference(cachedAt) < _kCacheTtl) {
-        return _parse(cachedBody, cachedAt, fromCache: true);
+        try {
+          return _parse(cachedBody, cachedAt, fromCache: true);
+        } catch (_) {
+          // 손상된 신선 캐시 — 무시하고 네트워크 경로로 폴백(24h 마비 방지).
+        }
       }
     }
 
@@ -66,13 +70,19 @@ class DividendApi {
         );
       }
       final now = DateTime.now();
+      // 파싱 성공을 먼저 검증한 뒤에만 캐시에 저장한다(오염 방지).
+      final result = _parse(response.body, now, fromCache: false);
       await prefs.setString(_kCacheBodyKey, response.body);
       await prefs.setInt(_kCacheAtKey, now.millisecondsSinceEpoch);
-      return _parse(response.body, now, fromCache: false);
+      return result;
     } catch (_) {
       if (cachedBody != null && cachedAtMs != null) {
         final cachedAt = DateTime.fromMillisecondsSinceEpoch(cachedAtMs);
-        return _parse(cachedBody, cachedAt, fromCache: true);
+        try {
+          return _parse(cachedBody, cachedAt, fromCache: true);
+        } catch (_) {
+          // 캐시도 손상 — 원 예외를 전파한다.
+        }
       }
       rethrow;
     }
@@ -83,7 +93,10 @@ class DividendApi {
     DateTime fetchedAt, {
     required bool fromCache,
   }) {
-    final decoded = jsonDecode(body) as List<dynamic>;
+    final decoded = jsonDecode(body);
+    if (decoded is! List) {
+      throw const FormatException('DividendApi: expected a JSON array');
+    }
     final events = decoded
         .map((e) => DividendEvent.fromJson(e as Map<String, dynamic>))
         .toList();

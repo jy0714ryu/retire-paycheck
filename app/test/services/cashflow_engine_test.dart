@@ -60,7 +60,7 @@ void main() {
 
   test(
       '게이지: 연 배당 50만+이자0 → financial 0.025 / pension 1200만÷1500만=0.8 / '
-      '건보 산입 0 → 연금 과세 1200만 ÷ 2000만 = 0.6', () {
+      '건보 산입 0 (금융 1000만 이하·사적연금 미산입) → 0 ÷ 2000만 = 0.0', () {
     final g = CashflowEngine.buildGauges(
       holdings: [_holdingA],
       events: [_eventA],
@@ -75,10 +75,10 @@ void main() {
     expect(g.pensionLowRate.threshold, 15000000);
     expect(g.pensionLowRate.ratio, closeTo(0.8, 1e-9));
 
-    // 금융소득 500만 ≤ 1,000만 → 건보 산입 0, 연금 과세분만 반영.
-    expect(g.healthInsurance.current, 12000000);
+    // 금융소득 500만 ≤ 1,000만 → 건보 산입 0. 사적연금 인출은 건보 미산입.
+    expect(g.healthInsurance.current, 0);
     expect(g.healthInsurance.threshold, 20000000);
-    expect(g.healthInsurance.ratio, closeTo(0.6, 1e-9));
+    expect(g.healthInsurance.ratio, closeTo(0.0, 1e-9));
   });
 
   test('금융소득 1,000만 초과 시 건보 게이지에 전액 산입', () {
@@ -99,8 +99,8 @@ void main() {
       year: 2026,
     );
     expect(g.financialIncome.current, 10000001);
-    // 건보 = 금융소득 전액(10,000,001) + 연금 과세분(12,000,000).
-    expect(g.healthInsurance.current, 22000001);
+    // 건보 = 금융소득 전액(10,000,001)만. 사적연금 인출은 건보 미산입.
+    expect(g.healthInsurance.current, 10000001);
   });
 
   test('예측 배당(is_confirmed=false)도 월별·게이지에 포함되고 lines에 구분 플래그', () {

@@ -8,6 +8,7 @@ import '../models/retirement_input.dart';
 import '../providers/app_providers.dart';
 import '../services/ad_service.dart';
 import '../services/cashflow_engine.dart';
+import '../services/tax_constants.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 import '../widgets/banner_ad_widget.dart';
@@ -89,8 +90,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       input: input,
       year: _month.year,
     );
+    // 참고용(건보) 게이지는 메인 경고를 구동하지 않는다 — 금융소득·연금 저율 한도만.
     final overThreshold = gauges.financialIncome.ratio > 1.0 ||
-        gauges.healthInsurance.ratio > 1.0 ||
         gauges.pensionLowRate.ratio > 1.0;
 
     // 라인 상세(주당×수량) 재구성용 조회 맵.
@@ -114,7 +115,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           overThreshold: overThreshold,
         ),
         const SizedBox(height: 20),
-        Text('배당 내역', style: AppTextStyles.h4),
+        Text('배당 내역 (세후 기준)', style: AppTextStyles.h4),
         const SizedBox(height: 8),
         if (cf.lines.isEmpty)
           _EmptyDividend()
@@ -304,6 +305,9 @@ class _DividendLineTile extends StatelessWidget {
         ? '주당 ${fmt.format(perShare)}원 × ${fmt.format(shares)}주'
         : null;
 
+    // 카드(net)와 합산 일치를 위해 라인도 세후로 통일.
+    final netAmount = (line.amountGross * (1 - kDividendWithholding)).round();
+
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -360,7 +364,7 @@ class _DividendLineTile extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Text(
-            '${CalendarScreenFmt.man(line.amountGross)}만원',
+            '${CalendarScreenFmt.man(netAmount)}만원',
             style: AppTextStyles.numberSmall.copyWith(color: amountColor),
           ),
         ],

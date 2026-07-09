@@ -151,10 +151,11 @@ class CashflowEngine {
 
     final annualPensionTaxable = input.monthlyPensionWithdrawal * 12;
 
-    // 건보 산입: 금융소득이 1,000만 초과면 전액, 이하면 0. + 연금 과세분 연간.
+    // 건보 산입: 금융소득이 1,000만 초과면 전액, 이하면 0.
+    // 사적연금 인출은 건보 소득 미산입 (공적연금만 — 2026-07 현행, 최종리뷰 세법 검증).
     final healthFinancialPart =
         financialIncomeTotal > kHealthInsFinancialFloor ? financialIncomeTotal : 0;
-    final healthCurrent = healthFinancialPart + annualPensionTaxable;
+    final healthCurrent = healthFinancialPart;
 
     return YearlyGauges(
       financialIncome: GaugeStatus(
