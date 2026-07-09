@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'screens/input_screen.dart';
 import 'theme/app_colors.dart';
 
 void main() {
@@ -41,7 +42,7 @@ class _HomeShellState extends State<HomeShell> {
   int _index = 0;
 
   static const List<Widget> _tabs = <Widget>[
-    _PlaceholderTab(title: '입력', icon: Icons.edit_note),
+    InputScreen(),
     _PlaceholderTab(title: '달력', icon: Icons.calendar_month),
     _PlaceholderTab(title: '게이지', icon: Icons.speed),
   ];
