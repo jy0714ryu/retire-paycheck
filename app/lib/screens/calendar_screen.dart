@@ -98,6 +98,13 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final pensionOverLowRate =
         input.monthlyPensionWithdrawal * 12 > kPensionLowRateLimit;
 
+    // 연간 배당 요약(예측 포함) — 배당이 특정 월에 몰려 비어 보이는 문제 보완.
+    final divSummary = CashflowEngine.yearlyDividendSummary(
+      holdings: holdings,
+      events: events,
+      year: _month.year,
+    );
+
     // 라인 상세(주당×수량) 재구성용 조회 맵.
     final sharesByName = {for (final h in holdings) h.corpName: h.shares};
     final perShareByName = {for (final e in events) e.corpName: e.perShare};
@@ -118,6 +125,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           pensionGross: cf.pensionGross,
           overThreshold: overThreshold,
         ),
+        if (holdings.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _YearlyDividendCard(year: _month.year, summary: divSummary),
+        ],
         const SizedBox(height: 20),
         Text('배당 내역 (세후 기준)', style: AppTextStyles.h4),
         const SizedBox(height: 8),
@@ -460,6 +471,52 @@ class _PensionTile extends StatelessWidget {
           Text(
             '${CalendarScreenFmt.man(pensionNet)}만원',
             style: AppTextStyles.numberSmall.copyWith(color: AppColors.greenDark),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 연간 배당 요약 카드 — "올해 예상 배당 총 ○○만원 (세후 ○○만원)" + 확정·예측 건수.
+/// 예측이 포함되므로 "예상" 단어를 유지한다(단정 금지).
+class _YearlyDividendCard extends StatelessWidget {
+  final int year;
+  final YearlyDividendSummary summary;
+
+  const _YearlyDividendCard({required this.year, required this.summary});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: AppColors.navy.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.navy.withValues(alpha: 0.15)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.calendar_month, size: 20, color: AppColors.navy),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '올해 예상 배당 총 ${CalendarScreenFmt.man(summary.gross)}만원 '
+                  '(세후 ${CalendarScreenFmt.man(summary.net)}만원)',
+                  style: AppTextStyles.bodyLarge,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '확정 ${summary.confirmedCount}건 · 예측 ${summary.predictedCount}건',
+                  style:
+                      AppTextStyles.caption.copyWith(color: AppColors.gray500),
+                ),
+              ],
+            ),
           ),
         ],
       ),

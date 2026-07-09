@@ -194,4 +194,64 @@ void main() {
     });
   });
 
+  group('연간 배당 요약 (yearlyDividendSummary)', () {
+    test('확정 1건 → gross 50만 / net 42.3만 / 확정 1·예측 0', () {
+      final s = CashflowEngine.yearlyDividendSummary(
+        holdings: [_holdingA],
+        events: [_eventA],
+        year: 2026, // 2025-12 기준 → 2026-04 지급
+      );
+      expect(s.gross, 500000);
+      expect(s.net, 423000); // 500,000×0.846
+      expect(s.confirmedCount, 1);
+      expect(s.predictedCount, 0);
+    });
+
+    test('확정+예측 혼합 → 합산 gross·건수 분리 집계', () {
+      final predicted = DividendEvent(
+        corpCode: 'A',
+        corpName: 'A사',
+        exDate: null,
+        recordDate: DateTime(2025, 6, 30), // → 2025-07 지급 (2026년 아님)
+        perShare: 300,
+        isConfirmed: false,
+      );
+      final predicted2026 = DividendEvent(
+        corpCode: 'A',
+        corpName: 'A사',
+        exDate: null,
+        recordDate: DateTime(2026, 3, 31), // → 2026-04 지급
+        perShare: 200,
+        isConfirmed: false,
+      );
+      final s = CashflowEngine.yearlyDividendSummary(
+        holdings: [_holdingA],
+        events: [_eventA, predicted, predicted2026],
+        year: 2026,
+      );
+      // 2026년 지급분: _eventA(50만 확정) + predicted2026(20만 예측). predicted는 2025년.
+      expect(s.gross, 500000 + 200000);
+      expect(s.confirmedCount, 1);
+      expect(s.predictedCount, 1);
+      expect(s.net, ((700000) * (1 - 0.154)).round());
+    });
+
+    test('보유하지 않은 종목 이벤트는 제외', () {
+      final other = DividendEvent(
+        corpCode: 'Z',
+        corpName: 'Z사',
+        exDate: null,
+        recordDate: DateTime(2025, 12, 31),
+        perShare: 9999,
+        isConfirmed: true,
+      );
+      final s = CashflowEngine.yearlyDividendSummary(
+        holdings: [_holdingA],
+        events: [_eventA, other],
+        year: 2026,
+      );
+      expect(s.gross, 500000);
+      expect(s.confirmedCount, 1);
+    });
+  });
 }

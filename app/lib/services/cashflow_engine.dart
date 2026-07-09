@@ -65,6 +65,23 @@ class YearlyGauges {
   });
 }
 
+/// 연간 배당 요약 — 특정 연도에 지급되는 배당의 세전·세후 합계와 확정/예측 건수.
+class YearlyDividendSummary {
+  final int gross;
+  final int net;
+  final int confirmedCount;
+  final int predictedCount;
+
+  const YearlyDividendSummary({
+    required this.gross,
+    required this.net,
+    required this.confirmedCount,
+    required this.predictedCount,
+  });
+
+  int get eventCount => confirmedCount + predictedCount;
+}
+
 /// 앱의 심장 — 세후 통일 월별 현금흐름 합산 + 연간 게이지 3종.
 ///
 /// 세후(net) 통일 규칙:
@@ -176,6 +193,40 @@ class CashflowEngine {
         current: annualPensionTaxable,
         threshold: kPensionLowRateLimit,
       ),
+    );
+  }
+
+  /// [year] 에 지급되는 배당(보유 종목 한정)의 세전·세후 합계와 확정/예측 건수 집계.
+  /// 배당이 특정 월에 몰려 달력이 비어 보이는 문제를 보완하는 연간 요약 카드용.
+  static YearlyDividendSummary yearlyDividendSummary({
+    required List<Holding> holdings,
+    required List<DividendEvent> events,
+    required int year,
+  }) {
+    final sharesByCorp = _sharesByCorp(holdings);
+
+    var gross = 0;
+    var confirmedCount = 0;
+    var predictedCount = 0;
+    for (final e in events) {
+      final shares = sharesByCorp[e.corpCode];
+      if (shares == null) continue; // 보유하지 않은 종목 이벤트 무시.
+      final pay = e.expectedPaymentMonth;
+      if (pay == null || pay.year != year) continue;
+      gross += e.perShare * shares;
+      if (e.isConfirmed) {
+        confirmedCount++;
+      } else {
+        predictedCount++;
+      }
+    }
+
+    final net = (gross * (1 - kDividendWithholding)).round();
+    return YearlyDividendSummary(
+      gross: gross,
+      net: net,
+      confirmedCount: confirmedCount,
+      predictedCount: predictedCount,
     );
   }
 

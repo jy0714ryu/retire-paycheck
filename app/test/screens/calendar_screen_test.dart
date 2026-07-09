@@ -104,10 +104,22 @@ void main() {
 
   testWidgets('하단 고지 텍스트 노출(단정 표기 금지)', (WidgetTester tester) async {
     await _pumpCalendar(tester, initialMonth: DateTime(2026, 4));
-    expect(
-      find.text('지급월은 예상이며 회사별로 다를 수 있습니다'),
-      findsOneWidget,
-    );
+    // 지연 렌더 ListView 하단 항목 — 스크롤로 뷰포트에 올린 뒤 검증.
+    final notice = find.text('지급월은 예상이며 회사별로 다를 수 있습니다');
+    await tester.scrollUntilVisible(notice, 200);
+    expect(notice, findsOneWidget);
+  });
+
+  testWidgets('연간 배당 요약 카드 — 올해 예상 배당·세후·건수 노출',
+      (WidgetTester tester) async {
+    // 3월(배당 없는 달)이라도 연간 요약은 2026-04 지급분(50만)을 집계.
+    await _pumpCalendar(tester, initialMonth: DateTime(2026, 3));
+    expect(find.textContaining('올해 예상 배당'), findsOneWidget);
+    // gross 50만 → 세후 42.3만. 만원 반올림 표기.
+    expect(find.textContaining('총 50만원'), findsOneWidget);
+    expect(find.textContaining('세후 42만원'), findsOneWidget);
+    expect(find.textContaining('확정 1건'), findsOneWidget);
+    expect(find.textContaining('예측 0건'), findsOneWidget);
   });
 
   testWidgets('연 1,500만 초과 인출 → 연금 타일에 16.5% 절벽 캡션',
