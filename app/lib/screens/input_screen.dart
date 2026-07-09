@@ -34,6 +34,9 @@ class InputScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // 자동 저장 안내 — 별도 저장 버튼 없이 입력 즉시 기기에 저장됨을 알린다.
+            const _AutoSaveNotice(),
+            const SizedBox(height: 12),
             // 카드 1: 보유 종목
             InputSectionCard(
               title: '보유 종목',
@@ -233,6 +236,36 @@ class InputScreen extends ConsumerWidget {
       ),
       builder: (_) => _AddHoldingSheet(
         onAdd: (holding) => ref.read(holdingsProvider.notifier).add(holding),
+      ),
+    );
+  }
+}
+
+/// 자동 저장 안내 배너 — 입력값은 변경 즉시 SharedPreferences 에 영속되므로
+/// 별도 저장 버튼이 없다. 사용자 불안(저장됐나?)을 없애기 위한 상시 고지.
+class _AutoSaveNotice extends StatelessWidget {
+  const _AutoSaveNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.green.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.cloud_done_outlined,
+              size: 18, color: AppColors.green),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '입력한 내용은 자동으로 저장됩니다. 앱을 닫아도 값이 유지돼요.',
+              style: AppTextStyles.caption.copyWith(color: AppColors.gray700),
+            ),
+          ),
+        ],
       ),
     );
   }

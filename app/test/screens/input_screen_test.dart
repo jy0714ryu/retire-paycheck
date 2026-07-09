@@ -34,6 +34,8 @@ void main() {
     expect(find.text('(선택) 연 이자소득'), findsOneWidget);
     // CTA 안내 텍스트
     expect(find.textContaining('연금나침반'), findsOneWidget);
+    // 자동 저장 안내(대장님 피드백: 저장 UX 불안 해소)
+    expect(find.textContaining('자동으로 저장됩니다'), findsOneWidget);
 
     // 연금저축 잔액(만원 단위 입력) → 원 단위로 provider 반영.
     // 카드1(보유 종목)엔 TextField 가 없으므로 첫 TextField = 연금저축 잔액.
