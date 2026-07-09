@@ -221,15 +221,9 @@ class InputScreen extends ConsumerWidget {
   }
 
   void _openAddHoldingSheet(BuildContext context, WidgetRef ref) {
-    final asyncEvents = ref.read(dividendEventsProvider);
-    // corp_name dedupe (corpCode 기준 최초 1건) — 검색 소스.
-    final Map<String, DividendEvent> byCode = {};
-    for (final e in asyncEvents.valueOrNull?.events ?? const <DividendEvent>[]) {
-      byCode.putIfAbsent(e.corpCode, () => e);
-    }
-    final candidates = byCode.values.toList()
-      ..sort((a, b) => a.corpName.compareTo(b.corpName));
-
+    // 배당 목록은 시트 내부에서 provider 를 watch 한다(로딩→데이터 자동 반영).
+    // 여기서 ref.read 스냅샷을 잡으면 provider 가 아직 로딩(AsyncLoading)일 때
+    // 항상 빈 목록으로 굳어 "불러오지 못했습니다" 가 계속 뜬다.
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -238,7 +232,6 @@ class InputScreen extends ConsumerWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (_) => _AddHoldingSheet(
-        candidates: candidates,
         onAdd: (holding) => ref.read(holdingsProvider.notifier).add(holding),
       ),
     );
@@ -246,17 +239,20 @@ class InputScreen extends ConsumerWidget {
 }
 
 /// 종목 추가 바텀시트 — corp_name contains 필터 + 수량 입력.
-class _AddHoldingSheet extends StatefulWidget {
-  final List<DividendEvent> candidates;
+///
+/// `dividendEventsProvider` 를 직접 watch 하여 로딩/에러/데이터 3-상태를 렌더한다.
+/// (ConsumerStatefulWidget: ProviderScope 는 Navigator 를 가로질러 상속되므로
+///  별도 위젯 트리인 바텀시트에서도 정상 접근된다.)
+class _AddHoldingSheet extends ConsumerStatefulWidget {
   final void Function(Holding) onAdd;
 
-  const _AddHoldingSheet({required this.candidates, required this.onAdd});
+  const _AddHoldingSheet({required this.onAdd});
 
   @override
-  State<_AddHoldingSheet> createState() => _AddHoldingSheetState();
+  ConsumerState<_AddHoldingSheet> createState() => _AddHoldingSheetState();
 }
 
-class _AddHoldingSheetState extends State<_AddHoldingSheet> {
+class _AddHoldingSheetState extends ConsumerState<_AddHoldingSheet> {
   String _query = '';
   DividendEvent? _selected;
   final _sharesController = TextEditingController();
@@ -267,9 +263,19 @@ class _AddHoldingSheetState extends State<_AddHoldingSheet> {
     super.dispose();
   }
 
-  List<DividendEvent> get _filtered {
-    if (_query.isEmpty) return widget.candidates.take(30).toList();
-    return widget.candidates
+  /// corp_name dedupe(corpCode 기준 최초 1건) + 이름순 정렬 — 검색 소스.
+  List<DividendEvent> _candidatesFrom(List<DividendEvent> events) {
+    final Map<String, DividendEvent> byCode = {};
+    for (final e in events) {
+      byCode.putIfAbsent(e.corpCode, () => e);
+    }
+    return byCode.values.toList()
+      ..sort((a, b) => a.corpName.compareTo(b.corpName));
+  }
+
+  List<DividendEvent> _filtered(List<DividendEvent> candidates) {
+    if (_query.isEmpty) return candidates.take(30).toList();
+    return candidates
         .where((e) => e.corpName.contains(_query))
         .take(30)
         .toList();
@@ -290,6 +296,7 @@ class _AddHoldingSheetState extends State<_AddHoldingSheet> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final asyncEvents = ref.watch(dividendEventsProvider);
     return Padding(
       padding: EdgeInsets.only(
         left: 20,
@@ -321,36 +328,72 @@ class _AddHoldingSheetState extends State<_AddHoldingSheet> {
             }),
           ),
           const SizedBox(height: 12),
-          if (widget.candidates.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Text(
-                '배당 종목 목록을 아직 불러오지 못했습니다.\n잠시 후 다시 시도하세요.',
-                style: AppTextStyles.caption
-                    .copyWith(color: AppColors.gray500),
-              ),
-            )
-          else
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 240),
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: _filtered.length,
-                itemBuilder: (_, i) {
-                  final e = _filtered[i];
-                  final selected = _selected?.corpCode == e.corpCode;
-                  return ListTile(
-                    dense: true,
-                    title: Text(e.corpName, style: AppTextStyles.body),
-                    trailing: selected
-                        ? const Icon(Icons.check_circle,
-                            color: AppColors.green)
-                        : null,
-                    onTap: () => setState(() => _selected = e),
-                  );
-                },
+          asyncEvents.when(
+            loading: () => const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
               ),
             ),
+            error: (_, _) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '배당 종목 목록을 아직 불러오지 못했습니다.\n잠시 후 다시 시도하세요.',
+                      style: AppTextStyles.caption
+                          .copyWith(color: AppColors.gray500),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () =>
+                        ref.invalidate(dividendEventsProvider),
+                    child: const Text('다시 시도',
+                        style: TextStyle(color: AppColors.navy)),
+                  ),
+                ],
+              ),
+            ),
+            data: (result) {
+              final candidates = _candidatesFrom(result.events);
+              if (candidates.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Text(
+                    '표시할 배당 종목이 없습니다.',
+                    style: AppTextStyles.caption
+                        .copyWith(color: AppColors.gray500),
+                  ),
+                );
+              }
+              final filtered = _filtered(candidates);
+              return ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 240),
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: filtered.length,
+                  itemBuilder: (_, i) {
+                    final e = filtered[i];
+                    final selected = _selected?.corpCode == e.corpCode;
+                    return ListTile(
+                      dense: true,
+                      title: Text(e.corpName, style: AppTextStyles.body),
+                      trailing: selected
+                          ? const Icon(Icons.check_circle,
+                              color: AppColors.green)
+                          : null,
+                      onTap: () => setState(() => _selected = e),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
           const SizedBox(height: 12),
           TextField(
             controller: _sharesController,
