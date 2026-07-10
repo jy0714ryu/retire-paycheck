@@ -34,10 +34,10 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
-        <!-- AdMob App ID (pension-compass와 동일 AdMob 계정 — 앱 등록은 대장님 후속) -->
+        <!-- AdMob App ID (은퇴월급 전용 앱 등록, 2026-07-10) -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-7975666616683761~8296037385"/>
+            android:value="ca-app-pub-7975666616683761~8665295367"/>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
