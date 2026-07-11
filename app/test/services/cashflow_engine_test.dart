@@ -23,6 +23,7 @@ final _input = const RetirementInput(
   monthlyPensionWithdrawal: 1000000,
   monthlyOtherWithdrawal: 500000,
   annualInterestIncome: 0,
+  isWithdrawing: true,
 );
 
 void main() {
@@ -142,6 +143,7 @@ void main() {
         monthlyPensionWithdrawal: 1250000, // ×12 = 15,000,000 (한도 정확)
         monthlyOtherWithdrawal: 500000,
         annualInterestIncome: 0,
+        isWithdrawing: true,
       );
       final months = CashflowEngine.buildMonths(
         holdings: const [],
@@ -167,6 +169,7 @@ void main() {
         monthlyPensionWithdrawal: 2000000, // ×12 = 24,000,000 (초과)
         monthlyOtherWithdrawal: 500000,
         annualInterestIncome: 0,
+        isWithdrawing: true,
       );
       final months = CashflowEngine.buildMonths(
         holdings: const [],
