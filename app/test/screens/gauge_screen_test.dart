@@ -11,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:retire_paycheck/models/account.dart';
 import 'package:retire_paycheck/models/dividend_event.dart';
 import 'package:retire_paycheck/models/holding.dart';
 import 'package:retire_paycheck/models/retirement_input.dart';
@@ -52,6 +53,8 @@ const _inputOver = RetirementInput(
 Future<void> _pumpGauge(
   WidgetTester tester, {
   required RetirementInput input,
+  // v3: 인출 소스는 계좌 합산 — 과세 인출은 pension 계좌 monthlyWithdrawal 로 주입.
+  int monthlyPensionWithdrawal = 1000000,
 }) async {
   await tester.pumpWidget(
     ProviderScope(
@@ -62,6 +65,14 @@ Future<void> _pumpGauge(
         ),
         retirementInputProvider.overrideWith(
           (ref) => RetirementInputNotifier()..update((_) => input),
+        ),
+        accountsProvider.overrideWith(
+          (ref) => AccountsNotifier(ref)
+            ..add(Account(
+                id: 'wp',
+                name: '연금인출',
+                type: AccountType.pension,
+                monthlyWithdrawal: monthlyPensionWithdrawal)),
         ),
         dividendEventsProvider.overrideWith((ref) async => DividendFetchResult(
               events: [_eventA],
@@ -132,7 +143,8 @@ void main() {
   });
 
   testWidgets('사적연금 ratio 1.6 초과 → 빨강 + 경고 문구', (WidgetTester tester) async {
-    await _pumpGauge(tester, input: _inputOver);
+    await _pumpGauge(tester,
+        input: _inputOver, monthlyPensionWithdrawal: 2000000);
 
     // 사적연금: 2,400만 ÷ 1,500만 (160%).
     expect(

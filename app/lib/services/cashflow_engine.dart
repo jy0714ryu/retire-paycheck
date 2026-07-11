@@ -147,21 +147,21 @@ class CashflowEngine {
     final eventsByCorp = _indexEvents(events);
 
     // 연금 인출 모드(운용기 OFF): 인출 입력이 있어도 0 취급 (스펙 §1.3).
+    // 인출 소스는 flat 필드가 아니라 계좌 합산(v3) — 과세=pension 계좌, 비과세=isa 계좌.
     final withdrawing = input.isWithdrawing;
-    final pensionGross = withdrawing
-        ? input.monthlyPensionWithdrawal + input.monthlyOtherWithdrawal
-        : 0;
+    final monthlyTaxable =
+        withdrawing ? _monthlyWithdrawalByType(accounts, AccountType.pension) : 0;
+    final monthlyTaxFree =
+        withdrawing ? _monthlyWithdrawalByType(accounts, AccountType.isa) : 0;
+    final pensionGross = monthlyTaxable + monthlyTaxFree;
     // 사적연금 절벽: 연 인출액(과세분)이 1,500만원을 초과하면 저율(3.3~5.5%)이 아니라
     // 전액 16.5% 분리과세 (분리과세 선택 가정). 초과분이 아니라 전액에 적용.
-    final annualPensionTaxable =
-        withdrawing ? input.monthlyPensionWithdrawal * 12 : 0;
+    final annualPensionTaxable = monthlyTaxable * 12;
     final pensionRate = annualPensionTaxable > kPensionLowRateLimit
         ? kPensionCliffRate
         : pensionTaxRate(input.currentAge);
-    final pensionNet = withdrawing
-        ? (input.monthlyPensionWithdrawal * (1 - pensionRate)).round() +
-            input.monthlyOtherWithdrawal
-        : 0;
+    final pensionNet =
+        (monthlyTaxable * (1 - pensionRate)).round() + monthlyTaxFree;
 
     final start = DateTime(from.year, from.month, 1);
     final result = <MonthlyCashflow>[];
@@ -270,8 +270,10 @@ class CashflowEngine {
     final financialIncomeTotal = generalDividendGross + interestAnnual;
 
     // 연금 인출 모드 OFF 면 과세대상 인출 0 (절벽 게이지 0).
-    final annualPensionTaxable =
-        input.isWithdrawing ? input.monthlyPensionWithdrawal * 12 : 0;
+    // 과세 인출은 flat 필드가 아니라 pension 계좌 monthlyWithdrawal 합산(v3).
+    final annualPensionTaxable = input.isWithdrawing
+        ? _monthlyWithdrawalByType(accounts, AccountType.pension) * 12
+        : 0;
 
     // 건보 산입: 금융소득이 1,000만 초과면 전액, 이하면 0.
     // 사적연금 인출은 건보 소득 미산입 (공적연금만 — 2026-07 현행).
@@ -360,6 +362,17 @@ class CashflowEngine {
       }
     }
     return (isaGross * kDividendWithholding).round();
+  }
+
+  /// 지정 유형([type]) 계좌들의 월 인출액([Account.monthlyWithdrawal]) 합산(v3).
+  /// 인출 소스가 RetirementInput flat 필드에서 계좌 합산으로 이관됨 —
+  /// 과세 연금 인출 = pension 계좌 합, 비과세 인출 = isa 계좌 합.
+  static int _monthlyWithdrawalByType(List<Account> accounts, AccountType type) {
+    var sum = 0;
+    for (final a in accounts) {
+      if (a.type == type) sum += a.monthlyWithdrawal;
+    }
+    return sum;
   }
 
   /// 종목의 계좌 유형 해석 — 삭제된 계좌 참조는 일반계좌로 폴백(안전망).

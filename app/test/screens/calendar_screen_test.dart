@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:retire_paycheck/models/account.dart';
 import 'package:retire_paycheck/models/dividend_event.dart';
 import 'package:retire_paycheck/models/holding.dart';
 import 'package:retire_paycheck/models/retirement_input.dart';
@@ -34,6 +35,23 @@ const _input = RetirementInput(
   annualInterestIncome: 0,
 );
 
+// v3: 인출 소스는 계좌 합산 — 과세 월 100만(pension) + 비과세 월 50만(isa).
+List<Override> _withdrawAccountsOverride() => [
+      accountsProvider.overrideWith(
+        (ref) => AccountsNotifier(ref)
+          ..add(const Account(
+              id: 'wp',
+              name: '연금인출',
+              type: AccountType.pension,
+              monthlyWithdrawal: 1000000))
+          ..add(const Account(
+              id: 'wi',
+              name: 'ISA인출',
+              type: AccountType.isa,
+              monthlyWithdrawal: 500000)),
+      ),
+    ];
+
 Future<void> _pumpCalendar(WidgetTester tester, {DateTime? initialMonth}) async {
   await tester.pumpWidget(
     ProviderScope(
@@ -46,6 +64,7 @@ Future<void> _pumpCalendar(WidgetTester tester, {DateTime? initialMonth}) async 
         retirementInputProvider.overrideWith(
           (ref) => RetirementInputNotifier()..update((_) => _input),
         ),
+        ..._withdrawAccountsOverride(),
         dividendEventsProvider.overrideWith((ref) async => DividendFetchResult(
               events: [_eventA],
               fetchedAt: DateTime(2026, 1, 1),

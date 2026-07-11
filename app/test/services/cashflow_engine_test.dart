@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:retire_paycheck/models/account.dart';
 import 'package:retire_paycheck/models/dividend_event.dart';
 import 'package:retire_paycheck/models/holding.dart';
 import 'package:retire_paycheck/models/retirement_input.dart';
@@ -26,6 +27,13 @@ final _input = const RetirementInput(
   isWithdrawing: true,
 );
 
+// v3: 인출 소스는 flat 필드가 아니라 계좌 합산 — 과세=pension 계좌, 비과세=isa 계좌.
+// 기존 시나리오(과세 월 100만·비과세 월 50만)를 계좌로 그대로 옮긴다(기대 계산값 불변).
+final _withdrawAccounts = [
+  kDefaultAccounts[2].copyWith(monthlyWithdrawal: 1000000), // 연금저축 과세 100만
+  kDefaultAccounts[1].copyWith(monthlyWithdrawal: 500000), // ISA 비과세 50만
+];
+
 void main() {
   test('4월 현금흐름 = 배당 50만 gross/42.3만 net + 연금 150만 gross/144.5만 net', () {
     final months = CashflowEngine.buildMonths(
@@ -34,6 +42,7 @@ void main() {
       input: _input,
       from: DateTime(2026, 1),
       monthCount: 12,
+      accounts: _withdrawAccounts,
     );
     expect(months.length, 12);
     final april = months.firstWhere((m) => m.month == DateTime(2026, 4));
@@ -67,6 +76,7 @@ void main() {
       events: [_eventA],
       input: _input,
       year: 2026, // 배당 지급은 2026-04
+      accounts: _withdrawAccounts,
     );
     expect(g.financialIncome.current, 500000);
     expect(g.financialIncome.threshold, 20000000);
@@ -151,6 +161,10 @@ void main() {
         input: input,
         from: DateTime(2026, 1),
         monthCount: 12,
+        accounts: [
+          kDefaultAccounts[2].copyWith(monthlyWithdrawal: 1250000),
+          kDefaultAccounts[1].copyWith(monthlyWithdrawal: 500000),
+        ],
       );
       // net = 1,250,000×0.945 + 500,000 = 1,181,250 + 500,000
       expect(months.first.pensionNet, 1181250 + 500000);
@@ -177,6 +191,10 @@ void main() {
         input: input,
         from: DateTime(2026, 1),
         monthCount: 12,
+        accounts: [
+          kDefaultAccounts[2].copyWith(monthlyWithdrawal: 2000000),
+          kDefaultAccounts[1].copyWith(monthlyWithdrawal: 500000),
+        ],
       );
       // net = 2,000,000×0.835 + 500,000 = 1,670,000 + 500,000
       expect(months.first.pensionNet, 1670000 + 500000);
@@ -192,6 +210,7 @@ void main() {
         input: _input,
         from: DateTime(2026, 1),
         monthCount: 12,
+        accounts: _withdrawAccounts,
       );
       expect(months.first.pensionNet, 1445000); // 1,000,000×0.945 + 500,000
     });
