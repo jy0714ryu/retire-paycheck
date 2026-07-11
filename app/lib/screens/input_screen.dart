@@ -17,17 +17,21 @@ import '../widgets/input_widgets.dart';
 const String _kPensionCompassUrl =
     'https://play.google.com/store/apps/details?id=com.quantlog.pensioncompass';
 
-/// 화면1 — 자산 입력.
+/// 화면1 — 자산 입력 (v3: 계좌 중심 IA).
 ///
-/// 카드 4개: ①보유 종목(검색·수량) ②연금 계좌 ③월 인출 2필드 ④(선택) 연 이자소득.
+/// 계좌가 최상위 컨테이너다. 위→아래 구성:
+/// ①자동 저장 안내 → ②계좌 카드들(effectiveAccounts) → ③[+ 계좌 추가]
+/// → ④공통 설정(인출 토글·연금나침반 CTA·현재 나이) → ⑤(선택) 연 이자소득.
 /// 모든 값은 provider 를 통해 SharedPreferences 에 즉시 영속된다.
 class InputScreen extends ConsumerWidget {
   const InputScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final holdings = ref.watch(holdingsProvider);
-    final input = ref.watch(retirementInputProvider);
+    final accounts = ref.watch(effectiveAccountsProvider);
+    final isWithdrawing = ref.watch(
+      retirementInputProvider.select((s) => s.isWithdrawing),
+    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -44,223 +48,36 @@ class InputScreen extends ConsumerWidget {
           children: [
             // 자동 저장 안내 — 별도 저장 버튼 없이 입력 즉시 기기에 저장됨을 알린다.
             const _AutoSaveNotice(),
-            const SizedBox(height: 12),
-            // 카드 1: 보유 종목
-            InputSectionCard(
-              title: '보유 종목',
-              icon: Icons.pie_chart_outline,
-              children: [
-                if (holdings.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Text(
-                      '아직 등록한 종목이 없습니다.\n아래 버튼으로 보유 종목을 추가하세요.',
-                      style: AppTextStyles.caption
-                          .copyWith(color: AppColors.gray500),
-                    ),
-                  )
-                else
-                  ...List.generate(holdings.length, (i) {
-                    final h = holdings[i];
-                    return Dismissible(
-                      key: ValueKey('holding_${h.corpCode}'),
-                      direction: DismissDirection.endToStart,
-                      onDismissed: (_) =>
-                          ref.read(holdingsProvider.notifier).removeAt(i),
-                      background: Container(
-                        alignment: Alignment.centerRight,
-                        padding: const EdgeInsets.only(right: 20),
-                        margin: const EdgeInsets.only(bottom: 8),
-                        decoration: BoxDecoration(
-                          color: AppColors.error,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(Icons.delete, color: Colors.white),
-                      ),
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 14),
-                        decoration: BoxDecoration(
-                          color: AppColors.gray50,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.gray200),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Row(
-                                children: [
-                                  Flexible(
-                                    child: Text(h.corpName,
-                                        style: AppTextStyles.bodyLarge,
-                                        overflow: TextOverflow.ellipsis),
-                                  ),
-                                  if (h.isManual) ...[
-                                    const SizedBox(width: 8),
-                                    const _ManualBadge(),
-                                  ],
-                                ],
-                              ),
-                            ),
-                            Text('${h.shares}주',
-                                style: AppTextStyles.captionBold),
-                          ],
-                        ),
-                      ),
-                    );
-                  }),
-                const SizedBox(height: 4),
-                OutlinedButton.icon(
-                  onPressed: () => _openAddHoldingSheet(context, ref),
-                  icon: const Icon(Icons.add, color: AppColors.navy),
-                  label: const Text('종목 추가',
-                      style: TextStyle(color: AppColors.navy)),
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 48),
-                    side: const BorderSide(color: AppColors.navy),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
+            const SizedBox(height: 16),
+
+            // 계좌 카드들 — effectiveAccounts 순서(기본 4개 + 유저 계좌).
+            for (final account in accounts) ...[
+              _AccountCard(account: account, isWithdrawing: isWithdrawing),
+              const SizedBox(height: 16),
+            ],
+
+            // [+ 계좌 추가] — 이름 + 유형 다이얼로그.
+            OutlinedButton.icon(
+              key: const ValueKey('addAccountButton'),
+              onPressed: () => _openAddAccountDialog(context, ref),
+              icon: const Icon(Icons.add, color: AppColors.navy),
+              label: const Text('계좌 추가',
+                  style: TextStyle(color: AppColors.navy)),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 48),
+                side: const BorderSide(color: AppColors.navy),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
-              ],
+              ),
             ),
             const SizedBox(height: 16),
 
-            // 계좌 관리 — 기본 계좌 3개 + 유저 계좌, 추가/삭제.
-            const _AccountManagementSection(),
+            // 공통 설정 — 연금 인출 토글 + 연금나침반 CTA + 현재 나이.
+            const _CommonSettingsCard(),
             const SizedBox(height: 16),
 
-            // 카드 2: 연금 계좌
-            InputSectionCard(
-              title: '연금 계좌',
-              icon: Icons.account_balance,
-              children: [
-                AmountInputField(
-                  label: '연금저축 잔액',
-                  value: input.pensionSavings,
-                  onChanged: (v) => ref
-                      .read(retirementInputProvider.notifier)
-                      .updatePensionSavings(v),
-                ),
-                const SizedBox(height: 16),
-                AmountInputField(
-                  label: 'IRP 잔액',
-                  value: input.irpBalance,
-                  onChanged: (v) => ref
-                      .read(retirementInputProvider.notifier)
-                      .updateIrpBalance(v),
-                ),
-                const SizedBox(height: 16),
-                AmountInputField(
-                  label: 'ISA 잔액',
-                  value: input.isaBalance,
-                  onChanged: (v) => ref
-                      .read(retirementInputProvider.notifier)
-                      .updateIsaBalance(v),
-                ),
-                const SizedBox(height: 16),
-                NumberInputField(
-                  label: '현재 나이',
-                  value: input.currentAge,
-                  suffix: '세',
-                  min: 20,
-                  max: 100,
-                  onChanged: (v) => ref
-                      .read(retirementInputProvider.notifier)
-                      .updateCurrentAge(v),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // 카드 3: 월 인출 계획
-            InputSectionCard(
-              title: '월 인출 계획',
-              icon: Icons.payments_outlined,
-              children: [
-                // Material 래핑 — SwitchListTile 은 가장 가까운 Material 조상에
-                // 배경/잉크를 그리는데, InputSectionCard 의 흰 배경 Container 가
-                // 바로 그 조상이면 프레임워크 경고가 발생한다(색 있는 DecoratedBox
-                // 가 ListTile 잉크 효과를 가림).
-                Material(
-                  type: MaterialType.transparency,
-                  child: SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('연금 인출 중', style: AppTextStyles.label),
-                    value: input.isWithdrawing,
-                    activeThumbColor: AppColors.navy,
-                    onChanged: (v) => ref
-                        .read(retirementInputProvider.notifier)
-                        .update((s) => s.copyWith(isWithdrawing: v)),
-                  ),
-                ),
-                InkWell(
-                  onTap: _openPensionCompass,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Text(
-                      '어떤 순서로 빼야 세금을 아낄까? → 연금나침반',
-                      style: AppTextStyles.captionBold
-                          .copyWith(color: AppColors.navy),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Visibility(
-                  visible: input.isWithdrawing,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      AmountInputField(
-                        label: '연금저축·IRP 월 인출',
-                        value: input.monthlyPensionWithdrawal,
-                        onChanged: (v) => ref
-                            .read(retirementInputProvider.notifier)
-                            .updateMonthlyPensionWithdrawal(v),
-                        helperText: '과세 대상 — 나이별 연금소득세(5.5~3.3%)가 붙습니다',
-                      ),
-                      const SizedBox(height: 16),
-                      AmountInputField(
-                        label: 'ISA·기타 월 인출',
-                        value: input.monthlyOtherWithdrawal,
-                        onChanged: (v) => ref
-                            .read(retirementInputProvider.notifier)
-                            .updateMonthlyOtherWithdrawal(v),
-                        helperText: '비과세 취급 — 세금 없이 그대로 수령합니다',
-                      ),
-                      const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.info.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Icon(Icons.info_outline,
-                                size: 18, color: AppColors.info),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                '공제·비공제 정밀 구분은 연금나침반에서 확인하세요.',
-                                style: AppTextStyles.caption
-                                    .copyWith(color: AppColors.gray600),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // 카드 4: (선택) 연 이자소득 — InterestItem 리스트.
+            // (선택) 연 이자소득 — InterestItem 리스트.
             const _InterestItemsSection(),
             const SizedBox(height: 80),
           ],
@@ -269,27 +86,26 @@ class InputScreen extends ConsumerWidget {
     );
   }
 
-  void _openAddHoldingSheet(BuildContext context, WidgetRef ref) {
-    // 배당 목록은 시트 내부에서 provider 를 watch 한다(로딩→데이터 자동 반영).
-    // 여기서 ref.read 스냅샷을 잡으면 provider 가 아직 로딩(AsyncLoading)일 때
-    // 항상 빈 목록으로 굳어 "불러오지 못했습니다" 가 계속 뜬다.
-    showModalBottomSheet<void>(
+  void _openAddAccountDialog(BuildContext context, WidgetRef ref) {
+    showDialog<void>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => _AddHoldingSheet(
-        onAdd: (holding) => ref.read(holdingsProvider.notifier).add(holding),
+      builder: (_) => _AddAccountDialog(
+        onAdd: (name, type) => ref.read(accountsProvider.notifier).add(
+              Account(
+                id: 'user_${DateTime.now().microsecondsSinceEpoch}',
+                name: name,
+                type: type,
+              ),
+            ),
       ),
     );
   }
+}
 
-  Future<void> _openPensionCompass() async {
-    final uri = Uri.parse(_kPensionCompassUrl);
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
-  }
+/// 연금나침반 Play 스토어 페이지로 이동 — 공통 설정 카드 CTA.
+Future<void> _openPensionCompass() async {
+  final uri = Uri.parse(_kPensionCompassUrl);
+  await launchUrl(uri, mode: LaunchMode.externalApplication);
 }
 
 /// 자동 저장 안내 배너 — 입력값은 변경 즉시 SharedPreferences 에 영속되므로
@@ -322,15 +138,284 @@ class _AutoSaveNotice extends StatelessWidget {
   }
 }
 
+/// 계좌 카드 — 계좌 중심 IA 의 최상위 컨테이너(스펙 §4 목업).
+///
+/// 헤더(계좌명 + 유형 배지 + 유저 계좌 삭제) / 소속 종목 리스트(수량·스와이프
+/// 삭제) / "+ 종목 추가" / 유형이 isa·pension 이면 잔액 + (인출 모드 ON 시)
+/// 월 인출 필드. 일반계좌는 종목만 노출한다.
+class _AccountCard extends ConsumerWidget {
+  final Account account;
+  final bool isWithdrawing;
+
+  const _AccountCard({required this.account, required this.isWithdrawing});
+
+  String get _typeLabel {
+    switch (account.type) {
+      case AccountType.general:
+        return '일반';
+      case AccountType.isa:
+        return 'ISA';
+      case AccountType.pension:
+        return '연금';
+    }
+  }
+
+  bool get _hasBalance => account.type != AccountType.general;
+
+  /// 잔액 필드 라벨 — ISA 는 "현금성 잔액", 연금(연금저축·IRP)은 "잔액".
+  String get _balanceLabel =>
+      account.type == AccountType.isa ? '현금성 잔액' : '잔액';
+
+  /// 월 인출 helperText — 연금은 과세, ISA 는 비과세 취급.
+  String get _withdrawalHelper => account.type == AccountType.pension
+      ? '과세 대상 — 나이별 연금소득세(5.5~3.3%)가 붙습니다'
+      : '비과세 취급 — 세금 없이 그대로 수령합니다';
+
+  void _updateBalance(WidgetRef ref, int v) {
+    final notifier = ref.read(accountsProvider.notifier);
+    if (account.isDefault) {
+      notifier.updateDefaults(account.id, balance: v);
+    } else {
+      notifier.updateUser(account.id, balance: v);
+    }
+  }
+
+  void _updateWithdrawal(WidgetRef ref, int v) {
+    final notifier = ref.read(accountsProvider.notifier);
+    if (account.isDefault) {
+      notifier.updateDefaults(account.id, monthlyWithdrawal: v);
+    } else {
+      notifier.updateUser(account.id, monthlyWithdrawal: v);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final holdings = ref.watch(holdingsProvider);
+    // 소속 종목 — 전역 인덱스를 유지해 스와이프 삭제(removeAt) 에 재사용.
+    final entries = <MapEntry<int, Holding>>[];
+    for (var i = 0; i < holdings.length; i++) {
+      if (holdings[i].accountId == account.id) {
+        entries.add(MapEntry(i, holdings[i]));
+      }
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.gray200.withValues(alpha: 0.5),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 헤더: 계좌명 + 유형 배지 + (유저 계좌) 삭제 아이콘.
+          Row(
+            children: [
+              Flexible(
+                child: Text(account.name,
+                    style: AppTextStyles.h4, overflow: TextOverflow.ellipsis),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.gray100,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(_typeLabel, style: AppTextStyles.labelSmall),
+              ),
+              const Spacer(),
+              if (!account.isDefault)
+                IconButton(
+                  key: ValueKey('deleteAccount_${account.id}'),
+                  icon: const Icon(Icons.delete_outline,
+                      color: AppColors.error, size: 20),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () => _confirmDelete(context, ref),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // 소속 종목 리스트.
+          if (entries.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                '아직 종목이 없습니다.',
+                style:
+                    AppTextStyles.caption.copyWith(color: AppColors.gray500),
+              ),
+            )
+          else
+            ...entries.map((e) => _HoldingRow(index: e.key, holding: e.value)),
+
+          // 유형 isa·pension: 잔액 + (인출 모드) 월 인출.
+          if (_hasBalance) ...[
+            const SizedBox(height: 8),
+            AmountInputField(
+              key: ValueKey('balance_${account.id}'),
+              label: _balanceLabel,
+              value: account.balance,
+              onChanged: (v) => _updateBalance(ref, v),
+            ),
+            if (isWithdrawing) ...[
+              const SizedBox(height: 16),
+              AmountInputField(
+                key: ValueKey('withdrawal_${account.id}'),
+                label: '월 인출',
+                value: account.monthlyWithdrawal,
+                onChanged: (v) => _updateWithdrawal(ref, v),
+                helperText: _withdrawalHelper,
+              ),
+            ],
+          ],
+          const SizedBox(height: 12),
+
+          // + 종목 추가 — 소속 계좌 고정(시트는 종목·수량만 받는다).
+          OutlinedButton.icon(
+            key: ValueKey('addHolding_${account.id}'),
+            onPressed: () => _openAddHoldingSheet(context, ref),
+            icon: const Icon(Icons.add, color: AppColors.navy),
+            label: const Text('종목 추가',
+                style: TextStyle(color: AppColors.navy)),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 44),
+              side: const BorderSide(color: AppColors.navy),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openAddHoldingSheet(BuildContext context, WidgetRef ref) {
+    // 배당 목록은 시트 내부에서 provider 를 watch 한다(로딩→데이터 자동 반영).
+    // 여기서 ref.read 스냅샷을 잡으면 provider 가 아직 로딩(AsyncLoading)일 때
+    // 항상 빈 목록으로 굳어 "불러오지 못했습니다" 가 계속 뜬다.
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _AddHoldingSheet(
+        accountId: account.id,
+        onAdd: (holding) => ref.read(holdingsProvider.notifier).add(holding),
+      ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context, WidgetRef ref) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('계좌 삭제'),
+        content: Text(
+          '\'${account.name}\' 계좌를 삭제하시겠습니까?\n소속 종목은 같은 유형 기본 계좌로 이동합니다',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            key: const ValueKey('confirmDeleteAccount'),
+            onPressed: () {
+              ref.read(accountsProvider.notifier).remove(account.id);
+              Navigator.of(ctx).pop();
+            },
+            child: const Text('삭제', style: TextStyle(color: AppColors.error)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 계좌 카드 안의 종목 행 — 수량 표시 + 스와이프(→←) 삭제.
+class _HoldingRow extends ConsumerWidget {
+  final int index;
+  final Holding holding;
+
+  const _HoldingRow({required this.index, required this.holding});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Dismissible(
+      key: ValueKey('holding_${holding.corpCode}'),
+      direction: DismissDirection.endToStart,
+      onDismissed: (_) =>
+          ref.read(holdingsProvider.notifier).removeAt(index),
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        margin: const EdgeInsets.only(bottom: 8),
+        decoration: BoxDecoration(
+          color: AppColors.error,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Icon(Icons.delete, color: Colors.white),
+      ),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: AppColors.gray50,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.gray200),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Row(
+                children: [
+                  Flexible(
+                    child: Text(holding.corpName,
+                        style: AppTextStyles.bodyLarge,
+                        overflow: TextOverflow.ellipsis),
+                  ),
+                  if (holding.isManual) ...[
+                    const SizedBox(width: 8),
+                    const _ManualBadge(),
+                  ],
+                ],
+              ),
+            ),
+            Text('${holding.shares}주', style: AppTextStyles.captionBold),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// 종목 추가 바텀시트 — corp_name contains 필터 + 수량 입력.
 ///
+/// 소속 계좌는 호출한 계좌 카드가 [accountId] 로 고정 주입한다(시트 안에서
+/// 계좌를 고르지 않는다 — 계층은 "계좌가 먼저, 그 안에 종목").
+///
 /// `dividendEventsProvider` 를 직접 watch 하여 로딩/에러/데이터 3-상태를 렌더한다.
-/// (ConsumerStatefulWidget: ProviderScope 는 Navigator 를 가로질러 상속되므로
-///  별도 위젯 트리인 바텀시트에서도 정상 접근된다.)
 class _AddHoldingSheet extends ConsumerStatefulWidget {
+  final String accountId;
   final void Function(Holding) onAdd;
 
-  const _AddHoldingSheet({required this.onAdd});
+  const _AddHoldingSheet({required this.accountId, required this.onAdd});
 
   @override
   ConsumerState<_AddHoldingSheet> createState() => _AddHoldingSheetState();
@@ -347,10 +432,6 @@ class _AddHoldingSheetState extends ConsumerState<_AddHoldingSheet> {
   final _manualSharesController = TextEditingController();
   final _manualAnnualController = TextEditingController();
   final Set<int> _manualMonths = {4}; // 기본 4월(국내 결산배당 지급월).
-
-  // 계좌 선택 — 기본 일반, 유형 변경 시 해당 유형 기본 계좌로 리셋.
-  AccountType _accountType = AccountType.general;
-  String _accountId = 'default_general';
 
   @override
   void dispose() {
@@ -387,7 +468,7 @@ class _AddHoldingSheetState extends ConsumerState<_AddHoldingSheet> {
       corpCode: sel.corpCode,
       corpName: sel.corpName,
       shares: shares,
-      accountId: _accountId,
+      accountId: widget.accountId,
     ));
     Navigator.of(context).pop();
   }
@@ -408,73 +489,15 @@ class _AddHoldingSheetState extends ConsumerState<_AddHoldingSheet> {
       shares: int.parse(_manualSharesController.text.trim()),
       manualPerShareAnnual: int.parse(_manualAnnualController.text.trim()),
       manualPaymentMonths: _manualMonths.toList()..sort(),
-      accountId: _accountId,
+      accountId: widget.accountId,
     ));
     Navigator.of(context).pop();
-  }
-
-  /// 계좌 선택 — [일반/ISA/연금] SegmentedButton + (유저 계좌 존재 시) 드롭다운.
-  /// 유형 전환 시 선택 계좌는 항상 해당 유형 기본 계좌로 리셋된다.
-  Widget _buildAccountSelector() {
-    final userAccounts = ref.watch(accountsProvider);
-    final matching =
-        userAccounts.where((a) => a.type == _accountType).toList();
-    final defaultAccount =
-        kDefaultAccounts.firstWhere((a) => a.type == _accountType);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('계좌 선택', style: AppTextStyles.captionBold),
-        const SizedBox(height: 8),
-        SegmentedButton<AccountType>(
-          segments: const [
-            ButtonSegment(value: AccountType.general, label: Text('일반')),
-            ButtonSegment(value: AccountType.isa, label: Text('ISA')),
-            ButtonSegment(value: AccountType.pension, label: Text('연금')),
-          ],
-          selected: {_accountType},
-          onSelectionChanged: (s) => setState(() {
-            _accountType = s.first;
-            _accountId = 'default_${_accountType.name}';
-          }),
-        ),
-        if (matching.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              color: AppColors.gray50,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.gray200),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                key: const ValueKey('accountDropdown'),
-                isExpanded: true,
-                value: _accountId,
-                items: [
-                  DropdownMenuItem(
-                    value: defaultAccount.id,
-                    child: Text(defaultAccount.name),
-                  ),
-                  for (final a in matching)
-                    DropdownMenuItem(value: a.id, child: Text(a.name)),
-                ],
-                onChanged: (v) =>
-                    setState(() => _accountId = v ?? defaultAccount.id),
-              ),
-            ),
-          ),
-        ],
-      ],
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    // 계좌 선택(SegmentedButton+드롭다운)이 추가되며 내용이 길어져 고정 높이
-    // Padding 만으로는 시트가 넘칠 수 있다 — SingleChildScrollView 로 스크롤 허용.
+    // 내용이 길어질 수 있어(직접 입력 폼) SingleChildScrollView 로 스크롤 허용.
     return SingleChildScrollView(
       padding: EdgeInsets.only(
         left: 20,
@@ -525,8 +548,6 @@ class _AddHoldingSheetState extends ConsumerState<_AddHoldingSheet> {
           decoration: _manualFieldDecoration(labelText: '보유 수량', suffixText: '주'),
           onChanged: (_) => setState(() {}),
         ),
-        const SizedBox(height: 16),
-        _buildAccountSelector(),
         const SizedBox(height: 12),
         TextField(
           key: const ValueKey('manualAnnual'),
@@ -707,8 +728,6 @@ class _AddHoldingSheetState extends ConsumerState<_AddHoldingSheet> {
             onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: 16),
-          _buildAccountSelector(),
-          const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
@@ -772,164 +791,6 @@ class _ManualBadge extends StatelessWidget {
       child: Text(
         '직접 입력',
         style: AppTextStyles.labelSmall.copyWith(color: AppColors.navy),
-      ),
-    );
-  }
-}
-
-/// 계좌 관리 — 기본 계좌 3개(고정, 삭제 불가) + 유저 계좌(추가/삭제) ExpansionTile.
-class _AccountManagementSection extends ConsumerWidget {
-  const _AccountManagementSection();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final userAccounts = ref.watch(accountsProvider);
-    // ExpansionTile 은 내부 ListTile 이 가장 가까운 Material 조상에 배경/잉크를
-    // 그린다 — 색이 있는 Container 로 바로 감싸면 프레임워크 경고(위젯 테스트에서
-    // 예외로 처리됨)가 발생하므로 Material 로 카드 배경을 준다.
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.gray200.withValues(alpha: 0.5),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Material(
-          color: Colors.white,
-          child: ExpansionTile(
-            leading: const Icon(Icons.account_balance_wallet_outlined,
-                color: AppColors.navy),
-            title: const Text('계좌 관리', style: AppTextStyles.h4),
-            childrenPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-            children: [
-              for (final a in kDefaultAccounts)
-                _AccountRow(account: a, deletable: false),
-              for (final a in userAccounts)
-                _AccountRow(account: a, deletable: true),
-              const SizedBox(height: 8),
-              OutlinedButton.icon(
-                key: const ValueKey('addAccountButton'),
-                onPressed: () => _openAddAccountDialog(context, ref),
-                icon: const Icon(Icons.add, color: AppColors.navy),
-                label: const Text('계좌 추가',
-                    style: TextStyle(color: AppColors.navy)),
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 44),
-                  side: const BorderSide(color: AppColors.navy),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _openAddAccountDialog(BuildContext context, WidgetRef ref) {
-    showDialog<void>(
-      context: context,
-      builder: (_) => _AddAccountDialog(
-        onAdd: (name, type) => ref.read(accountsProvider.notifier).add(
-              Account(
-                id: 'user_${DateTime.now().microsecondsSinceEpoch}',
-                name: name,
-                type: type,
-              ),
-            ),
-      ),
-    );
-  }
-}
-
-/// 계좌 관리 리스트의 행 하나 — 유저 계좌만 삭제 아이콘 노출.
-class _AccountRow extends ConsumerWidget {
-  final Account account;
-  final bool deletable;
-
-  const _AccountRow({required this.account, required this.deletable});
-
-  String get _typeLabel {
-    switch (account.type) {
-      case AccountType.general:
-        return '일반';
-      case AccountType.isa:
-        return 'ISA';
-      case AccountType.pension:
-        return '연금';
-    }
-  }
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          Expanded(
-            child: Row(
-              children: [
-                Flexible(
-                  child: Text(account.name,
-                      style: AppTextStyles.body,
-                      overflow: TextOverflow.ellipsis),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppColors.gray100,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(_typeLabel, style: AppTextStyles.labelSmall),
-                ),
-              ],
-            ),
-          ),
-          if (deletable)
-            IconButton(
-              key: ValueKey('deleteAccount_${account.id}'),
-              icon: const Icon(Icons.delete_outline,
-                  color: AppColors.error, size: 20),
-              onPressed: () => _confirmDelete(context, ref),
-            ),
-        ],
-      ),
-    );
-  }
-
-  void _confirmDelete(BuildContext context, WidgetRef ref) {
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('계좌 삭제'),
-        content: Text(
-          '\'${account.name}\' 계좌를 삭제하시겠습니까?\n소속 종목은 기본 계좌로 이동합니다',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('취소'),
-          ),
-          TextButton(
-            key: const ValueKey('confirmDeleteAccount'),
-            onPressed: () {
-              ref.read(accountsProvider.notifier).remove(account.id);
-              Navigator.of(ctx).pop();
-            },
-            child: const Text('삭제', style: TextStyle(color: AppColors.error)),
-          ),
-        ],
       ),
     );
   }
@@ -1005,6 +866,59 @@ class _AddAccountDialogState extends State<_AddAccountDialog> {
                 }
               : null,
           child: const Text('추가'),
+        ),
+      ],
+    );
+  }
+}
+
+/// 공통 설정 카드 — 연금 인출 토글 + 연금나침반 CTA + 현재 나이.
+///
+/// 인출 토글 OFF: 모든 계좌 카드의 월 인출 필드가 숨겨진다(스펙 §4).
+class _CommonSettingsCard extends ConsumerWidget {
+  const _CommonSettingsCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final input = ref.watch(retirementInputProvider);
+    return InputSectionCard(
+      title: '공통 설정',
+      icon: Icons.tune,
+      children: [
+        // Material 래핑 — SwitchListTile 은 가장 가까운 Material 조상에
+        // 배경/잉크를 그리는데, InputSectionCard 의 흰 배경 Container 가
+        // 바로 그 조상이면 프레임워크 경고가 발생한다.
+        Material(
+          type: MaterialType.transparency,
+          child: SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('연금 인출 중', style: AppTextStyles.label),
+            value: input.isWithdrawing,
+            activeThumbColor: AppColors.navy,
+            onChanged: (v) => ref
+                .read(retirementInputProvider.notifier)
+                .update((s) => s.copyWith(isWithdrawing: v)),
+          ),
+        ),
+        InkWell(
+          onTap: _openPensionCompass,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Text(
+              '어떤 순서로 빼야 세금을 아낄까? → 연금나침반',
+              style: AppTextStyles.captionBold.copyWith(color: AppColors.navy),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        NumberInputField(
+          label: '현재 나이',
+          value: input.currentAge,
+          suffix: '세',
+          min: 20,
+          max: 100,
+          onChanged: (v) =>
+              ref.read(retirementInputProvider.notifier).updateCurrentAge(v),
         ),
       ],
     );

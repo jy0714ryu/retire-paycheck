@@ -1,4 +1,4 @@
-// 화면1 자산 입력 — 렌더 + 연금저축 금액 입력 → provider 상태 반영 검증.
+// 화면1 자산 입력(v3 계좌 카드) — 렌더 + ISA 잔액 입력 → 계좌 오버라이드 반영 검증.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,7 +14,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  testWidgets('입력 화면 렌더 + 연금저축 금액 입력 → provider 상태 반영',
+  testWidgets('입력 화면 렌더 + ISA 잔액 입력 → 계좌 잔액 오버라이드 반영',
       (WidgetTester tester) async {
     final container = ProviderContainer();
     addTearDown(container.dispose);
@@ -27,25 +27,27 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // 4개 카드 헤더 렌더 확인
-    expect(find.text('보유 종목'), findsOneWidget);
-    expect(find.text('연금 계좌'), findsOneWidget);
-    expect(find.text('월 인출 계획'), findsOneWidget);
+    // 계좌 카드 + 공통 설정 + 이자소득 렌더 확인.
+    expect(find.text('일반계좌'), findsOneWidget);
+    expect(find.text('공통 설정'), findsOneWidget);
     expect(find.text('(선택) 연 이자소득'), findsOneWidget);
     // CTA 안내 텍스트
     expect(find.textContaining('연금나침반'), findsOneWidget);
     // 자동 저장 안내(대장님 피드백: 저장 UX 불안 해소)
     expect(find.textContaining('자동으로 저장됩니다'), findsOneWidget);
 
-    // 연금저축 잔액(만원 단위 입력) → 원 단위로 provider 반영.
-    // 카드1(보유 종목)엔 TextField 가 없으므로 첫 TextField = 연금저축 잔액.
+    // 잔액 필드(만원 단위 입력) → 원 단위로 계좌 오버라이드 반영.
+    // 일반계좌엔 필드가 없으므로 첫 TextField = ISA 현금성 잔액.
     await tester.enterText(
       find.byType(TextField).first,
       '5000', // 5,000만원 → 50,000,000원
     );
     await tester.pumpAndSettle();
 
-    expect(container.read(retirementInputProvider).pensionSavings, 50000000);
+    final isa = container
+        .read(effectiveAccountsProvider)
+        .firstWhere((a) => a.id == 'default_isa');
+    expect(isa.balance, 50000000);
   });
 
   // 회귀: 배당 provider 가 비동기로 뒤늦게 resolve 되어도, 종목추가 시트가
@@ -84,8 +86,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // 종목 추가 시트 열기 (이 시점 provider 는 아직 로딩).
-    await tester.tap(find.text('종목 추가'));
+    // 일반계좌 카드의 종목 추가 시트 열기 (이 시점 provider 는 아직 로딩).
+    final addBtn = find.byKey(const ValueKey('addHolding_default_general'));
+    await tester.ensureVisible(addBtn);
+    await tester.tap(addBtn);
     await tester.pump(); // 시트 등장
     // 로딩 스피너가 먼저 뜨고 에러 문구는 없어야 한다.
     expect(find.text('배당 종목 목록을 아직 불러오지 못했습니다.\n잠시 후 다시 시도하세요.'),
@@ -121,8 +125,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // 시트 열기 → 직접 입력 폼 전환.
-    await tester.tap(find.text('종목 추가'));
+    // 일반계좌 카드에서 시트 열기 → 직접 입력 폼 전환.
+    final addBtn = find.byKey(const ValueKey('addHolding_default_general'));
+    await tester.ensureVisible(addBtn);
+    await tester.tap(addBtn);
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.byKey(const ValueKey('manualEntryButton')));
     await tester.tap(find.byKey(const ValueKey('manualEntryButton')));
@@ -148,7 +154,7 @@ void main() {
     expect(find.text('100주'), findsOneWidget);
     expect(find.text('직접 입력'), findsOneWidget); // 리스트 미니 배지
 
-    // provider 상태 — manual 필드가 채워진 Holding 저장.
+    // provider 상태 — manual 필드가 채워진 Holding 저장(소속 = 일반계좌).
     final holdings = container.read(holdingsProvider);
     expect(holdings.length, 1);
     final h = holdings.single;
@@ -156,5 +162,6 @@ void main() {
     expect(h.corpCode, startsWith('manual_'));
     expect(h.manualPerShareAnnual, 12000);
     expect(h.manualPaymentMonths, [4, 10]);
+    expect(h.accountId, 'default_general');
   });
 }

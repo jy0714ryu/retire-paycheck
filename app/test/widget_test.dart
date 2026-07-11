@@ -24,9 +24,9 @@ void main() {
       expect(find.text('달력'), findsWidgets);
       expect(find.text('게이지'), findsWidgets);
 
-      // 첫 탭(입력) — 자산 입력 화면 표시
+      // 첫 탭(입력) — 자산 입력 화면 표시(v3: 계좌 카드 구조)
       expect(find.text('자산 입력'), findsOneWidget);
-      expect(find.text('보유 종목'), findsOneWidget);
+      expect(find.text('일반계좌'), findsOneWidget);
 
       // 면책 이미 동의 → 다이얼로그 미표시
       expect(find.byType(DisclaimerDialog), findsNothing);

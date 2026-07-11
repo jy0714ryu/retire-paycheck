@@ -1,22 +1,21 @@
-// v2 입력 탭 바인딩 — 계좌 선택/관리·인출 토글+CTA·이자 리스트.
-// (Task 6: 브리프 Step1 스니펫 기반, 라벨은 실제 input_screen.dart 값으로 조정.)
+// v2→v3 입력 탭 바인딩 — 계좌 카드 구조 기준으로 갱신.
+// (인출 토글·연금나침반 CTA·계좌 추가/삭제·이자 리스트. 옛 '계좌 관리' ExpansionTile·
+//  '월 인출 계획' 카드·종목 추가 시트 계좌 선택은 v3 에서 제거됨.)
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:retire_paycheck/models/account.dart';
-import 'package:retire_paycheck/models/dividend_event.dart';
 import 'package:retire_paycheck/providers/app_providers.dart';
 import 'package:retire_paycheck/screens/input_screen.dart';
-import 'package:retire_paycheck/services/dividend_api.dart';
 
 void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  testWidgets('인출 토글 OFF 시 인출 입력 숨김, ON 시 다시 노출', (tester) async {
+  testWidgets('인출 토글 OFF 시 월 인출 필드 숨김, ON 시 다시 노출', (tester) async {
     await tester.pumpWidget(
       const ProviderScope(child: MaterialApp(home: InputScreen())),
     );
@@ -24,22 +23,21 @@ void main() {
 
     expect(find.text('연금 인출 중'), findsOneWidget);
     // 기본 OFF(신규 유저 기본값 RetirementInputNotifier._defaultInput) → 인출 필드 없음.
-    expect(find.text('연금저축·IRP 월 인출'), findsNothing);
-    expect(find.text('ISA·기타 월 인출'), findsNothing);
+    expect(find.text('월 인출'), findsNothing);
 
-    final switchFinder = find.byType(Switch).first;
+    final switchFinder = find.byType(Switch);
     await tester.ensureVisible(switchFinder);
     await tester.tap(switchFinder);
     await tester.pumpAndSettle();
 
-    expect(find.text('연금저축·IRP 월 인출'), findsOneWidget);
-    expect(find.text('ISA·기타 월 인출'), findsOneWidget);
+    // ON → 잔액 있는 3계좌(ISA·연금저축·IRP)에 월 인출 노출.
+    expect(find.text('월 인출'), findsNWidgets(3));
 
     // 다시 OFF → 재차 숨김.
     await tester.ensureVisible(switchFinder);
     await tester.tap(switchFinder);
     await tester.pumpAndSettle();
-    expect(find.text('연금저축·IRP 월 인출'), findsNothing);
+    expect(find.text('월 인출'), findsNothing);
   });
 
   testWidgets('연금나침반 CTA 링크 문구 노출', (tester) async {
@@ -53,7 +51,7 @@ void main() {
     expect(ctaFinder, findsOneWidget);
   });
 
-  testWidgets('계좌 관리 — 기본 계좌 4개 렌더 + 계좌 추가 다이얼로그', (tester) async {
+  testWidgets('기본 계좌 4개 카드 렌더 + 계좌 추가 다이얼로그', (tester) async {
     final container = ProviderContainer();
     addTearDown(container.dispose);
 
@@ -65,15 +63,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final expansionFinder = find.text('계좌 관리');
-    expect(expansionFinder, findsOneWidget);
-    await tester.ensureVisible(expansionFinder);
-    await tester.tap(expansionFinder);
-    await tester.pumpAndSettle();
-
-    // 기본 계좌 4개 노출(연금저축·IRP 분리).
+    // 기본 계좌 4개 카드가 바로 노출(연금저축·IRP 분리) — 별도 펼침 없이.
     expect(find.text('일반계좌'), findsOneWidget);
-    expect(find.text('ISA'), findsWidgets); // 계좌명 'ISA' + 유형 라벨 'ISA' 중복 가능
+    expect(find.text('ISA'), findsWidgets); // 계좌명 'ISA' + 유형 배지 'ISA'
     expect(find.text('연금저축'), findsOneWidget);
     expect(find.text('IRP'), findsOneWidget);
 
@@ -95,7 +87,7 @@ void main() {
     expect(find.text('연금저축B'), findsOneWidget);
   });
 
-  testWidgets('계좌 관리 — 유저 계좌 삭제 확인 다이얼로그 문구', (tester) async {
+  testWidgets('유저 계좌 카드 삭제 확인 다이얼로그 문구', (tester) async {
     final container = ProviderContainer();
     addTearDown(container.dispose);
     container.read(accountsProvider.notifier).add(
@@ -110,17 +102,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final expansionFinder = find.text('계좌 관리');
-    await tester.ensureVisible(expansionFinder);
-    await tester.tap(expansionFinder);
-    await tester.pumpAndSettle();
     expect(find.text('테스트계좌'), findsOneWidget);
 
     final deleteBtn = find.byKey(const ValueKey('deleteAccount_user_1'));
     await tester.ensureVisible(deleteBtn);
     await tester.tap(deleteBtn);
     await tester.pumpAndSettle();
-    expect(find.textContaining('소속 종목은 기본 계좌로 이동합니다'), findsOneWidget);
+    expect(find.textContaining('소속 종목은 같은 유형 기본 계좌로 이동합니다'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('confirmDeleteAccount')));
     await tester.pumpAndSettle();
@@ -218,58 +206,5 @@ void main() {
 
     final items = container.read(interestItemsProvider);
     expect(items.single.months, [6]);
-  });
-
-  testWidgets('종목 추가 시트 — 계좌 유형 선택이 Holding.accountId 에 반영', (tester) async {
-    final result = DividendFetchResult(
-      events: [
-        const DividendEvent(
-          corpCode: '005930',
-          corpName: '삼성전자',
-          exDate: null,
-          recordDate: null,
-          perShare: 361,
-          isConfirmed: true,
-        ),
-      ],
-      fetchedAt: DateTime(2026, 1, 1),
-      fromCache: false,
-    );
-    final container = ProviderContainer(overrides: [
-      dividendEventsProvider.overrideWith((ref) async => result),
-    ]);
-    addTearDown(container.dispose);
-
-    await tester.pumpWidget(
-      UncontrolledProviderScope(
-        container: container,
-        child: const MaterialApp(home: InputScreen()),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('종목 추가'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('계좌 선택'), findsOneWidget);
-    // 기본 [일반] 선택 상태에서 [ISA] 로 전환.
-    final isaSegment = find.text('ISA').last;
-    await tester.ensureVisible(isaSegment);
-    await tester.tap(isaSegment);
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('삼성전자'));
-    final sharesField = find.byType(TextField).last;
-    await tester.ensureVisible(sharesField);
-    await tester.enterText(sharesField, '10');
-    await tester.pumpAndSettle();
-
-    final addBtn = find.text('추가');
-    await tester.ensureVisible(addBtn);
-    await tester.tap(addBtn);
-    await tester.pumpAndSettle();
-
-    final holdings = container.read(holdingsProvider);
-    expect(holdings.single.accountId, 'default_isa');
   });
 }
