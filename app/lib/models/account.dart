@@ -77,6 +77,17 @@ const List<Account> kDefaultAccounts = [
   Account(id: 'default_irp', name: 'IRP', type: AccountType.pension),
 ];
 
+/// 유형 → 기본 계좌 id 매핑. `AccountsNotifier.remove()`가 유저 계좌 삭제 시
+/// 소속 종목을 재배정할 대상을 결정할 때 사용한다. v3 에서 연금이
+/// 연금저축/IRP 로 분리되면서 `'default_${type.name}'` 문자열 조합은 더 이상
+/// 1:1 대응이 아니므로(연금 유형은 `default_pension` 이 존재하지 않는다) 이
+/// 명시 매핑이 유일한 SSOT 다 — 마이그레이션의 연금 인출 라우팅과도 일관.
+String defaultAccountIdFor(AccountType type) => switch (type) {
+      AccountType.general => 'default_general',
+      AccountType.isa => 'default_isa',
+      AccountType.pension => 'default_pension_savings',
+    };
+
 /// id → 계좌 해석. 기본 계좌 우선, 유저 계좌 순회, 없으면 null
 /// (호출부가 default_general 폴백 — 삭제된 계좌 참조 안전망).
 Account? resolveAccount(String id, List<Account> userAccounts) {

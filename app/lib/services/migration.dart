@@ -45,10 +45,14 @@ Future<void> runMigrations(SharedPreferences prefs) async {
   }
 
   if (version < 3) {
+    // 1) flat 잔액·인출 필드 → default_account_overrides.
+    //    이미 오버라이드가 존재하면(유저가 계좌 화면에서 직접 수정했을 수
+    //    있으므로) 이 단계는 건너뛴다 — 멱등 이중 안전망.
+    // 2) 폐지된 default_pension → default_pension_savings 재기록.
+    // (M3) 두 단계는 서로 독립적인 저장소(overrides / holdings)를 건드리므로
+    // try/catch 를 분리한다 — 한쪽에서 예외가 나도 다른 쪽 재기록이 스킵된
+    // 채 schema_version 이 올라가 재실행 기회를 잃는 것을 막는다.
     try {
-      // 1) flat 잔액·인출 필드 → default_account_overrides.
-      //    이미 오버라이드가 존재하면(유저가 계좌 화면에서 직접 수정했을 수
-      //    있으므로) 이 단계는 건너뛴다 — 멱등 이중 안전망.
       if (prefs.getString('default_account_overrides') == null) {
         final raw = prefs.getString('retirement_input');
         if (raw != null && raw.isNotEmpty) {
@@ -78,8 +82,11 @@ Future<void> runMigrations(SharedPreferences prefs) async {
           }
         }
       }
+    } catch (_) {
+      // 손상 데이터 — 각 스토어의 fromJson 폴백에 맡기고 다음 단계로 진행.
+    }
 
-      // 2) 폐지된 default_pension → default_pension_savings 재기록.
+    try {
       final holdingsRaw = prefs.getString('holdings');
       if (holdingsRaw != null && holdingsRaw.isNotEmpty) {
         final holdings = jsonDecode(holdingsRaw) as List<dynamic>;

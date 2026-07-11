@@ -126,14 +126,7 @@ class RetirementInputNotifier extends StateNotifier<RetirementInput> {
     _persist();
   }
 
-  void updatePensionSavings(int v) => update((s) => s.copyWith(pensionSavings: v));
-  void updateIrpBalance(int v) => update((s) => s.copyWith(irpBalance: v));
-  void updateIsaBalance(int v) => update((s) => s.copyWith(isaBalance: v));
   void updateCurrentAge(int v) => update((s) => s.copyWith(currentAge: v));
-  void updateMonthlyPensionWithdrawal(int v) =>
-      update((s) => s.copyWith(monthlyPensionWithdrawal: v));
-  void updateMonthlyOtherWithdrawal(int v) =>
-      update((s) => s.copyWith(monthlyOtherWithdrawal: v));
   void updateAnnualInterestIncome(int v) =>
       update((s) => s.copyWith(annualInterestIncome: v));
 }
@@ -272,7 +265,8 @@ class AccountsNotifier extends StateNotifier<List<Account>> {
     _persist();
   }
 
-  /// 계좌 삭제 — 소속 종목을 같은 유형의 기본 계좌(`default_<type>`)로 이동.
+  /// 계좌 삭제 — 소속 종목을 같은 유형의 기본 계좌로 이동
+  /// ([defaultAccountIdFor] — 연금은 `default_pension_savings` 로 귀속).
   void remove(String id) {
     final idx = state.indexWhere((a) => a.id == id);
     if (idx < 0) return;
@@ -281,7 +275,7 @@ class AccountsNotifier extends StateNotifier<List<Account>> {
     _persist();
     _ref
         .read(holdingsProvider.notifier)
-        .reassignAccount(id, 'default_${removed.type.name}');
+        .reassignAccount(id, defaultAccountIdFor(removed.type));
   }
 
   /// 기본 계좌(`default_*`)의 잔액·월 인출액 오버라이드 — prefs

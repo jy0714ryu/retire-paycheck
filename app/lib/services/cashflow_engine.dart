@@ -150,7 +150,7 @@ class CashflowEngine {
     // 인출 소스는 flat 필드가 아니라 계좌 합산(v3) — 과세=pension 계좌, 비과세=isa 계좌.
     final withdrawing = input.isWithdrawing;
     final monthlyTaxable =
-        withdrawing ? _monthlyWithdrawalByType(accounts, AccountType.pension) : 0;
+        withdrawing ? pensionMonthlyWithdrawal(accounts) : 0;
     final monthlyTaxFree =
         withdrawing ? _monthlyWithdrawalByType(accounts, AccountType.isa) : 0;
     final pensionGross = monthlyTaxable + monthlyTaxFree;
@@ -272,7 +272,7 @@ class CashflowEngine {
     // 연금 인출 모드 OFF 면 과세대상 인출 0 (절벽 게이지 0).
     // 과세 인출은 flat 필드가 아니라 pension 계좌 monthlyWithdrawal 합산(v3).
     final annualPensionTaxable = input.isWithdrawing
-        ? _monthlyWithdrawalByType(accounts, AccountType.pension) * 12
+        ? pensionMonthlyWithdrawal(accounts) * 12
         : 0;
 
     // 건보 산입: 금융소득이 1,000만 초과면 전액, 이하면 0.
@@ -374,6 +374,12 @@ class CashflowEngine {
     }
     return sum;
   }
+
+  /// 연금(pension) 유형 계좌들의 월 인출액 합산 — 절벽 판정(엔진 내부)과 달력
+  /// 화면(calendar_screen.dart)이 공유하는 단일 SSOT. 한쪽만 바뀌어 절벽
+  /// 캡션과 세율이 어긋나는 것을 방지한다(M2).
+  static int pensionMonthlyWithdrawal(List<Account> accounts) =>
+      _monthlyWithdrawalByType(accounts, AccountType.pension);
 
   /// 종목의 계좌 유형 해석 — 삭제된 계좌 참조는 일반계좌로 폴백(안전망).
   static AccountType _typeOf(Holding h, List<Account> accounts) =>

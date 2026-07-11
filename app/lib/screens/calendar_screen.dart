@@ -158,10 +158,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
     // 사적연금 연 인출액이 저율 한도(1,500만원)를 초과하면 전액 16.5% 절벽 적용.
     // v3: flat 필드가 아니라 pension 유형 계좌 monthlyWithdrawal 합산 × 12
-    // (엔진 buildGauges.pensionLowRate 와 동일 기준) — isWithdrawing 게이트 유지.
-    final monthlyPensionWithdrawal = effectiveAccounts
-        .where((a) => a.type == AccountType.pension)
-        .fold<int>(0, (s, a) => s + a.monthlyWithdrawal);
+    // (엔진 buildGauges.pensionLowRate 와 동일 SSOT — CashflowEngine.
+    // pensionMonthlyWithdrawal, M2) — isWithdrawing 게이트 유지.
+    final monthlyPensionWithdrawal =
+        CashflowEngine.pensionMonthlyWithdrawal(effectiveAccounts);
     final pensionOverLowRate = input.isWithdrawing &&
         monthlyPensionWithdrawal * 12 > kPensionLowRateLimit;
 
