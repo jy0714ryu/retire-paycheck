@@ -6,14 +6,17 @@ import 'screens/calendar_screen.dart';
 import 'screens/gauge_screen.dart';
 import 'screens/input_screen.dart';
 import 'services/ad_service.dart';
+import 'services/migration.dart';
 import 'theme/app_colors.dart';
 import 'widgets/disclaimer_dialog.dart';
 
 /// 첫 실행 면책 동의 여부 저장 키(SharedPreferences).
 const String kDisclaimerAcceptedKey = 'disclaimer_accepted';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // v1→v2 스키마 마이그레이션 — 스토어 로드보다 먼저 완료돼야 한다.
+  await runMigrations(await SharedPreferences.getInstance());
   // AdMob SDK 초기화 (플랫폼 채널 부재 환경에서는 조용히 흡수).
   AdService().initialize();
   runApp(const ProviderScope(child: RetirePaycheckApp()));

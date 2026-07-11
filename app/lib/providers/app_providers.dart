@@ -3,8 +3,10 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/account.dart';
 import '../models/dividend_event.dart';
 import '../models/holding.dart';
+import '../models/interest_item.dart';
 import '../models/retirement_input.dart';
 import '../services/dividend_api.dart';
 import '../services/manual_dividends.dart';
@@ -12,6 +14,8 @@ import '../services/manual_dividends.dart';
 /// SharedPreferences persist 키.
 const String _kHoldingsKey = 'holdings';
 const String _kRetirementInputKey = 'retirement_input';
+const String _kAccountsKey = 'accounts';
+const String _kInterestItemsKey = 'interest_items';
 
 /// 보유 종목 목록 상태 — SharedPreferences('holdings')에 jsonEncode 로 영속.
 ///
@@ -60,6 +64,17 @@ class HoldingsNotifier extends StateNotifier<List<Holding>> {
   void removeAt(int index) {
     if (index < 0 || index >= state.length) return;
     state = [...state]..removeAt(index);
+    _persist();
+  }
+
+  /// 소속 계좌 일괄 이동 — 계좌 삭제 시 [AccountsNotifier] 가 호출한다
+  /// (`from` 소속 종목을 같은 유형 기본 계좌 `to` 로 재배정).
+  void reassignAccount(String from, String to) {
+    if (!state.any((h) => h.accountId == from)) return;
+    state = [
+      for (final h in state)
+        h.accountId == from ? h.copyWith(accountId: to) : h,
+    ];
     _persist();
   }
 }
@@ -154,3 +169,120 @@ final combinedEventsProvider =
     ...synthesizeManualEvents(holdings: holdings, year: year),
   ];
 });
+
+/// 유저 계좌 목록 상태 — SharedPreferences('accounts')에 jsonEncode 로 영속.
+///
+/// 기본 계좌 3개([kDefaultAccounts])는 저장하지 않는다 — 이 목록은 유저가
+/// 직접 추가한 계좌만 담는다.
+class AccountsNotifier extends StateNotifier<List<Account>> {
+  AccountsNotifier(this._ref) : super(const []) {
+    _load();
+  }
+
+  final Ref _ref;
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_kAccountsKey);
+    if (raw == null || raw.isEmpty) return;
+    try {
+      final decoded = jsonDecode(raw) as List<dynamic>;
+      state = decoded
+          .map((e) => Account.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      // 손상된 캐시는 무시하고 빈 목록 유지.
+    }
+  }
+
+  Future<void> _persist() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _kAccountsKey,
+      jsonEncode(state.map((a) => a.toJson()).toList()),
+    );
+  }
+
+  /// 계좌 추가.
+  void add(Account account) {
+    state = [...state, account];
+    _persist();
+  }
+
+  /// 이름 변경(기본 계좌는 목록에 없으므로 대상 아님).
+  void rename(String id, String name) {
+    final idx = state.indexWhere((a) => a.id == id);
+    if (idx < 0) return;
+    final next = [...state];
+    next[idx] = Account(id: next[idx].id, name: name, type: next[idx].type);
+    state = next;
+    _persist();
+  }
+
+  /// 계좌 삭제 — 소속 종목을 같은 유형의 기본 계좌(`default_<type>`)로 이동.
+  void remove(String id) {
+    final idx = state.indexWhere((a) => a.id == id);
+    if (idx < 0) return;
+    final removed = state[idx];
+    state = [...state]..removeAt(idx);
+    _persist();
+    _ref
+        .read(holdingsProvider.notifier)
+        .reassignAccount(id, 'default_${removed.type.name}');
+  }
+}
+
+final accountsProvider =
+    StateNotifierProvider<AccountsNotifier, List<Account>>(
+  (ref) => AccountsNotifier(ref),
+);
+
+/// 이자소득 항목 목록 상태 — SharedPreferences('interest_items')에 영속.
+///
+/// 키는 [runMigrations] v1→v2 이관이 쓰는 키와 동일 — 마이그레이션 산출물을
+/// 그대로 로드한다.
+class InterestItemsNotifier extends StateNotifier<List<InterestItem>> {
+  InterestItemsNotifier() : super(const []) {
+    _load();
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_kInterestItemsKey);
+    if (raw == null || raw.isEmpty) return;
+    try {
+      final decoded = jsonDecode(raw) as List<dynamic>;
+      state = decoded
+          .map((e) => InterestItem.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      // 손상된 캐시는 무시하고 빈 목록 유지.
+    }
+  }
+
+  Future<void> _persist() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _kInterestItemsKey,
+      jsonEncode(state.map((i) => i.toJson()).toList()),
+    );
+  }
+
+  /// 이자소득 항목 추가.
+  void add(InterestItem item) {
+    state = [...state, item];
+    _persist();
+  }
+
+  /// 인덱스로 삭제.
+  void removeAt(int index) {
+    if (index < 0 || index >= state.length) return;
+    state = [...state]..removeAt(index);
+    _persist();
+  }
+}
+
+final interestItemsProvider =
+    StateNotifierProvider<InterestItemsNotifier, List<InterestItem>>(
+  (ref) => InterestItemsNotifier(),
+);
