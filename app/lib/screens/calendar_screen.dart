@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../models/account.dart';
 import '../models/dividend_event.dart';
 import '../models/holding.dart';
+import '../models/interest_item.dart';
 import '../models/retirement_input.dart';
 import '../providers/app_providers.dart';
 import '../services/ad_service.dart';
@@ -12,6 +14,34 @@ import '../services/tax_constants.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 import '../widgets/banner_ad_widget.dart';
+
+/// 달력 상세·차트 필터(화면 로컬). 값: 'all' | 'type:general|isa|pension' |
+/// 'acct:{id}'. 상단 합산 카드는 이 값과 무관하게 항상 전체 합산으로 고정된다.
+/// autoDispose — 화면을 벗어나면 '전체'로 초기화.
+final _calendarFilterProvider =
+    StateProvider.autoDispose<String>((ref) => 'all');
+
+/// 라인이 현재 필터에 부합하는지 — accountType/accountId 기준.
+bool _lineMatches(DividendLine line, String filter) {
+  if (filter == 'all') return true;
+  if (filter.startsWith('type:')) {
+    return line.accountType.name == filter.substring(5);
+  }
+  if (filter.startsWith('acct:')) return line.accountId == filter.substring(5);
+  return true;
+}
+
+/// 필터 적용 후 월 실수령(세후) — 걸러진 배당 라인 amountNet 합.
+/// 연금 인출은 '연금' 필터에서만, 이자·재투자는 계좌 소속이 아니므로 'all' 에서만 산입.
+int _filteredNet(MonthlyCashflow cf, String filter) {
+  if (filter == 'all') return cf.totalNet;
+  var net = 0;
+  for (final line in cf.lines) {
+    if (_lineMatches(line, filter)) net += line.amountNet;
+  }
+  if (filter == 'type:pension') net += cf.pensionNet;
+  return net;
+}
 
 /// 화면2 — 은퇴 월급 달력 (메인).
 ///
@@ -59,6 +89,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   Widget build(BuildContext context) {
     final holdings = ref.watch(holdingsProvider);
     final input = ref.watch(retirementInputProvider);
+    final accounts = ref.watch(accountsProvider);
+    final interestItems = ref.watch(interestItemsProvider);
+    final filter = ref.watch(_calendarFilterProvider);
     // API + 수동 입력 합성 이벤트 merge (합성 연도 = 표시 중인 연도).
     final asyncEvents = ref.watch(combinedEventsProvider(_month.year));
 
@@ -74,7 +107,14 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) =>
             _ErrorView(onRetry: () => ref.invalidate(dividendEventsProvider)),
-        data: (events) => _buildBody(holdings, input, events),
+        data: (events) => _buildBody(
+          holdings,
+          input,
+          accounts,
+          interestItems,
+          filter,
+          events,
+        ),
       ),
       bottomNavigationBar: const SafeArea(child: BannerAdWidget()),
     );
@@ -83,6 +123,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   Widget _buildBody(
     List<Holding> holdings,
     RetirementInput input,
+    List<Account> accounts,
+    List<InterestItem> interestItems,
+    String filter,
     List<DividendEvent> events,
   ) {
     final months = CashflowEngine.buildMonths(
@@ -91,6 +134,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       input: input,
       from: _month,
       monthCount: 1,
+      accounts: accounts,
+      interestItems: interestItems,
     );
     final cf = months.first;
 
@@ -99,6 +144,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       events: events,
       input: input,
       year: _month.year,
+      accounts: accounts,
+      interestItems: interestItems,
     );
     // 참고용(건보) 게이지는 메인 경고를 구동하지 않는다 — 금융소득·연금 저율 한도만.
     final overThreshold =
@@ -113,6 +160,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       holdings: holdings,
       events: events,
       year: _month.year,
+      accounts: accounts,
     );
 
     // 연간 12개월 현금흐름(세후) — 미니 막대 차트용. 배당 편중을 한눈에 보여준다.
@@ -122,13 +170,27 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       input: input,
       from: DateTime(_month.year, 1, 1),
       monthCount: 12,
+      accounts: accounts,
+      interestItems: interestItems,
     );
-    // 보유·연금이 전부 0이면(12개월 실수령 모두 0) 차트 미표시.
+    // 보유·연금이 전부 0이면(12개월 실수령 모두 0) 차트 미표시(필터 무관 — 전체 기준).
     final showBarChart = yearMonths.any((m) => m.totalNet > 0);
+    // 막대 높이는 필터 반영(실수령) — 걸러진 라인 기준 월별 세후 합.
+    final netByMonth = [for (final m in yearMonths) _filteredNet(m, filter)];
 
     // 라인 상세(주당×수량) 재구성용 조회 맵.
     final sharesByName = {for (final h in holdings) h.corpName: h.shares};
     final perShareByName = {for (final e in events) e.corpName: e.perShare};
+
+    // 상세 리스트·아코디언 = 필터 적용. 상단 카드는 항상 전체(cf) 기준.
+    final filteredLines =
+        cf.lines.where((l) => _lineMatches(l, filter)).toList();
+    final filteredReinvest =
+        cf.reinvestLines.where((l) => _lineMatches(l, filter)).toList();
+    final filteredReinvestGross =
+        filteredReinvest.fold<int>(0, (s, l) => s + l.amountGross);
+    // 연금 인출 섹션 — 계좌 소속이 아니므로 '전체'/'연금' 필터에서만 노출.
+    final showPension = filter == 'all' || filter == 'type:pension';
 
     return RefreshIndicator(
       onRefresh: () async {
@@ -151,8 +213,11 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             gross: cf.totalGross,
             dividendGross: cf.dividendGross,
             pensionGross: cf.pensionGross,
+            interestGross: cf.interestGross,
             overThreshold: overThreshold,
           ),
+          const SizedBox(height: 12),
+          _AccountFilterChips(userAccounts: accounts),
           if (holdings.isNotEmpty) ...[
             const SizedBox(height: 12),
             _YearlyDividendCard(year: _month.year, summary: divSummary),
@@ -161,31 +226,40 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             const SizedBox(height: 12),
             _YearlyBarChart(
               selectedMonth: _month.month,
-              months: yearMonths,
+              netByMonth: netByMonth,
               onSelectMonth: _goToMonth,
             ),
           ],
           const SizedBox(height: 20),
           Text('배당 내역 (세후 기준)', style: AppTextStyles.h4),
           const SizedBox(height: 8),
-          if (cf.lines.isEmpty)
+          if (filteredLines.isEmpty)
             _EmptyDividend()
           else
-            ...cf.lines.map(
+            ...filteredLines.map(
               (line) => _DividendLineTile(
                 line: line,
                 perShare: perShareByName[line.corpName],
                 shares: sharesByName[line.corpName],
               ),
             ),
-          const SizedBox(height: 16),
-          Text('연금 인출', style: AppTextStyles.h4),
-          const SizedBox(height: 8),
-          _PensionTile(
-            pensionNet: cf.pensionNet,
-            pensionGross: cf.pensionGross,
-            overLowRate: pensionOverLowRate,
-          ),
+          if (filteredReinvestGross > 0) ...[
+            const SizedBox(height: 8),
+            _ReinvestAccordion(
+              gross: filteredReinvestGross,
+              lines: filteredReinvest,
+            ),
+          ],
+          if (showPension) ...[
+            const SizedBox(height: 16),
+            Text('연금 인출', style: AppTextStyles.h4),
+            const SizedBox(height: 8),
+            _PensionTile(
+              pensionNet: cf.pensionNet,
+              pensionGross: cf.pensionGross,
+              overLowRate: pensionOverLowRate,
+            ),
+          ],
           const SizedBox(height: 20),
           _Notice(),
           const SizedBox(height: 40),
@@ -236,6 +310,7 @@ class _MainCard extends StatelessWidget {
   final int gross;
   final int dividendGross;
   final int pensionGross;
+  final int interestGross;
   final bool overThreshold;
 
   const _MainCard({
@@ -243,6 +318,7 @@ class _MainCard extends StatelessWidget {
     required this.gross,
     required this.dividendGross,
     required this.pensionGross,
+    required this.interestGross,
     required this.overThreshold,
   });
 
@@ -294,9 +370,14 @@ class _MainCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            '세전 ${CalendarScreenFmt.man(gross)}만원 · '
-            '배당 ${CalendarScreenFmt.man(dividendGross)}만 + '
-            '연금 ${CalendarScreenFmt.man(pensionGross)}만',
+            interestGross > 0
+                ? '세전 ${CalendarScreenFmt.man(gross)}만원 · '
+                    '배당 ${CalendarScreenFmt.man(dividendGross)}만 + '
+                    '연금 ${CalendarScreenFmt.man(pensionGross)}만 + '
+                    '이자 ${CalendarScreenFmt.man(interestGross)}만'
+                : '세전 ${CalendarScreenFmt.man(gross)}만원 · '
+                    '배당 ${CalendarScreenFmt.man(dividendGross)}만 + '
+                    '연금 ${CalendarScreenFmt.man(pensionGross)}만',
             style: const TextStyle(
               fontSize: 14,
               color: Colors.white70,
@@ -594,15 +675,15 @@ class _YearlyBarChart extends StatelessWidget {
   /// 현재 표시 중인 월(1~12) — 하이라이트 대상.
   final int selectedMonth;
 
-  /// 1~12월 순서의 12개월 현금흐름.
-  final List<MonthlyCashflow> months;
+  /// 1~12월 순서의 월별 세후 실수령(필터 반영). 막대 높이 ∝ 이 값.
+  final List<int> netByMonth;
 
   /// 막대 탭 콜백(1~12).
   final void Function(int month) onSelectMonth;
 
   const _YearlyBarChart({
     required this.selectedMonth,
-    required this.months,
+    required this.netByMonth,
     required this.onSelectMonth,
   });
 
@@ -612,9 +693,9 @@ class _YearlyBarChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final maxNet = months.fold<int>(
+    final maxNet = netByMonth.fold<int>(
       0,
-      (m, cf) => cf.totalNet > m ? cf.totalNet : m,
+      (m, net) => net > m ? net : m,
     );
 
     return Container(
@@ -651,8 +732,8 @@ class _YearlyBarChart extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                for (var i = 0; i < months.length; i++)
-                  _bar(months[i], i + 1, maxNet),
+                for (var i = 0; i < netByMonth.length; i++)
+                  _bar(netByMonth[i], i + 1, maxNet),
               ],
             ),
           ),
@@ -661,9 +742,9 @@ class _YearlyBarChart extends StatelessWidget {
     );
   }
 
-  Widget _bar(MonthlyCashflow cf, int month, int maxNet) {
+  Widget _bar(int net, int month, int maxNet) {
     final isSelected = month == selectedMonth;
-    final isZero = cf.totalNet <= 0;
+    final isZero = net <= 0;
 
     double height;
     if (maxNet <= 0) {
@@ -671,7 +752,7 @@ class _YearlyBarChart extends StatelessWidget {
     } else if (isZero) {
       height = _minStub; // 이 달만 0 → 회색 최소 스텁.
     } else {
-      height = _minStub + (_maxBarHeight - _minStub) * (cf.totalNet / maxNet);
+      height = _minStub + (_maxBarHeight - _minStub) * (net / maxNet);
     }
 
     final Color color = isSelected
@@ -706,6 +787,128 @@ class _YearlyBarChart extends StatelessWidget {
                 color: isSelected ? AppColors.greenDark : AppColors.gray500,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 계좌 필터 칩 — [전체 | 일반 | ISA | 연금 | <유저 계좌명…>] 가로 스크롤.
+/// 선택은 [_calendarFilterProvider] 에 기록되며 상세 리스트·차트에만 적용된다
+/// (상단 합산 카드는 항상 전체 고정).
+class _AccountFilterChips extends ConsumerWidget {
+  final List<Account> userAccounts;
+
+  const _AccountFilterChips({required this.userAccounts});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selected = ref.watch(_calendarFilterProvider);
+
+    final chips = <(String, String)>[
+      ('전체', 'all'),
+      ('일반', 'type:general'),
+      ('ISA', 'type:isa'),
+      ('연금', 'type:pension'),
+      for (final a in userAccounts) (a.name, 'acct:${a.id}'),
+    ];
+
+    // Wrap 로 넘치면 다음 줄로 흐른다 — 세로 ListView 외의 Scrollable 을 추가하지
+    // 않아(스크롤 테스트 단일 Scrollable 전제 유지) 오버플로를 처리한다.
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final (label, value) in chips)
+          ChoiceChip(
+            label: Text(label),
+            selected: selected == value,
+            showCheckmark: false,
+            onSelected: (_) =>
+                ref.read(_calendarFilterProvider.notifier).state = value,
+            selectedColor: AppColors.navy,
+            backgroundColor: AppColors.surface,
+            side: BorderSide(
+              color: selected == value ? AppColors.navy : AppColors.gray200,
+            ),
+            labelStyle: AppTextStyles.caption.copyWith(
+              color: selected == value ? Colors.white : AppColors.gray700,
+              fontWeight:
+                  selected == value ? FontWeight.w600 : FontWeight.w500,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// 재투자 아코디언 — 연금계좌 배당(과세이연 재투자). 기본 접힘, 보조 톤 제목.
+/// reinvestGross 0 이면 [_buildBody] 에서 애초에 렌더하지 않는다.
+class _ReinvestAccordion extends StatelessWidget {
+  /// 재투자 세전 합(원).
+  final int gross;
+  final List<DividendLine> lines;
+
+  const _ReinvestAccordion({required this.gross, required this.lines});
+
+  @override
+  Widget build(BuildContext context) {
+    final fmt = NumberFormat('#,###');
+    return Material(
+      // ListTile 잉크/배경이 상위 Material 에 그려지도록 Container 대신 Material 사용.
+      color: AppColors.gray50,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: AppColors.gray200),
+      ),
+      child: Theme(
+        // ExpansionTile 기본 상·하단 divider 제거.
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          key: const ValueKey('reinvestAccordion'),
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          leading: const Icon(
+            Icons.autorenew,
+            size: 20,
+            color: AppColors.gray500,
+          ),
+          title: Text(
+            '계좌 내 재투자 +${fmt.format(gross)}원',
+            style: AppTextStyles.body.copyWith(color: AppColors.gray600),
+          ),
+          children: [
+            for (final line in lines)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        line.corpName,
+                        style: AppTextStyles.body.copyWith(
+                          color: AppColors.gray700,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      '+${fmt.format(line.amountGross)}원',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.gray600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 6),
+            Text(
+              '연금계좌 배당은 인출 전까지 계좌 안에서 재투자됩니다 (과세이연)',
+              style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
             ),
           ],
         ),
