@@ -47,6 +47,14 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     AdService().showInterstitialIfEligible();
   }
 
+  /// 연간 막대 차트 탭 → 같은 연도 [month] 로 직접 이동.
+  /// _shiftMonth 와 달리 광고를 트리거하지 않는다(광고 카운터 오염 방지).
+  void _goToMonth(int month) {
+    setState(() {
+      _month = DateTime(_month.year, month, 1);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final holdings = ref.watch(holdingsProvider);
@@ -105,6 +113,17 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       year: _month.year,
     );
 
+    // 연간 12개월 현금흐름(세후) — 미니 막대 차트용. 배당 편중을 한눈에 보여준다.
+    final yearMonths = CashflowEngine.buildMonths(
+      holdings: holdings,
+      events: events,
+      input: input,
+      from: DateTime(_month.year, 1, 1),
+      monthCount: 12,
+    );
+    // 보유·연금이 전부 0이면(12개월 실수령 모두 0) 차트 미표시.
+    final showBarChart = yearMonths.any((m) => m.totalNet > 0);
+
     // 라인 상세(주당×수량) 재구성용 조회 맵.
     final sharesByName = {for (final h in holdings) h.corpName: h.shares};
     final perShareByName = {for (final e in events) e.corpName: e.perShare};
@@ -128,6 +147,14 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         if (holdings.isNotEmpty) ...[
           const SizedBox(height: 12),
           _YearlyDividendCard(year: _month.year, summary: divSummary),
+        ],
+        if (showBarChart) ...[
+          const SizedBox(height: 12),
+          _YearlyBarChart(
+            selectedMonth: _month.month,
+            months: yearMonths,
+            onSelectMonth: _goToMonth,
+          ),
         ],
         const SizedBox(height: 20),
         Text('배당 내역 (세후 기준)', style: AppTextStyles.h4),
@@ -519,6 +546,128 @@ class _YearlyDividendCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// 연간 12개월 미니 막대 차트 — "은퇴 월급 연봉표".
+/// 배당이 특정 월(4월 등)에 몰리는 편중을 한눈에. 막대 높이 ∝ 세후 실수령(totalNet).
+/// 막대 탭 → 해당 월로 직접 이동(광고 트리거 없음).
+class _YearlyBarChart extends StatelessWidget {
+  /// 현재 표시 중인 월(1~12) — 하이라이트 대상.
+  final int selectedMonth;
+
+  /// 1~12월 순서의 12개월 현금흐름.
+  final List<MonthlyCashflow> months;
+
+  /// 막대 탭 콜백(1~12).
+  final void Function(int month) onSelectMonth;
+
+  const _YearlyBarChart({
+    required this.selectedMonth,
+    required this.months,
+    required this.onSelectMonth,
+  });
+
+  // 막대 영역 높이 상수.
+  static const double _maxBarHeight = 88;
+  static const double _minStub = 4;
+
+  @override
+  Widget build(BuildContext context) {
+    final maxNet =
+        months.fold<int>(0, (m, cf) => cf.totalNet > m ? cf.totalNet : m);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(12, 14, 12, 10),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.gray200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text('올해 월별 흐름', style: AppTextStyles.h4),
+                const SizedBox(width: 6),
+                Text(
+                  '(세후 기준)',
+                  style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: _maxBarHeight + 26, // 막대 + 라벨 영역(라벨 높이 여유 포함).
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                for (var i = 0; i < months.length; i++)
+                  _bar(months[i], i + 1, maxNet),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _bar(MonthlyCashflow cf, int month, int maxNet) {
+    final isSelected = month == selectedMonth;
+    final isZero = cf.totalNet <= 0;
+
+    double height;
+    if (maxNet <= 0) {
+      height = _minStub; // 전부 0 → 균등 최소 높이.
+    } else if (isZero) {
+      height = _minStub; // 이 달만 0 → 회색 최소 스텁.
+    } else {
+      height = _minStub + (_maxBarHeight - _minStub) * (cf.totalNet / maxNet);
+    }
+
+    final Color color = isSelected
+        ? AppColors.green
+        : isZero
+            ? AppColors.gray300
+            : AppColors.navyLight.withValues(alpha: 0.35);
+
+    return Expanded(
+      child: GestureDetector(
+        key: ValueKey('yearlyBar_$month'),
+        behavior: HitTestBehavior.opaque,
+        onTap: () => onSelectMonth(month),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Container(
+              key: ValueKey('yearlyBarFill_$month'),
+              height: height,
+              margin: const EdgeInsets.symmetric(horizontal: 2),
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(3)),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '$month',
+              style: AppTextStyles.labelSmall.copyWith(
+                color: isSelected ? AppColors.greenDark : AppColors.gray500,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

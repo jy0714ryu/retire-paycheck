@@ -13,6 +13,7 @@ import 'package:retire_paycheck/models/retirement_input.dart';
 import 'package:retire_paycheck/providers/app_providers.dart';
 import 'package:retire_paycheck/screens/calendar_screen.dart';
 import 'package:retire_paycheck/services/dividend_api.dart';
+import 'package:retire_paycheck/theme/app_colors.dart';
 
 final _eventA = DividendEvent(
   corpCode: 'A',
@@ -85,8 +86,10 @@ void main() {
       findsOneWidget,
     );
 
-    // 배당 라인: A사 종목명 + 주당×수량 상세.
-    expect(find.text('A사'), findsOneWidget);
+    // 배당 라인: A사 종목명 + 주당×수량 상세(막대 차트 아래 — 스크롤로 뷰포트에 올림).
+    final aSa = find.text('A사');
+    await tester.scrollUntilVisible(aSa, 200);
+    expect(aSa, findsOneWidget);
     expect(find.textContaining('주당 500원 × 1,000주'), findsOneWidget);
     // 확정 배당이므로 "예상" 배지 없음.
     expect(find.text('예상'), findsNothing);
@@ -97,7 +100,9 @@ void main() {
     await _pumpCalendar(tester, initialMonth: DateTime(2026, 3));
 
     expect(find.text('2026년 3월'), findsOneWidget);
-    expect(find.text('이 달 예정 배당 없음'), findsOneWidget);
+    final empty = find.text('이 달 예정 배당 없음');
+    await tester.scrollUntilVisible(empty, 200);
+    expect(empty, findsOneWidget);
     // 배당 없는 달 실수령 = 연금 net 144만원.
     expect(find.text('144만원'), findsWidgets);
   });
@@ -120,6 +125,47 @@ void main() {
     expect(find.textContaining('세후 42만원'), findsOneWidget);
     expect(find.textContaining('확정 1건'), findsOneWidget);
     expect(find.textContaining('예측 0건'), findsOneWidget);
+  });
+
+  testWidgets('연간 미니 막대 차트 — 12개월 막대 + 제목 렌더',
+      (WidgetTester tester) async {
+    await _pumpCalendar(tester, initialMonth: DateTime(2026, 7));
+
+    final title = find.text('올해 월별 흐름');
+    await tester.scrollUntilVisible(title, 100);
+    expect(title, findsOneWidget);
+    expect(find.text('(세후 기준)'), findsOneWidget);
+
+    // 1~12월 막대 12개 렌더.
+    for (var m = 1; m <= 12; m++) {
+      expect(find.byKey(ValueKey('yearlyBar_$m')), findsOneWidget);
+    }
+  });
+
+  testWidgets('4월 막대 탭 → 2026년 4월로 이동(광고 트리거 없음)',
+      (WidgetTester tester) async {
+    await _pumpCalendar(tester, initialMonth: DateTime(2026, 7));
+    expect(find.text('2026년 7월'), findsOneWidget);
+
+    final bar4 = find.byKey(const ValueKey('yearlyBar_4'));
+    await tester.scrollUntilVisible(bar4, 100);
+    await tester.tap(bar4);
+    await tester.pumpAndSettle();
+
+    // 상단 월 네비게이션으로 스크롤해 이동 결과 확인.
+    final aprNav = find.text('2026년 4월');
+    await tester.scrollUntilVisible(aprNav, -100);
+    expect(aprNav, findsOneWidget);
+  });
+
+  testWidgets('현재 표시 월 막대 하이라이트(그린)', (WidgetTester tester) async {
+    await _pumpCalendar(tester, initialMonth: DateTime(2026, 7));
+
+    final fill7 = find.byKey(const ValueKey('yearlyBarFill_7'));
+    await tester.scrollUntilVisible(fill7, 100);
+    final container = tester.widget<Container>(fill7);
+    final deco = container.decoration as BoxDecoration;
+    expect(deco.color, AppColors.green);
   });
 
   testWidgets('연 1,500만 초과 인출 → 연금 타일에 16.5% 절벽 캡션',
@@ -153,6 +199,8 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.textContaining('연 1,500만원 초과'), findsOneWidget);
+    final caption = find.textContaining('연 1,500만원 초과');
+    await tester.scrollUntilVisible(caption, 200);
+    expect(caption, findsOneWidget);
   });
 }
