@@ -84,6 +84,7 @@ class RetirementInputNotifier extends StateNotifier<RetirementInput> {
     monthlyPensionWithdrawal: 0,
     monthlyOtherWithdrawal: 0,
     annualInterestIncome: 0,
+    isWithdrawing: false,
   );
 
   Future<void> _load() async {

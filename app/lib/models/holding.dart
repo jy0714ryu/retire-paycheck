@@ -14,12 +14,17 @@ class Holding {
   /// 수동 입력 종목의 지급월(1~12) 목록. null/빈 목록이면 합성 대상 아님.
   final List<int>? manualPaymentMonths;
 
+  /// 소속 계좌 id — [kDefaultAccounts] 또는 유저 계좌. v1 저장분은 키가 없어
+  /// default_general 로 폴백된다(스펙 §1.2 마이그레이션).
+  final String accountId;
+
   const Holding({
     required this.corpCode,
     required this.corpName,
     required this.shares,
     this.manualPerShareAnnual,
     this.manualPaymentMonths,
+    this.accountId = 'default_general',
   });
 
   /// 수동 입력(배당 API 미커버) 종목 여부.
@@ -31,6 +36,7 @@ class Holding {
     int? shares,
     int? manualPerShareAnnual,
     List<int>? manualPaymentMonths,
+    String? accountId,
   }) {
     return Holding(
       corpCode: corpCode ?? this.corpCode,
@@ -38,6 +44,7 @@ class Holding {
       shares: shares ?? this.shares,
       manualPerShareAnnual: manualPerShareAnnual ?? this.manualPerShareAnnual,
       manualPaymentMonths: manualPaymentMonths ?? this.manualPaymentMonths,
+      accountId: accountId ?? this.accountId,
     );
   }
 
@@ -50,6 +57,7 @@ class Holding {
           'manual_per_share_annual': manualPerShareAnnual,
         if (manualPaymentMonths != null)
           'manual_payment_months': manualPaymentMonths,
+        'account_id': accountId,
       };
 
   factory Holding.fromJson(Map<String, dynamic> json) {
@@ -62,6 +70,7 @@ class Holding {
       manualPaymentMonths: months is List
           ? months.map((e) => (e as num).toInt()).toList()
           : null,
+      accountId: json['account_id'] as String? ?? 'default_general',
     );
   }
 
@@ -74,7 +83,8 @@ class Holding {
           corpName == other.corpName &&
           shares == other.shares &&
           manualPerShareAnnual == other.manualPerShareAnnual &&
-          _listEq(manualPaymentMonths, other.manualPaymentMonths);
+          _listEq(manualPaymentMonths, other.manualPaymentMonths) &&
+          accountId == other.accountId;
 
   @override
   int get hashCode => Object.hash(
@@ -85,6 +95,7 @@ class Holding {
         manualPaymentMonths == null
             ? null
             : Object.hashAll(manualPaymentMonths!),
+        accountId,
       );
 
   static bool _listEq(List<int>? a, List<int>? b) {

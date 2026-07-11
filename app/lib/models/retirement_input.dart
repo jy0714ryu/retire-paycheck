@@ -10,6 +10,9 @@ class RetirementInput {
   final int monthlyOtherWithdrawal; // ISA·기타분 (비과세 취급)
   final int annualInterestIncome; // 선택 입력, 기본 0
 
+  /// 연금 인출 모드 — false(운용기)면 인출 입력을 숨기고 인출 0 취급 (스펙 §1.3).
+  final bool isWithdrawing;
+
   const RetirementInput({
     required this.pensionSavings,
     required this.irpBalance,
@@ -18,6 +21,7 @@ class RetirementInput {
     required this.monthlyPensionWithdrawal,
     required this.monthlyOtherWithdrawal,
     this.annualInterestIncome = 0,
+    this.isWithdrawing = true,
   });
 
   /// 음수 금지, 나이 20~100 범위만 유효.
@@ -44,6 +48,7 @@ class RetirementInput {
     int? monthlyPensionWithdrawal,
     int? monthlyOtherWithdrawal,
     int? annualInterestIncome,
+    bool? isWithdrawing,
   }) {
     return RetirementInput(
       pensionSavings: pensionSavings ?? this.pensionSavings,
@@ -55,6 +60,7 @@ class RetirementInput {
       monthlyOtherWithdrawal:
           monthlyOtherWithdrawal ?? this.monthlyOtherWithdrawal,
       annualInterestIncome: annualInterestIncome ?? this.annualInterestIncome,
+      isWithdrawing: isWithdrawing ?? this.isWithdrawing,
     );
   }
 
@@ -66,6 +72,7 @@ class RetirementInput {
         'monthly_pension_withdrawal': monthlyPensionWithdrawal,
         'monthly_other_withdrawal': monthlyOtherWithdrawal,
         'annual_interest_income': annualInterestIncome,
+        'is_withdrawing': isWithdrawing,
       };
 
   factory RetirementInput.fromJson(Map<String, dynamic> json) {
@@ -80,6 +87,11 @@ class RetirementInput {
           (json['monthly_other_withdrawal'] as num?)?.toInt() ?? 0,
       annualInterestIncome:
           (json['annual_interest_income'] as num?)?.toInt() ?? 0,
+      // 명시 키 우선, 없으면(v1 저장분) 인출액>0 여부로 판정(스펙 §1.3 마이그레이션).
+      isWithdrawing: json['is_withdrawing'] as bool? ??
+          (((json['monthly_pension_withdrawal'] as num?)?.toInt() ?? 0) > 0 ||
+              ((json['monthly_other_withdrawal'] as num?)?.toInt() ?? 0) >
+                  0),
     );
   }
 
@@ -94,7 +106,8 @@ class RetirementInput {
           currentAge == other.currentAge &&
           monthlyPensionWithdrawal == other.monthlyPensionWithdrawal &&
           monthlyOtherWithdrawal == other.monthlyOtherWithdrawal &&
-          annualInterestIncome == other.annualInterestIncome;
+          annualInterestIncome == other.annualInterestIncome &&
+          isWithdrawing == other.isWithdrawing;
 
   @override
   int get hashCode => Object.hash(
@@ -105,5 +118,6 @@ class RetirementInput {
         monthlyPensionWithdrawal,
         monthlyOtherWithdrawal,
         annualInterestIncome,
+        isWithdrawing,
       );
 }
