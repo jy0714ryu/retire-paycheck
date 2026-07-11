@@ -110,6 +110,25 @@ void main() {
     expect(find.text('(일반계좌 대비 · 비과세 한도 내 기준)'), findsOneWidget);
   });
 
+  testWidgets('ISA 절세액 1만원 미만이면 카드 미노출 ("0만원" 방지)',
+      (WidgetTester tester) async {
+    // 10주 × 500원 = gross 5,000원 → 절세 770원 (만원 표시 0) → 미노출.
+    await _pump(
+      tester,
+      holdings: const [
+        Holding(
+          corpCode: 'B',
+          corpName: 'ISA주',
+          shares: 10,
+          accountId: 'default_isa',
+        ),
+      ],
+      events: [_eventIsa],
+    );
+
+    expect(find.textContaining('절세 중'), findsNothing);
+  });
+
   testWidgets('ISA 계좌 없으면 절세효과 카드 미노출', (WidgetTester tester) async {
     await _pump(
       tester,

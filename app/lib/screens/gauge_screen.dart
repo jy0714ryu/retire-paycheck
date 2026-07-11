@@ -98,7 +98,9 @@ class GaugeScreen extends ConsumerWidget {
           style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
         ),
         const SizedBox(height: 20),
-        if (isaSavings > 0) ...[
+        // 만원 단위 표시가 0이 되는 소액(1만원 미만)은 "0만원 절세 중" 으로
+        // 보이므로 노출하지 않는다 (실기기 E2E 발견 — 2026-07-12).
+        if (isaSavings >= 10000) ...[
           _IsaSavingsCard(savings: isaSavings),
           const SizedBox(height: 14),
         ],
