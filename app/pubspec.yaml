@@ -47,6 +47,9 @@ dependencies:
   # 배당 API 클라이언트 (api.quant-view.co.kr 읽기전용)
   http: ^1.2.0
 
+  # 외부 링크(연금나침반 스토어 페이지) 오픈
+  url_launcher: ^6.3.0
+
   # 광고 (9.0.0: Gradle 9.1/AGP 9.0.1 기본 툴체인과 호환되는 유일한 버전.
   # pension-compass 실측 검증판 — compileSdk 36 지원.)
   google_mobile_ads: ^9.0.0
