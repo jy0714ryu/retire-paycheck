@@ -72,7 +72,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       ),
       body: asyncEvents.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => _ErrorView(onRetry: () => ref.invalidate(dividendEventsProvider)),
+        error: (e, _) =>
+            _ErrorView(onRetry: () => ref.invalidate(dividendEventsProvider)),
         data: (events) => _buildBody(holdings, input, events),
       ),
       bottomNavigationBar: const SafeArea(child: BannerAdWidget()),
@@ -100,8 +101,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       year: _month.year,
     );
     // 참고용(건보) 게이지는 메인 경고를 구동하지 않는다 — 금융소득·연금 저율 한도만.
-    final overThreshold = gauges.financialIncome.ratio > 1.0 ||
-        gauges.pensionLowRate.ratio > 1.0;
+    final overThreshold =
+        gauges.financialIncome.ratio > 1.0 || gauges.pensionLowRate.ratio > 1.0;
 
     // 사적연금 연 인출액이 저율 한도(1,500만원)를 초과하면 전액 16.5% 절벽 적용.
     final pensionOverLowRate =
@@ -129,57 +130,67 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final sharesByName = {for (final h in holdings) h.corpName: h.shares};
     final perShareByName = {for (final e in events) e.corpName: e.perShare};
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _MonthNav(
-          month: _month,
-          onPrev: () => _shiftMonth(-1),
-          onNext: () => _shiftMonth(1),
-        ),
-        const SizedBox(height: 16),
-        _MainCard(
-          net: cf.totalNet,
-          gross: cf.totalGross,
-          dividendGross: cf.dividendGross,
-          pensionGross: cf.pensionGross,
-          overThreshold: overThreshold,
-        ),
-        if (holdings.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          _YearlyDividendCard(year: _month.year, summary: divSummary),
-        ],
-        if (showBarChart) ...[
-          const SizedBox(height: 12),
-          _YearlyBarChart(
-            selectedMonth: _month.month,
-            months: yearMonths,
-            onSelectMonth: _goToMonth,
+    return RefreshIndicator(
+      onRefresh: () async {
+        // 당겨서 새로고침 — 신선 캐시를 무시하고 배당 데이터를 강제 갱신한다.
+        ref.read(forceRefreshProvider.notifier).state++;
+        await ref.read(dividendEventsProvider.future);
+      },
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          _MonthNav(
+            month: _month,
+            onPrev: () => _shiftMonth(-1),
+            onNext: () => _shiftMonth(1),
           ),
-        ],
-        const SizedBox(height: 20),
-        Text('배당 내역 (세후 기준)', style: AppTextStyles.h4),
-        const SizedBox(height: 8),
-        if (cf.lines.isEmpty)
-          _EmptyDividend()
-        else
-          ...cf.lines.map((line) => _DividendLineTile(
+          const SizedBox(height: 16),
+          _MainCard(
+            net: cf.totalNet,
+            gross: cf.totalGross,
+            dividendGross: cf.dividendGross,
+            pensionGross: cf.pensionGross,
+            overThreshold: overThreshold,
+          ),
+          if (holdings.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _YearlyDividendCard(year: _month.year, summary: divSummary),
+          ],
+          if (showBarChart) ...[
+            const SizedBox(height: 12),
+            _YearlyBarChart(
+              selectedMonth: _month.month,
+              months: yearMonths,
+              onSelectMonth: _goToMonth,
+            ),
+          ],
+          const SizedBox(height: 20),
+          Text('배당 내역 (세후 기준)', style: AppTextStyles.h4),
+          const SizedBox(height: 8),
+          if (cf.lines.isEmpty)
+            _EmptyDividend()
+          else
+            ...cf.lines.map(
+              (line) => _DividendLineTile(
                 line: line,
                 perShare: perShareByName[line.corpName],
                 shares: sharesByName[line.corpName],
-              )),
-        const SizedBox(height: 16),
-        Text('연금 인출', style: AppTextStyles.h4),
-        const SizedBox(height: 8),
-        _PensionTile(
-          pensionNet: cf.pensionNet,
-          pensionGross: cf.pensionGross,
-          overLowRate: pensionOverLowRate,
-        ),
-        const SizedBox(height: 20),
-        _Notice(),
-        const SizedBox(height: 40),
-      ],
+              ),
+            ),
+          const SizedBox(height: 16),
+          Text('연금 인출', style: AppTextStyles.h4),
+          const SizedBox(height: 8),
+          _PensionTile(
+            pensionNet: cf.pensionNet,
+            pensionGross: cf.pensionGross,
+            overLowRate: pensionOverLowRate,
+          ),
+          const SizedBox(height: 20),
+          _Notice(),
+          const SizedBox(height: 40),
+        ],
+      ),
     );
   }
 }
@@ -207,10 +218,7 @@ class _MonthNav extends StatelessWidget {
           color: AppColors.navy,
           tooltip: '이전 달',
         ),
-        Text(
-          '${month.year}년 ${month.month}월',
-          style: AppTextStyles.h3,
-        ),
+        Text('${month.year}년 ${month.month}월', style: AppTextStyles.h3),
         IconButton(
           onPressed: onNext,
           icon: const Icon(Icons.chevron_right, size: 32),
@@ -266,8 +274,11 @@ class _MainCard extends StatelessWidget {
               ),
               if (overThreshold) ...[
                 const SizedBox(width: 6),
-                const Icon(Icons.warning_amber_rounded,
-                    size: 18, color: AppColors.warning),
+                const Icon(
+                  Icons.warning_amber_rounded,
+                  size: 18,
+                  color: AppColors.warning,
+                ),
               ],
             ],
           ),
@@ -303,8 +314,11 @@ class _MainCard extends StatelessWidget {
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.warning_amber_rounded,
-                      size: 16, color: Colors.white),
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    size: 16,
+                    color: Colors.white,
+                  ),
                   SizedBox(width: 6),
                   Flexible(
                     child: Text(
@@ -353,7 +367,7 @@ class _DividendLineTile extends StatelessWidget {
         : perShare;
     final detail = (effPerShare != null && shares != null)
         ? '주당 ${fmt.format(effPerShare)}원 × ${fmt.format(shares)}주'
-            '${isManual ? ' (직접 입력)' : ''}'
+              '${isManual ? ' (직접 입력)' : ''}'
         : null;
 
     // 카드(net)와 합산 일치를 위해 라인도 세후로 통일.
@@ -379,7 +393,9 @@ class _DividendLineTile extends StatelessWidget {
                     Flexible(
                       child: Text(
                         line.corpName,
-                        style: AppTextStyles.bodyLarge.copyWith(color: nameColor),
+                        style: AppTextStyles.bodyLarge.copyWith(
+                          color: nameColor,
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -387,15 +403,18 @@ class _DividendLineTile extends StatelessWidget {
                       const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.gray200,
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
                           '예상',
-                          style: AppTextStyles.labelSmall
-                              .copyWith(color: AppColors.gray600),
+                          style: AppTextStyles.labelSmall.copyWith(
+                            color: AppColors.gray600,
+                          ),
                         ),
                       ),
                     ],
@@ -480,20 +499,26 @@ class _PensionTile extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   '세전 ${CalendarScreenFmt.man(pensionGross)}만원',
-                  style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.gray500,
+                  ),
                 ),
                 if (overLowRate) ...[
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.warning_amber_rounded,
-                          size: 14, color: AppColors.warning),
+                      const Icon(
+                        Icons.warning_amber_rounded,
+                        size: 14,
+                        color: AppColors.warning,
+                      ),
                       const SizedBox(width: 4),
                       Flexible(
                         child: Text(
                           '연 1,500만원 초과 — 16.5% 적용',
-                          style: AppTextStyles.caption
-                              .copyWith(color: AppColors.warning),
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.warning,
+                          ),
                         ),
                       ),
                     ],
@@ -505,7 +530,9 @@ class _PensionTile extends StatelessWidget {
           const SizedBox(width: 12),
           Text(
             '${CalendarScreenFmt.man(pensionNet)}만원',
-            style: AppTextStyles.numberSmall.copyWith(color: AppColors.greenDark),
+            style: AppTextStyles.numberSmall.copyWith(
+              color: AppColors.greenDark,
+            ),
           ),
         ],
       ),
@@ -547,8 +574,9 @@ class _YearlyDividendCard extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   '확정 ${summary.confirmedCount}건 · 예측 ${summary.predictedCount}건',
-                  style:
-                      AppTextStyles.caption.copyWith(color: AppColors.gray500),
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.gray500,
+                  ),
                 ),
               ],
             ),
@@ -584,8 +612,10 @@ class _YearlyBarChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final maxNet =
-        months.fold<int>(0, (m, cf) => cf.totalNet > m ? cf.totalNet : m);
+    final maxNet = months.fold<int>(
+      0,
+      (m, cf) => cf.totalNet > m ? cf.totalNet : m,
+    );
 
     return Container(
       width: double.infinity,
@@ -608,7 +638,9 @@ class _YearlyBarChart extends StatelessWidget {
                 const SizedBox(width: 6),
                 Text(
                   '(세후 기준)',
-                  style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.gray500,
+                  ),
                 ),
               ],
             ),
@@ -645,8 +677,8 @@ class _YearlyBarChart extends StatelessWidget {
     final Color color = isSelected
         ? AppColors.green
         : isZero
-            ? AppColors.gray300
-            : AppColors.navyLight.withValues(alpha: 0.35);
+        ? AppColors.gray300
+        : AppColors.navyLight.withValues(alpha: 0.35);
 
     return Expanded(
       child: GestureDetector(
@@ -662,8 +694,9 @@ class _YearlyBarChart extends StatelessWidget {
               margin: const EdgeInsets.symmetric(horizontal: 2),
               decoration: BoxDecoration(
                 color: color,
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(3)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(3),
+                ),
               ),
             ),
             const SizedBox(height: 4),
@@ -714,8 +747,10 @@ class _ErrorView extends StatelessWidget {
         children: [
           const Icon(Icons.cloud_off, size: 48, color: AppColors.gray400),
           const SizedBox(height: 12),
-          Text('배당 정보를 불러오지 못했습니다',
-              style: AppTextStyles.body.copyWith(color: AppColors.gray500)),
+          Text(
+            '배당 정보를 불러오지 못했습니다',
+            style: AppTextStyles.body.copyWith(color: AppColors.gray500),
+          ),
           const SizedBox(height: 12),
           OutlinedButton(onPressed: onRetry, child: const Text('다시 시도')),
         ],

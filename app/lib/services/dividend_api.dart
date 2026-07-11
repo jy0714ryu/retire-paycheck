@@ -46,12 +46,14 @@ class DividendApi {
     return _prefs ??= await SharedPreferences.getInstance();
   }
 
-  Future<DividendFetchResult> fetchAll() async {
+  /// [force] = 당겨서 새로고침 등 사용자 명시 갱신 — 신선 캐시를 무시하고
+  /// 네트워크를 우선한다(실패 시 캐시 폴백은 유지).
+  Future<DividendFetchResult> fetchAll({bool force = false}) async {
     final prefs = await _prefsInstance();
     final cachedAtMs = prefs.getInt(_kCacheAtKey);
     final cachedBody = prefs.getString(_kCacheBodyKey);
 
-    if (cachedAtMs != null && cachedBody != null) {
+    if (!force && cachedAtMs != null && cachedBody != null) {
       final cachedAt = DateTime.fromMillisecondsSinceEpoch(cachedAtMs);
       if (DateTime.now().difference(cachedAt) < _kCacheTtl) {
         try {

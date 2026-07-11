@@ -131,8 +131,13 @@ final retirementInputProvider =
 /// 종목 검색 소스(corp_name dedupe)와 CashflowEngine 입력으로 공용.
 final dividendEventsProvider =
     FutureProvider<DividendFetchResult>((ref) async {
-  return DividendApi().fetchAll();
+  final force = ref.watch(forceRefreshProvider) > 0;
+  return DividendApi().fetchAll(force: force);
 });
+
+/// 당겨서 새로고침 카운터 — 증가시키면 [dividendEventsProvider] 가 신선 캐시를
+/// 무시하고 네트워크를 강제한다 (서버 데이터 갱신 즉시 반영 경로).
+final forceRefreshProvider = StateProvider<int>((ref) => 0);
 
 /// API 이벤트 + 수동 입력 종목 합성 이벤트 merge — calendar/gauge 공용 소비 지점.
 ///
