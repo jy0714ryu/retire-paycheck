@@ -133,8 +133,16 @@ class InterestItem {
 ## 5. 검증
 
 - 단위테스트: 엔진 유형별 분기(3유형×달력/게이지 2종), ISA 절세효과 계산,
-  이자 지급월/12분할, 연금 모드 ON/OFF, 마이그레이션 3종(accountId 기본값·
-  이자 변환·isWithdrawing 판정) + 멱등성(schema_version 2회 기동 중복 생성 없음).
+  이자 지급월/12분할, 연금 모드 ON/OFF.
+- 마이그레이션 테스트 — `SharedPreferences.setMockInitialValues()` 로 저장소 상태 조작,
+  5개 시나리오 필수:
+  | # | 시나리오 | 초기 상태 | 기대 |
+  |---|---|---|---|
+  | 1 | 신규 설치 | 빈 prefs | 스킵, schema_version=2, 이자 항목 0 |
+  | 2 | v1→v2 | v1 JSON(이자>0, 인출>0, account_id 없음) | 이자 항목 1개·isWithdrawing=true·전 종목 default_general |
+  | 3 | 멱등성 | 시나리오 2 후 재기동 | 이자 항목 여전히 1개 |
+  | 4 | 왕복 호환 | v2 JSON→v1 파서 규칙 재직렬화→v2 재로드 | 크래시·중복 없음, account_id 유실은 default_general 폴백 |
+  | 5 | 손상 데이터 | 깨진 JSON·음수 금액 | 기본값 폴백, 크래시 없음 |
 - 위젯테스트: 필터 칩 전환, 재투자 아코디언, 계좌 선택 바텀시트.
 - 릴리스 빌드 실기기 E2E 필수 (v1 교훈: INTERNET 권한·lazy provider 는 debug 로 못 잡는다).
 
