@@ -195,7 +195,7 @@ void main() {
           corpCode: 'C',
           corpName: '연금주',
           shares: 1000,
-          accountId: 'default_pension',
+          accountId: 'default_pension_savings',
         ),
       ],
       events: [_eventPension],

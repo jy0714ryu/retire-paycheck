@@ -53,7 +53,7 @@ void main() {
     expect(ctaFinder, findsOneWidget);
   });
 
-  testWidgets('계좌 관리 — 기본 계좌 3개 렌더 + 계좌 추가 다이얼로그', (tester) async {
+  testWidgets('계좌 관리 — 기본 계좌 4개 렌더 + 계좌 추가 다이얼로그', (tester) async {
     final container = ProviderContainer();
     addTearDown(container.dispose);
 
@@ -71,10 +71,11 @@ void main() {
     await tester.tap(expansionFinder);
     await tester.pumpAndSettle();
 
-    // 기본 계좌 3개 노출.
+    // 기본 계좌 4개 노출(연금저축·IRP 분리).
     expect(find.text('일반계좌'), findsOneWidget);
     expect(find.text('ISA'), findsWidgets); // 계좌명 'ISA' + 유형 라벨 'ISA' 중복 가능
-    expect(find.text('연금계좌'), findsOneWidget);
+    expect(find.text('연금저축'), findsOneWidget);
+    expect(find.text('IRP'), findsOneWidget);
 
     // 계좌 추가 다이얼로그 → 이름 입력 + 확인 → provider 반영.
     final addBtn = find.byKey(const ValueKey('addAccountButton'));

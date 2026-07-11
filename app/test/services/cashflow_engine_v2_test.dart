@@ -43,7 +43,7 @@ void main() {
         corpCode: 'c3',
         corpName: '연금주',
         shares: 1,
-        accountId: 'default_pension'),
+        accountId: 'default_pension_savings'),
   ];
 
   test('유형 분기 — 일반 15.4%·ISA 0%·연금은 재투자 분리', () {
