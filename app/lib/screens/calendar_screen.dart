@@ -179,7 +179,13 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final netByMonth = [for (final m in yearMonths) _filteredNet(m, filter)];
 
     // 라인 상세(주당×수량) 재구성용 조회 맵.
-    final sharesByName = {for (final h in holdings) h.corpName: h.shares};
+    // 수량은 corpName+accountId 복합 키로 조회 — 같은 종목을 일반+ISA 등
+    // 두 계좌에 나눠 보유하면 corpName 단일 키는 마지막 holding 으로 덮어써져
+    // 두 라인이 같은 수량을 잘못 표시한다(M1). perShare 는 계좌와 무관하게
+    // corpName(종목) 단위로 동일하므로 단일 키 유지.
+    final sharesByAccount = {
+      for (final h in holdings) '${h.corpName}|${h.accountId}': h.shares,
+    };
     final perShareByName = {for (final e in events) e.corpName: e.perShare};
 
     // 상세 리스트·아코디언 = 필터 적용. 상단 카드는 항상 전체(cf) 기준.
@@ -190,7 +196,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final filteredReinvestGross =
         filteredReinvest.fold<int>(0, (s, l) => s + l.amountGross);
     // 연금 인출 섹션 — 계좌 소속이 아니므로 '전체'/'연금' 필터에서만 노출.
-    final showPension = filter == 'all' || filter == 'type:pension';
+    // 인출 모드 OFF(스펙 §2·§3)면 필터와 무관하게 타일 자체를 렌더하지 않는다.
+    final showPension =
+        input.isWithdrawing && (filter == 'all' || filter == 'type:pension');
 
     return RefreshIndicator(
       onRefresh: () async {
@@ -240,7 +248,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               (line) => _DividendLineTile(
                 line: line,
                 perShare: perShareByName[line.corpName],
-                shares: sharesByName[line.corpName],
+                shares: sharesByAccount['${line.corpName}|${line.accountId}'],
               ),
             ),
           if (filteredReinvestGross > 0) ...[
@@ -451,8 +459,11 @@ class _DividendLineTile extends StatelessWidget {
               '${isManual ? ' (직접 입력)' : ''}'
         : null;
 
-    // 카드(net)와 합산 일치를 위해 라인도 세후로 통일.
-    final netAmount = (line.amountGross * (1 - kDividendWithholding)).round();
+    // 엔진(cashflow_engine)이 계좌 유형별로 이미 정확히 계산한 net 을 그대로
+    // 쓴다(일반=원천징수 15.4% 후, ISA·연금=gross 그대로) — 여기서 재계산 금지.
+    // 재계산하면 ISA·연금 라인이 일반계좌 공식으로 잘못 과세돼 상단 합산 카드와
+    // 어긋난다(2026-07-11 최종 리뷰 C1).
+    final netAmount = line.amountNet;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),

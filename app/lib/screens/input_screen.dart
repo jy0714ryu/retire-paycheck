@@ -1131,22 +1131,20 @@ class _AddInterestItemSheet extends StatefulWidget {
 
 class _AddInterestItemSheetState extends State<_AddInterestItemSheet> {
   final _nameController = TextEditingController();
-  final _amountController = TextEditingController();
+  // 원 단위 저장(다른 금액 필드와 동일 관례) — 입력 UI 는 AmountInputField 로 만원 표시.
+  int _annualAmountWon = 0;
   bool _isSpecificMonths = false;
   final Set<int> _months = {};
 
   @override
   void dispose() {
     _nameController.dispose();
-    _amountController.dispose();
     super.dispose();
   }
 
   bool get _valid {
     final name = _nameController.text.trim();
-    final amount =
-        int.tryParse(_amountController.text.replaceAll(',', '').trim()) ?? 0;
-    if (name.isEmpty || amount <= 0) return false;
+    if (name.isEmpty || _annualAmountWon <= 0) return false;
     if (_isSpecificMonths && _months.isEmpty) return false;
     return true;
   }
@@ -1156,8 +1154,7 @@ class _AddInterestItemSheetState extends State<_AddInterestItemSheet> {
     widget.onAdd(InterestItem(
       id: 'interest_${DateTime.now().microsecondsSinceEpoch}',
       name: _nameController.text.trim(),
-      annualAmount:
-          int.parse(_amountController.text.replaceAll(',', '').trim()),
+      annualAmount: _annualAmountWon,
       months: _isSpecificMonths ? (_months.toList()..sort()) : const [],
     ));
     Navigator.of(context).pop();
@@ -1194,22 +1191,11 @@ class _AddInterestItemSheetState extends State<_AddInterestItemSheet> {
             onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: 12),
-          TextField(
+          AmountInputField(
             key: const ValueKey('interestItemAmount'),
-            controller: _amountController,
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            decoration: InputDecoration(
-              labelText: '연 금액',
-              suffixText: '원',
-              filled: true,
-              fillColor: AppColors.gray50,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.gray200),
-              ),
-            ),
-            onChanged: (_) => setState(() {}),
+            label: '연 금액',
+            value: _annualAmountWon,
+            onChanged: (v) => setState(() => _annualAmountWon = v),
           ),
           const SizedBox(height: 16),
           Text('지급 방식', style: AppTextStyles.captionBold),

@@ -147,8 +147,9 @@ void main() {
 
     await tester.enterText(
         find.byKey(const ValueKey('interestItemName')), '정기예금');
+    // 만원 단위 입력(M3 — 다른 금액 필드와 통일): 120 → 1,200,000원.
     await tester.enterText(
-        find.byKey(const ValueKey('interestItemAmount')), '1200000');
+        find.byKey(const ValueKey('interestItemAmount')), '120');
     await tester.pumpAndSettle();
 
     // 기본 지급방식 = 월 균등 → 바로 제출 가능.
@@ -191,8 +192,9 @@ void main() {
 
     await tester.enterText(
         find.byKey(const ValueKey('interestItemName')), '예금');
+    // 만원 단위 입력(M3): 60 → 600,000원.
     await tester.enterText(
-        find.byKey(const ValueKey('interestItemAmount')), '600000');
+        find.byKey(const ValueKey('interestItemAmount')), '60');
     final specificMonthToggle = find.text('특정월');
     await tester.ensureVisible(specificMonthToggle);
     await tester.tap(specificMonthToggle);
