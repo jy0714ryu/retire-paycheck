@@ -16,6 +16,7 @@ const String _kHoldingsKey = 'holdings';
 const String _kRetirementInputKey = 'retirement_input';
 const String _kAccountsKey = 'accounts';
 const String _kInterestItemsKey = 'interest_items';
+const String _kDefaultAccountOverridesKey = 'default_account_overrides';
 
 /// 보유 종목 목록 상태 — SharedPreferences('holdings')에 jsonEncode 로 영속.
 ///
@@ -172,8 +173,9 @@ final combinedEventsProvider =
 
 /// 유저 계좌 목록 상태 — SharedPreferences('accounts')에 jsonEncode 로 영속.
 ///
-/// 기본 계좌 3개([kDefaultAccounts])는 저장하지 않는다 — 이 목록은 유저가
-/// 직접 추가한 계좌만 담는다.
+/// 기본 계좌 4개([kDefaultAccounts])는 저장하지 않는다 — 이 목록은 유저가
+/// 직접 추가한 계좌만 담는다. 기본 계좌의 잔액·인출 오버라이드는 별도
+/// [_kDefaultAccountOverridesKey] 에 영속하고 [effective] 로 병합해 노출한다.
 class AccountsNotifier extends StateNotifier<List<Account>> {
   AccountsNotifier(this._ref) : super(const []) {
     _load();
@@ -181,18 +183,55 @@ class AccountsNotifier extends StateNotifier<List<Account>> {
 
   final Ref _ref;
 
+  /// 기본 계좌 id → 오버라이드 적용된 Account. 로드되지 않은 항목은 없음
+  /// (오버라이드 없는 기본 계좌는 [effective] 에서 kDefaultAccounts 원본 사용).
+  Map<String, Account> _overrides = {};
+
+  /// 기본 4계좌(오버라이드 적용) + 유저 계좌 — 달력·게이지·엔진 공용 소비 뷰.
+  List<Account> get effective => [
+        for (final d in kDefaultAccounts) _overrides[d.id] ?? d,
+        ...state,
+      ];
+
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_kAccountsKey);
-    if (raw == null || raw.isEmpty) return;
-    try {
-      final decoded = jsonDecode(raw) as List<dynamic>;
-      state = decoded
-          .map((e) => Account.fromJson(e as Map<String, dynamic>))
-          .toList();
-    } catch (_) {
-      // 손상된 캐시는 무시하고 빈 목록 유지.
+    if (raw != null && raw.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(raw) as List<dynamic>;
+        state = decoded
+            .map((e) => Account.fromJson(e as Map<String, dynamic>))
+            .toList();
+      } catch (_) {
+        // 손상된 캐시는 무시하고 빈 목록 유지.
+      }
     }
+
+    final overridesRaw = prefs.getString(_kDefaultAccountOverridesKey);
+    if (overridesRaw != null && overridesRaw.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(overridesRaw) as Map<String, dynamic>;
+        _overrides = {
+          for (final entry in decoded.entries)
+            if (kDefaultAccounts.any((a) => a.id == entry.key))
+              entry.key: _mergeOverrideJson(
+                entry.key,
+                entry.value as Map<String, dynamic>,
+              ),
+        };
+        state = [...state]; // effectiveAccountsProvider 리스너 트리거.
+      } catch (_) {
+        // 손상된 캐시는 무시하고 오버라이드 없이 유지.
+      }
+    }
+  }
+
+  Account _mergeOverrideJson(String id, Map<String, dynamic> json) {
+    final base = kDefaultAccounts.firstWhere((a) => a.id == id);
+    return base.copyWith(
+      balance: (json['balance'] as num?)?.toInt(),
+      monthlyWithdrawal: (json['monthly_withdrawal'] as num?)?.toInt(),
+    );
   }
 
   Future<void> _persist() async {
@@ -200,6 +239,20 @@ class AccountsNotifier extends StateNotifier<List<Account>> {
     await prefs.setString(
       _kAccountsKey,
       jsonEncode(state.map((a) => a.toJson()).toList()),
+    );
+  }
+
+  Future<void> _persistOverrides() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _kDefaultAccountOverridesKey,
+      jsonEncode({
+        for (final entry in _overrides.entries)
+          entry.key: {
+            'balance': entry.value.balance,
+            'monthly_withdrawal': entry.value.monthlyWithdrawal,
+          },
+      }),
     );
   }
 
@@ -230,12 +283,51 @@ class AccountsNotifier extends StateNotifier<List<Account>> {
         .read(holdingsProvider.notifier)
         .reassignAccount(id, 'default_${removed.type.name}');
   }
+
+  /// 기본 계좌(`default_*`)의 잔액·월 인출액 오버라이드 — prefs
+  /// [_kDefaultAccountOverridesKey] 에 영속하고 [effective] 에 즉시 반영.
+  void updateDefaults(String id, {int? balance, int? monthlyWithdrawal}) {
+    if (!kDefaultAccounts.any((a) => a.id == id)) return;
+    final current = _overrides[id] ??
+        kDefaultAccounts.firstWhere((a) => a.id == id);
+    _overrides = {
+      ..._overrides,
+      id: current.copyWith(
+        balance: balance,
+        monthlyWithdrawal: monthlyWithdrawal,
+      ),
+    };
+    state = [...state]; // effectiveAccountsProvider 리스너 트리거.
+    _persistOverrides();
+  }
+
+  /// 유저 계좌의 잔액·월 인출액 갱신.
+  void updateUser(String id, {int? balance, int? monthlyWithdrawal}) {
+    final idx = state.indexWhere((a) => a.id == id);
+    if (idx < 0) return;
+    final next = [...state];
+    next[idx] = next[idx].copyWith(
+      balance: balance,
+      monthlyWithdrawal: monthlyWithdrawal,
+    );
+    state = next;
+    _persist();
+  }
 }
 
 final accountsProvider =
     StateNotifierProvider<AccountsNotifier, List<Account>>(
   (ref) => AccountsNotifier(ref),
 );
+
+/// 기본 4계좌(오버라이드 적용) + 유저 계좌 통합 뷰 — 달력·게이지·엔진 호출부는
+/// 이것 하나만 소비한다. accountsProvider 를 watch 하므로 유저 계좌 변경뿐
+/// 아니라 [AccountsNotifier.updateDefaults] 의 오버라이드 갱신(`state =
+/// [...state]`)도 리스너에 전파된다.
+final effectiveAccountsProvider = Provider<List<Account>>((ref) {
+  ref.watch(accountsProvider);
+  return ref.read(accountsProvider.notifier).effective;
+});
 
 /// 이자소득 항목 목록 상태 — SharedPreferences('interest_items')에 영속.
 ///
