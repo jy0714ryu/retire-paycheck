@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../models/account.dart';
 import '../models/dividend_event.dart';
 import '../models/holding.dart';
+import '../models/interest_item.dart';
 import '../models/retirement_input.dart';
 import '../providers/app_providers.dart';
 import '../services/cashflow_engine.dart';
@@ -26,6 +28,8 @@ class GaugeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final holdings = ref.watch(holdingsProvider);
     final input = ref.watch(retirementInputProvider);
+    final accounts = ref.watch(accountsProvider);
+    final interestItems = ref.watch(interestItemsProvider);
     final targetYear = year ?? DateTime.now().year;
     // API + 수동 입력 합성 이벤트 merge (합성 연도 = 게이지 기준 연도).
     final asyncEvents = ref.watch(combinedEventsProvider(targetYear));
@@ -43,8 +47,15 @@ class GaugeScreen extends ConsumerWidget {
         error: (e, _) => _ErrorView(
           onRetry: () => ref.invalidate(dividendEventsProvider),
         ),
-        data: (events) =>
-            _buildBody(context, holdings, input, events, targetYear),
+        data: (events) => _buildBody(
+          context,
+          holdings,
+          input,
+          events,
+          targetYear,
+          accounts,
+          interestItems,
+        ),
       ),
       bottomNavigationBar: const SafeArea(child: BannerAdWidget()),
     );
@@ -56,13 +67,26 @@ class GaugeScreen extends ConsumerWidget {
     RetirementInput input,
     List<DividendEvent> events,
     int targetYear,
+    List<Account> accounts,
+    List<InterestItem> interestItems,
   ) {
     final gauges = CashflowEngine.buildGauges(
       holdings: holdings,
       events: events,
       input: input,
       year: targetYear,
+      accounts: accounts,
+      interestItems: interestItems,
     );
+    final isaSavings = CashflowEngine.isaAnnualSavings(
+      holdings: holdings,
+      events: events,
+      accounts: accounts,
+      year: targetYear,
+    );
+    // 연금 인출 모드 OFF 면 절벽 게이지는 실제 인출 전 시뮬레이션 값 —
+    // 건보 참고용 배지 패턴을 재사용해 "인출 전" 임을 명시한다.
+    final pensionIsReference = !input.isWithdrawing;
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -74,6 +98,10 @@ class GaugeScreen extends ConsumerWidget {
           style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
         ),
         const SizedBox(height: 20),
+        if (isaSavings > 0) ...[
+          _IsaSavingsCard(savings: isaSavings),
+          const SizedBox(height: 14),
+        ],
         _GaugeCard(
           title: '금융소득 종합과세',
           status: gauges.financialIncome,
@@ -85,6 +113,8 @@ class GaugeScreen extends ConsumerWidget {
           status: gauges.pensionLowRate,
           overWarning:
               '1,500만원을 넘으면 초과분이 아니라 전액이 16.5% 과세로 전환될 수 있습니다',
+          isReference: pensionIsReference,
+          referenceNote: pensionIsReference ? '연금 인출 전 (참고용)' : null,
         ),
         const SizedBox(height: 14),
         _GaugeCard(
@@ -237,6 +267,51 @@ class _GaugeCard extends StatelessWidget {
     final p = ratio * 100;
     if ((p - p.roundToDouble()).abs() < 0.05) return '${p.round()}%';
     return '${p.toStringAsFixed(1)}%';
+  }
+}
+
+/// ISA 절세효과 카드 — ISA 계좌 배당 gross × 15.4% 절세액을 게이지 목록 위에 노출.
+/// [savings] 가 0 이하면 호출부에서 아예 렌더링하지 않는다.
+class _IsaSavingsCard extends StatelessWidget {
+  final int savings;
+
+  const _IsaSavingsCard({required this.savings});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.success.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.savings_outlined,
+                  size: 18, color: AppColors.success),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'ISA 덕분에 연 ${_GaugeCard._man(savings)}만원 절세 중',
+                  style: AppTextStyles.h4.copyWith(color: AppColors.success),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '(일반계좌 대비 · 비과세 한도 내 기준)',
+            style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
+          ),
+        ],
+      ),
+    );
   }
 }
 
