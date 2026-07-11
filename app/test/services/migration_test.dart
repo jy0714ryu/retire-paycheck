@@ -12,7 +12,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     await runMigrations(prefs);
-    expect(prefs.getInt('schema_version'), 2);
+    expect(prefs.getInt('schema_version'), 3);
     expect(prefs.getString('interest_items'), isNull);
   });
 
@@ -35,7 +35,7 @@ void main() {
     expect(input['is_withdrawing'], isTrue);
     // 구 필드 보존 (롤백 안전 — Global Constraints).
     expect(input['annual_interest_income'], 1200000);
-    expect(prefs.getInt('schema_version'), 2);
+    expect(prefs.getInt('schema_version'), 3);
   });
 
   test('시나리오3 멱등성 — 2회 실행해도 이자 항목 1개', () async {
@@ -82,10 +82,11 @@ void main() {
     });
     final prefs = await SharedPreferences.getInstance();
 
-    // schema_version 이 이미 2 이므로 재실행해도 no-op(가드) — 크래시 없이 통과해야 한다.
+    // schema_version 이 이미 2 이므로 v2 블록은 재실행되지 않는다(가드) — 다만
+    // v3 블록은 version<3 이라 이번에 처음 수행된다. 크래시 없이 통과해야 한다.
     await runMigrations(prefs);
 
-    expect(prefs.getInt('schema_version'), 2);
+    expect(prefs.getInt('schema_version'), 3);
 
     // 이자 항목 중복 생성 없음(여전히 1개 — 재마이그레이션 스킵 확인).
     final items = jsonDecode(prefs.getString('interest_items')!) as List;
@@ -111,6 +112,87 @@ void main() {
     SharedPreferences.setMockInitialValues({'retirement_input': '{broken'});
     final prefs = await SharedPreferences.getInstance();
     await runMigrations(prefs);
-    expect(prefs.getInt('schema_version'), 2);
+    expect(prefs.getInt('schema_version'), 3);
+  });
+
+  test('v2→v3 — flat 잔액·인출이 기본 계좌 오버라이드로 이관', () async {
+    SharedPreferences.setMockInitialValues({
+      'schema_version': 2,
+      'retirement_input': jsonEncode({
+        'pension_savings': 10000000, 'irp_balance': 5000000, 'isa_balance': 3000000,
+        'monthly_pension_withdrawal': 1200000, 'monthly_other_withdrawal': 300000,
+        'current_age': 60, 'is_withdrawing': true,
+      }),
+      'holdings': jsonEncode([
+        {'corp_code': 'c1', 'corp_name': '연금주', 'shares': 5, 'account_id': 'default_pension'},
+      ]),
+    });
+    final prefs = await SharedPreferences.getInstance();
+    await runMigrations(prefs);
+
+    final ov = jsonDecode(prefs.getString('default_account_overrides')!) as Map<String, dynamic>;
+    expect(ov['default_pension_savings']['balance'], 10000000);
+    expect(ov['default_pension_savings']['monthly_withdrawal'], 1200000);
+    expect(ov['default_irp']['balance'], 5000000);
+    expect(ov['default_isa']['balance'], 3000000);
+    expect(ov['default_isa']['monthly_withdrawal'], 300000);
+
+    final holdings = jsonDecode(prefs.getString('holdings')!) as List;
+    expect(holdings.first['account_id'], 'default_pension_savings');
+
+    // flat 필드 보존 (v2 롤백 안전).
+    final input = jsonDecode(prefs.getString('retirement_input')!) as Map<String, dynamic>;
+    expect(input['pension_savings'], 10000000);
+    expect(prefs.getInt('schema_version'), 3);
+  });
+
+  test('v3 멱등 — 재실행해도 오버라이드 불변', () async {
+    SharedPreferences.setMockInitialValues({
+      'schema_version': 2,
+      'retirement_input': jsonEncode({
+        'pension_savings': 10000000, 'irp_balance': 5000000, 'isa_balance': 3000000,
+        'monthly_pension_withdrawal': 1200000, 'monthly_other_withdrawal': 300000,
+        'current_age': 60, 'is_withdrawing': true,
+      }),
+      'holdings': jsonEncode([
+        {'corp_code': 'c1', 'corp_name': '연금주', 'shares': 5, 'account_id': 'default_pension'},
+      ]),
+    });
+    final prefs = await SharedPreferences.getInstance();
+    await runMigrations(prefs);
+
+    // 유저가 이후 앱에서 오버라이드를 직접 수정했다고 가정 — 마이그레이션 재실행이
+    // 이를 덮어쓰면 안 된다(스펙: default_account_overrides 존재 시 1단계 스킵).
+    // schema_version 을 다시 2로 되돌려 v3 블록 내부의 멱등 가드(존재 시 스킵)
+    // 자체를 직접 검증한다(단순 상단 version>=schema 가드에 기대지 않음).
+    await prefs.setString(
+      'default_account_overrides',
+      jsonEncode({
+        'default_pension_savings': {'balance': 99999999, 'monthly_withdrawal': 1200000},
+        'default_irp': {'balance': 5000000, 'monthly_withdrawal': 0},
+        'default_isa': {'balance': 3000000, 'monthly_withdrawal': 300000},
+      }),
+    );
+    await prefs.setInt('schema_version', 2);
+
+    await runMigrations(prefs);
+
+    final ov = jsonDecode(prefs.getString('default_account_overrides')!) as Map<String, dynamic>;
+    expect(ov['default_pension_savings']['balance'], 99999999);
+  });
+
+  test('v1(버전 없음)→3 직행 — v2 단계(이자·isWithdrawing)와 v3 단계 모두 수행', () async {
+    SharedPreferences.setMockInitialValues({
+      'retirement_input': jsonEncode({
+        'annual_interest_income': 1200000, 'monthly_pension_withdrawal': 500000,
+        'current_age': 60,
+      }),
+    });
+    final prefs = await SharedPreferences.getInstance();
+    await runMigrations(prefs);
+    expect(prefs.getInt('schema_version'), 3);
+    expect(jsonDecode(prefs.getString('interest_items')!), hasLength(1));
+    final ov = jsonDecode(prefs.getString('default_account_overrides')!) as Map<String, dynamic>;
+    expect(ov['default_pension_savings']['monthly_withdrawal'], 500000);
   });
 }
