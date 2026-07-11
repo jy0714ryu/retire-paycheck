@@ -203,10 +203,20 @@ void main() {
                     irpBalance: 0,
                     isaBalance: 0,
                     currentAge: 60,
-                    monthlyPensionWithdrawal: 2000000, // ×12 = 2,400만 초과
-                    monthlyOtherWithdrawal: 500000,
+                    monthlyPensionWithdrawal: 0,
+                    monthlyOtherWithdrawal: 0,
                     annualInterestIncome: 0,
                   )),
+          ),
+          // v3: 절벽 판정 소스는 flat 필드가 아니라 pension 계좌 monthlyWithdrawal
+          // 합산 × 12 (엔진 buildGauges 와 동일 기준) — 계좌 오버라이드로 주입.
+          accountsProvider.overrideWith(
+            (ref) => AccountsNotifier(ref)
+              ..add(const Account(
+                  id: 'wp',
+                  name: '연금인출',
+                  type: AccountType.pension,
+                  monthlyWithdrawal: 2000000)), // ×12 = 2,400만 초과
           ),
           dividendEventsProvider.overrideWith((ref) async => DividendFetchResult(
                 events: [_eventA],

@@ -89,7 +89,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   Widget build(BuildContext context) {
     final holdings = ref.watch(holdingsProvider);
     final input = ref.watch(retirementInputProvider);
-    final accounts = ref.watch(accountsProvider);
+    // 필터 칩은 유저 계좌만 노출(화면 로컬 선택 UI) — 엔진 호출은 기본 계좌
+    // 오버라이드까지 합산한 effectiveAccountsProvider 를 사용한다(v3 배선).
+    final userAccounts = ref.watch(accountsProvider);
+    final effectiveAccounts = ref.watch(effectiveAccountsProvider);
     final interestItems = ref.watch(interestItemsProvider);
     final filter = ref.watch(_calendarFilterProvider);
     // API + 수동 입력 합성 이벤트 merge (합성 연도 = 표시 중인 연도).
@@ -110,7 +113,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         data: (events) => _buildBody(
           holdings,
           input,
-          accounts,
+          userAccounts,
+          effectiveAccounts,
           interestItems,
           filter,
           events,
@@ -123,7 +127,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   Widget _buildBody(
     List<Holding> holdings,
     RetirementInput input,
-    List<Account> accounts,
+    List<Account> userAccounts,
+    List<Account> effectiveAccounts,
     List<InterestItem> interestItems,
     String filter,
     List<DividendEvent> events,
@@ -134,7 +139,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       input: input,
       from: _month,
       monthCount: 1,
-      accounts: accounts,
+      accounts: effectiveAccounts,
       interestItems: interestItems,
     );
     final cf = months.first;
@@ -144,7 +149,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       events: events,
       input: input,
       year: _month.year,
-      accounts: accounts,
+      accounts: effectiveAccounts,
       interestItems: interestItems,
     );
     // 참고용(건보) 게이지는 메인 경고를 구동하지 않는다 — 금융소득·연금 저율 한도만.
@@ -152,15 +157,20 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         gauges.financialIncome.ratio > 1.0 || gauges.pensionLowRate.ratio > 1.0;
 
     // 사적연금 연 인출액이 저율 한도(1,500만원)를 초과하면 전액 16.5% 절벽 적용.
-    final pensionOverLowRate =
-        input.monthlyPensionWithdrawal * 12 > kPensionLowRateLimit;
+    // v3: flat 필드가 아니라 pension 유형 계좌 monthlyWithdrawal 합산 × 12
+    // (엔진 buildGauges.pensionLowRate 와 동일 기준) — isWithdrawing 게이트 유지.
+    final monthlyPensionWithdrawal = effectiveAccounts
+        .where((a) => a.type == AccountType.pension)
+        .fold<int>(0, (s, a) => s + a.monthlyWithdrawal);
+    final pensionOverLowRate = input.isWithdrawing &&
+        monthlyPensionWithdrawal * 12 > kPensionLowRateLimit;
 
     // 연간 배당 요약(예측 포함) — 배당이 특정 월에 몰려 비어 보이는 문제 보완.
     final divSummary = CashflowEngine.yearlyDividendSummary(
       holdings: holdings,
       events: events,
       year: _month.year,
-      accounts: accounts,
+      accounts: effectiveAccounts,
     );
 
     // 연간 12개월 현금흐름(세후) — 미니 막대 차트용. 배당 편중을 한눈에 보여준다.
@@ -170,7 +180,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       input: input,
       from: DateTime(_month.year, 1, 1),
       monthCount: 12,
-      accounts: accounts,
+      accounts: effectiveAccounts,
       interestItems: interestItems,
     );
     // 보유·연금이 전부 0이면(12개월 실수령 모두 0) 차트 미표시(필터 무관 — 전체 기준).
@@ -225,7 +235,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             overThreshold: overThreshold,
           ),
           const SizedBox(height: 12),
-          _AccountFilterChips(userAccounts: accounts),
+          _AccountFilterChips(userAccounts: userAccounts),
           if (holdings.isNotEmpty) ...[
             const SizedBox(height: 12),
             _YearlyDividendCard(year: _month.year, summary: divSummary),

@@ -28,7 +28,9 @@ class GaugeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final holdings = ref.watch(holdingsProvider);
     final input = ref.watch(retirementInputProvider);
-    final accounts = ref.watch(accountsProvider);
+    // 기본 계좌 오버라이드(연금저축·IRP 등)까지 합산한 effectiveAccountsProvider 로
+    // 게이지·ISA 절세효과를 산출한다(v3 배선 — Task 6).
+    final accounts = ref.watch(effectiveAccountsProvider);
     final interestItems = ref.watch(interestItemsProvider);
     final targetYear = year ?? DateTime.now().year;
     // API + 수동 입력 합성 이벤트 merge (합성 연도 = 게이지 기준 연도).
