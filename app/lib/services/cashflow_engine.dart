@@ -13,10 +13,14 @@ class DividendLine {
   /// 확정(공시) 배당 여부. false 이면 예측 배당.
   final bool isConfirmed;
 
+  /// 이벤트 출처 — 'api' / 'manual'(직접 입력). 라인 상세 "(직접 입력)" 표기용.
+  final String source;
+
   const DividendLine({
     required this.corpName,
     required this.amountGross,
     required this.isConfirmed,
+    this.source = 'api',
   });
 }
 
@@ -133,6 +137,7 @@ class CashflowEngine {
           corpName: e.corpName,
           amountGross: amount,
           isConfirmed: e.isConfirmed,
+          source: e.source,
         ));
       }
 

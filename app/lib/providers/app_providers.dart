@@ -3,9 +3,11 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/dividend_event.dart';
 import '../models/holding.dart';
 import '../models/retirement_input.dart';
 import '../services/dividend_api.dart';
+import '../services/manual_dividends.dart';
 
 /// SharedPreferences persist 키.
 const String _kHoldingsKey = 'holdings';
@@ -130,4 +132,19 @@ final retirementInputProvider =
 final dividendEventsProvider =
     FutureProvider<DividendFetchResult>((ref) async {
   return DividendApi().fetchAll();
+});
+
+/// API 이벤트 + 수동 입력 종목 합성 이벤트 merge — calendar/gauge 공용 소비 지점.
+///
+/// family 파라미터 = 기준 연도(합성 이벤트의 지급월이 이 연도에 생성됨).
+/// holdings 변경(수동 종목 추가·삭제) 시 자동 재계산된다. 엔진 무수정 원칙 —
+/// 수동 종목도 동일한 [DividendEvent] 로 흘려보낸다.
+final combinedEventsProvider =
+    FutureProvider.family<List<DividendEvent>, int>((ref, year) async {
+  final result = await ref.watch(dividendEventsProvider.future);
+  final holdings = ref.watch(holdingsProvider);
+  return [
+    ...result.events,
+    ...synthesizeManualEvents(holdings: holdings, year: year),
+  ];
 });

@@ -203,4 +203,45 @@ void main() {
     await tester.scrollUntilVisible(caption, 200);
     expect(caption, findsOneWidget);
   });
+
+  testWidgets('수동 입력 종목 — combinedEventsProvider merge 로 달력 라인 노출 (직접 입력 표기)',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          holdingsProvider.overrideWith(
+            (ref) => HoldingsNotifier()
+              ..add(const Holding(
+                corpCode: 'manual_1',
+                corpName: '수동ETF',
+                shares: 100,
+                manualPerShareAnnual: 12000,
+                manualPaymentMonths: [7],
+              )),
+          ),
+          retirementInputProvider.overrideWith(
+            (ref) => RetirementInputNotifier()..update((_) => _input),
+          ),
+          // API 이벤트는 비어 있음 — 수동 합성 이벤트만으로 라인이 떠야 한다.
+          dividendEventsProvider.overrideWith((ref) async => DividendFetchResult(
+                events: const [],
+                fetchedAt: DateTime(2026, 1, 1),
+                fromCache: false,
+              )),
+        ],
+        child: MaterialApp(home: CalendarScreen(initialMonth: DateTime(2026, 7))),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 7월 라인: 수동ETF, 주당 12,000원 × 100주 (직접 입력) + "예상" 배지(isConfirmed=false).
+    final name = find.text('수동ETF');
+    await tester.scrollUntilVisible(name, 200);
+    expect(name, findsOneWidget);
+    expect(
+      find.textContaining('주당 12,000원 × 100주 (직접 입력)'),
+      findsOneWidget,
+    );
+    expect(find.text('예상'), findsOneWidget);
+  });
 }

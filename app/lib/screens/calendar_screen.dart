@@ -59,7 +59,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   Widget build(BuildContext context) {
     final holdings = ref.watch(holdingsProvider);
     final input = ref.watch(retirementInputProvider);
-    final asyncEvents = ref.watch(dividendEventsProvider);
+    // API + 수동 입력 합성 이벤트 merge (합성 연도 = 표시 중인 연도).
+    final asyncEvents = ref.watch(combinedEventsProvider(_month.year));
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -72,7 +73,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       body: asyncEvents.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => _ErrorView(onRetry: () => ref.invalidate(dividendEventsProvider)),
-        data: (result) => _buildBody(holdings, input, result.events),
+        data: (events) => _buildBody(holdings, input, events),
       ),
       bottomNavigationBar: const SafeArea(child: BannerAdWidget()),
     );
@@ -344,8 +345,15 @@ class _DividendLineTile extends StatelessWidget {
     final amountColor = dimmed ? AppColors.gray400 : AppColors.navy;
 
     final fmt = NumberFormat('#,###');
-    final detail = (perShare != null && shares != null)
-        ? '주당 ${fmt.format(perShare)}원 × ${fmt.format(shares)}주'
+    // 수동 입력 라인은 이 달 금액에서 주당 배당을 역산(지급월별 분할이라 연간값과 다름)
+    // 하고 "(직접 입력)" 을 병기한다.
+    final isManual = line.source == 'manual';
+    final effPerShare = isManual && shares != null && shares! > 0
+        ? line.amountGross ~/ shares!
+        : perShare;
+    final detail = (effPerShare != null && shares != null)
+        ? '주당 ${fmt.format(effPerShare)}원 × ${fmt.format(shares)}주'
+            '${isManual ? ' (직접 입력)' : ''}'
         : null;
 
     // 카드(net)와 합산 일치를 위해 라인도 세후로 통일.

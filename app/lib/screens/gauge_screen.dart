@@ -26,8 +26,9 @@ class GaugeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final holdings = ref.watch(holdingsProvider);
     final input = ref.watch(retirementInputProvider);
-    final asyncEvents = ref.watch(dividendEventsProvider);
     final targetYear = year ?? DateTime.now().year;
+    // API + 수동 입력 합성 이벤트 merge (합성 연도 = 게이지 기준 연도).
+    final asyncEvents = ref.watch(combinedEventsProvider(targetYear));
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -42,8 +43,8 @@ class GaugeScreen extends ConsumerWidget {
         error: (e, _) => _ErrorView(
           onRetry: () => ref.invalidate(dividendEventsProvider),
         ),
-        data: (result) =>
-            _buildBody(context, holdings, input, result.events, targetYear),
+        data: (events) =>
+            _buildBody(context, holdings, input, events, targetYear),
       ),
       bottomNavigationBar: const SafeArea(child: BannerAdWidget()),
     );

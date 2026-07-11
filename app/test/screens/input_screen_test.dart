@@ -97,4 +97,64 @@ void main() {
     expect(find.text('배당 종목 목록을 아직 불러오지 못했습니다.\n잠시 후 다시 시도하세요.'),
         findsNothing);
   });
+
+  // 직접 입력(배당 API 미커버 종목 폴백): 시트 하단 "직접 입력" → 폼 전환 →
+  // 종목명·수량·연간 배당금 입력 + 지급월 선택 → 추가 → 리스트 노출 + 배지 + provider 반영.
+  testWidgets('종목 추가 시트 — 직접 입력 폼으로 종목 추가 → 리스트 노출',
+      (WidgetTester tester) async {
+    final container = ProviderContainer(overrides: [
+      dividendEventsProvider.overrideWith(
+        (ref) async => DividendFetchResult(
+          events: const [],
+          fetchedAt: DateTime(2026, 1, 1),
+          fromCache: false,
+        ),
+      ),
+    ]);
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(home: InputScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 시트 열기 → 직접 입력 폼 전환.
+    await tester.tap(find.text('종목 추가'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const ValueKey('manualEntryButton')));
+    await tester.tap(find.byKey(const ValueKey('manualEntryButton')));
+    await tester.pumpAndSettle();
+    expect(find.text('종목명'), findsOneWidget);
+
+    // 폼 입력: 종목명 / 수량 / 주당 연간 배당금. 지급월 기본 4월 + 10월 추가 선택.
+    await tester.enterText(
+        find.byKey(const ValueKey('manualName')), '커버리지밖ETF');
+    await tester.enterText(find.byKey(const ValueKey('manualShares')), '100');
+    await tester.enterText(
+        find.byKey(const ValueKey('manualAnnual')), '12000');
+    await tester.ensureVisible(find.byKey(const ValueKey('manualMonth_10')));
+    await tester.tap(find.byKey(const ValueKey('manualMonth_10')));
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.byKey(const ValueKey('manualSubmit')));
+    await tester.tap(find.byKey(const ValueKey('manualSubmit')));
+    await tester.pumpAndSettle();
+
+    // 시트 닫힘 + 보유 종목 리스트에 노출("직접 입력" 배지 포함).
+    expect(find.text('커버리지밖ETF'), findsOneWidget);
+    expect(find.text('100주'), findsOneWidget);
+    expect(find.text('직접 입력'), findsOneWidget); // 리스트 미니 배지
+
+    // provider 상태 — manual 필드가 채워진 Holding 저장.
+    final holdings = container.read(holdingsProvider);
+    expect(holdings.length, 1);
+    final h = holdings.single;
+    expect(h.isManual, isTrue);
+    expect(h.corpCode, startsWith('manual_'));
+    expect(h.manualPerShareAnnual, 12000);
+    expect(h.manualPaymentMonths, [4, 10]);
+  });
 }

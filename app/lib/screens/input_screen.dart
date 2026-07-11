@@ -81,8 +81,19 @@ class InputScreen extends ConsumerWidget {
                         child: Row(
                           children: [
                             Expanded(
-                              child: Text(h.corpName,
-                                  style: AppTextStyles.bodyLarge),
+                              child: Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(h.corpName,
+                                        style: AppTextStyles.bodyLarge,
+                                        overflow: TextOverflow.ellipsis),
+                                  ),
+                                  if (h.isManual) ...[
+                                    const SizedBox(width: 8),
+                                    const _ManualBadge(),
+                                  ],
+                                ],
+                              ),
                             ),
                             Text('${h.shares}주',
                                 style: AppTextStyles.captionBold),
@@ -290,9 +301,19 @@ class _AddHoldingSheetState extends ConsumerState<_AddHoldingSheet> {
   DividendEvent? _selected;
   final _sharesController = TextEditingController();
 
+  // 직접 입력 모드 (배당 API 미커버 종목 폴백).
+  bool _manualMode = false;
+  final _manualNameController = TextEditingController();
+  final _manualSharesController = TextEditingController();
+  final _manualAnnualController = TextEditingController();
+  final Set<int> _manualMonths = {4}; // 기본 4월(국내 결산배당 지급월).
+
   @override
   void dispose() {
     _sharesController.dispose();
+    _manualNameController.dispose();
+    _manualSharesController.dispose();
+    _manualAnnualController.dispose();
     super.dispose();
   }
 
@@ -326,10 +347,29 @@ class _AddHoldingSheetState extends ConsumerState<_AddHoldingSheet> {
     Navigator.of(context).pop();
   }
 
+  bool get _manualValid {
+    final name = _manualNameController.text.trim();
+    final shares = int.tryParse(_manualSharesController.text.trim()) ?? 0;
+    final annual = int.tryParse(_manualAnnualController.text.trim()) ?? 0;
+    return name.isNotEmpty && shares > 0 && annual > 0 && _manualMonths.isNotEmpty;
+  }
+
+  void _submitManual() {
+    if (!_manualValid) return;
+    widget.onAdd(Holding(
+      // API corp_code(8자리 숫자)와 충돌하지 않는 고유 코드.
+      corpCode: 'manual_${DateTime.now().microsecondsSinceEpoch}',
+      corpName: _manualNameController.text.trim(),
+      shares: int.parse(_manualSharesController.text.trim()),
+      manualPerShareAnnual: int.parse(_manualAnnualController.text.trim()),
+      manualPaymentMonths: _manualMonths.toList()..sort(),
+    ));
+    Navigator.of(context).pop();
+  }
+
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    final asyncEvents = ref.watch(dividendEventsProvider);
     return Padding(
       padding: EdgeInsets.only(
         left: 20,
@@ -337,7 +377,122 @@ class _AddHoldingSheetState extends ConsumerState<_AddHoldingSheet> {
         top: 20,
         bottom: 20 + bottomInset,
       ),
-      child: Column(
+      child: _manualMode ? _buildManualForm() : _buildSearchForm(),
+    );
+  }
+
+  /// 직접 입력 폼 — 종목명 / 수량 / 주당 연간 배당금 / 지급월 FilterChip 다중선택.
+  Widget _buildManualForm() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            IconButton(
+              onPressed: () => setState(() => _manualMode = false),
+              icon: const Icon(Icons.arrow_back),
+              tooltip: '검색으로 돌아가기',
+              color: AppColors.navy,
+            ),
+            Text('직접 입력', style: AppTextStyles.h4),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '배당 목록에 없는 종목·ETF를 직접 등록합니다.\n'
+          '지급월엔 예상 배당이 균등 분할되어 표시돼요.',
+          style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
+        ),
+        const SizedBox(height: 16),
+        TextField(
+          key: const ValueKey('manualName'),
+          controller: _manualNameController,
+          decoration: _manualFieldDecoration(labelText: '종목명'),
+          onChanged: (_) => setState(() {}),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          key: const ValueKey('manualShares'),
+          controller: _manualSharesController,
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          decoration: _manualFieldDecoration(labelText: '보유 수량', suffixText: '주'),
+          onChanged: (_) => setState(() {}),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          key: const ValueKey('manualAnnual'),
+          controller: _manualAnnualController,
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          decoration: _manualFieldDecoration(
+            labelText: '주당 연간 배당금',
+            suffixText: '원',
+          ),
+          onChanged: (_) => setState(() {}),
+        ),
+        const SizedBox(height: 16),
+        Text('지급월 (여러 개 선택 가능)', style: AppTextStyles.captionBold),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            for (var m = 1; m <= 12; m++)
+              FilterChip(
+                key: ValueKey('manualMonth_$m'),
+                label: Text('$m월'),
+                selected: _manualMonths.contains(m),
+                selectedColor: AppColors.navy.withValues(alpha: 0.12),
+                checkmarkColor: AppColors.navy,
+                onSelected: (on) => setState(() {
+                  on ? _manualMonths.add(m) : _manualMonths.remove(m);
+                }),
+              ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            key: const ValueKey('manualSubmit'),
+            onPressed: _manualValid ? _submitManual : null,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.green,
+              disabledBackgroundColor: AppColors.gray300,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 0,
+            ),
+            child: const Text('추가', style: AppTextStyles.button),
+          ),
+        ),
+      ],
+    );
+  }
+
+  InputDecoration _manualFieldDecoration({
+    required String labelText,
+    String? suffixText,
+  }) {
+    return InputDecoration(
+      labelText: labelText,
+      suffixText: suffixText,
+      filled: true,
+      fillColor: AppColors.gray50,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.gray200),
+      ),
+    );
+  }
+
+  Widget _buildSearchForm() {
+    final asyncEvents = ref.watch(dividendEventsProvider);
+    return Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -464,7 +619,50 @@ class _AddHoldingSheetState extends ConsumerState<_AddHoldingSheet> {
               child: const Text('추가', style: AppTextStyles.button),
             ),
           ),
+          const SizedBox(height: 4),
+          // 배당 API 미커버 종목 폴백 — 직접 입력 폼으로 전환.
+          Center(
+            child: TextButton(
+              key: const ValueKey('manualEntryButton'),
+              onPressed: () => setState(() => _manualMode = true),
+              child: Text.rich(
+                TextSpan(
+                  text: '찾는 종목이 없나요? ',
+                  style: AppTextStyles.caption
+                      .copyWith(color: AppColors.gray500),
+                  children: [
+                    TextSpan(
+                      text: '직접 입력',
+                      style: AppTextStyles.captionBold.copyWith(
+                        color: AppColors.navy,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ],
+    );
+  }
+}
+
+/// "직접 입력" 미니 배지 — 수동 등록 종목 구분 표기.
+class _ManualBadge extends StatelessWidget {
+  const _ManualBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppColors.navy.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        '직접 입력',
+        style: AppTextStyles.labelSmall.copyWith(color: AppColors.navy),
       ),
     );
   }
