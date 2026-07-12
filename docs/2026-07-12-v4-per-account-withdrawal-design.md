@@ -1,0 +1,104 @@
+# 은퇴월급 v4 설계 — 계좌별 인출 개시 + 현금 재원 모델
+
+- 작성: 2026-07-12 (대장님 실무 질의 → 최신 자료 3회 교차 검증)
+- 상태: 스펙 확정 대기 (구현 착수·타이밍은 대장님 결정)
+- 선행: v3 "계좌 중심 IA"(1.3.0+4, main 머지·실기기 검증 완료)
+
+## 0. 배경 — 세 번의 실무 검증으로 도달한 모델
+
+대장님이 실기기로 만지며 던진 질문들이 앱을 세법·증권 실무와 정확히 맞췄다:
+1. "연금 인출 토글이 공통 하나가 맞나?" → **계좌별 개시가 실무** (국세청 예규: 각 연금계좌별 적용).
+2. "인출하면 종목 매수 못 하나?" → 월지급은 자산 자동매도인데 **ETF는 자동매도 불가**(미래에셋
+   투자와연금센터). 월 인출 재원은 현금성이어야 하되, 종목 운용은 병행 가능(모델 B).
+3. "1계좌씩 개시하나 전체 동시인가?" → **계좌별 개시**(다른 시점 가능, 개시해도 미인출분 운용 지속).
+
+**엔진 함정(조사 발견):** 세금 한도가 둘 — ①1,500만 저율과세 절벽은 **사람 단위 전 연금계좌
+합산** ②연금수령한도는 계좌별. 개시는 계좌별이어도 **절벽 판정은 반드시 합산**. v3 엔진이
+이미 pension 계좌 합산으로 절벽을 판정하므로 이 구조는 유지된다.
+
+## 1. 해결 모델 (모델 B — 현금 재원 + 종목 병존)
+
+- **인출 개시 = 계좌별 토글.** 각 ISA·연금 계좌가 자기 "인출 중" 상태를 가진다.
+- **월 인출 재원 = 현금성 잔액.** 인출을 켜도 그 계좌에 종목(ETF) 병존 가능 — 종목은 운용
+  자산이고 월 지급액은 현금성 잔액에서 나간다. "ETF 금지"로 차단하지 않고 메커니즘을 안내한다.
+- **절벽 판정은 사람 단위 합산** — 인출 켠 모든 pension 계좌 monthlyWithdrawal 합 × 12 vs 1,500만.
+
+## 2. 데이터 모델
+
+### 2.1 `Account.isWithdrawing` 추가 (계좌별 인출 상태)
+
+```dart
+class Account {
+  final String id;
+  final String name;
+  final AccountType type;
+  final int balance;              // "현금성 잔액"(원) — 월 인출 재원. 일반계좌 0.
+  final int monthlyWithdrawal;    // 월 인출액(원). 일반계좌 0.
+  final bool isWithdrawing;       // 이 계좌의 인출 개시 여부(신규). 일반계좌 무관(false).
+}
+```
+
+- copyWith·toJson(`is_withdrawing`)·fromJson(없으면 false)·==·hashCode 반영.
+
+### 2.2 `RetirementInput` 축소
+
+- 전역 `isWithdrawing` 은 **더 이상 엔진·UI가 참조하지 않는다** (계좌별로 이동). 모델 필드·json
+  키는 레거시로 보존(롤백 안전). 실질 필드는 `currentAge`(+ `annualInterestIncome` 레거시).
+
+### 2.3 마이그레이션 v3→v4 (`schema_version` 3 → 4, `_kCurrentSchema = 4`)
+
+기존 v3 블록 뒤에 `if (version < 4)`:
+- v3의 전역 인출 상태(`retirement_input.is_withdrawing`)가 true 였다면 → **잔액이나 월 인출이
+  있는 모든 ISA·연금 기본 계좌의 override 에 `is_withdrawing = true`** 기록
+  (`default_account_overrides` 의 각 항목에 필드 추가). false 였다면 전부 false.
+- 유저 계좌('accounts' 키)도 동일 규칙으로 `is_withdrawing` 부여(잔액·인출>0 이고 전역 ON 이면 true).
+- **멱등**: schema_version 가드. 구 필드(`is_withdrawing` 전역)는 보존.
+- 스펙 §5 검증: v3 유저(전역 ON, 연금저축·ISA 인출 있음)가 v4 로 오면 그 두 계좌가 각각
+  인출 ON, 달력·게이지 값 불변.
+
+## 3. 세금 엔진 (합산 판정 유지 + 계좌별 게이트)
+
+`buildMonths`/`buildGauges` 의 인출 소스를 **계좌별 isWithdrawing 게이트**로:
+
+```dart
+// 과세 연금 인출(월) = 인출 켠 pension 계좌들의 monthlyWithdrawal 합.
+final pensionMonthly = accounts
+    .where((a) => a.type == AccountType.pension && a.isWithdrawing)
+    .fold(0, (s, a) => s + a.monthlyWithdrawal);
+// 비과세 인출(월) = 인출 켠 isa 계좌들의 합.
+final isaMonthly = accounts
+    .where((a) => a.type == AccountType.isa && a.isWithdrawing)
+    .fold(0, (s, a) => s + a.monthlyWithdrawal);
+// 절벽 = pensionMonthly*12 vs 1,500만 (사람 단위 합산 — 인출 켠 계좌만).
+```
+
+- `input.isWithdrawing`(전역) 게이트 **제거**. 절벽·나이세율·pensionNet·게이지 규칙 불변.
+- `pensionMonthlyWithdrawal(accounts)` 공용 헬퍼(v3 신설)에 `&& a.isWithdrawing` 조건 추가 —
+  달력 절벽 캡션도 자동으로 동일 기준.
+
+## 4. 화면 (계좌 카드 — v3 구조에 인출 상태·재원 안내·소진 캡션 추가)
+
+각 ISA·연금 계좌 카드:
+- 헤더 우측(또는 잔액 위)에 **"인출 개시" 스위치** (일반계좌엔 없음).
+- 잔액 라벨은 세 유형 모두 **"현금성 잔액"** 통일 (v3의 "잔액"/"현금성 잔액" 혼용 제거).
+- 인출 ON 시: "월 인출" 필드 노출 + 아래 캡션:
+  - **잔액 소진 시점**: `현금성 잔액 ÷ (월 인출 × 12)` → `"이 속도면 약 N년 M개월분"`
+    (월 인출 0 이면 미표시). 지난 대장님 질문("언제 바닥나나") 반영.
+  - 그 계좌에 **종목이 있으면**: `"월 지급액은 현금성 잔액에서 나갑니다 (ETF·종목은 매달
+    자동 매도되지 않아요)"` — 차단·단정 아닌 메커니즘 안내(컴플라이언스 안전).
+- **공통 설정 카드의 전역 "연금 인출 중" 토글 제거** (연금나침반 CTA·현재 나이는 유지).
+- 인출 OFF 계좌: 종목·현금성 잔액만(월 인출·소진 캡션 숨김).
+
+## 5. 검증
+
+- 단위테스트: 엔진 계좌별 게이트(A계좌 인출 ON·B계좌 OFF → A만 산입), 절벽 합산(인출 켠
+  pension 2계좌 합 > 1,500만 → 전액 16.5%), 마이그레이션 v3→v4(전역 ON→계좌별 전파·멱등·
+  달력값 불변), 잔액 소진 개월 계산.
+- 위젯테스트: 계좌 카드 인출 스위치 ON/OFF 시 월 인출·소진 캡션 표시, 종목 있는 인출 계좌의
+  재원 안내 노출, 공통 전역 토글 제거 확인.
+- **릴리스 빌드 실기기 E2E**: v3→v4 덮어 설치 시 인출 상태 계좌별 전파·달력 값 불변 확인.
+
+## 6. 릴리스 순서
+
+v3(1.3.0+4) 심사 대기 중. v4 는 다음 버전(1.4.0+5). 대장님 방침대로 **최신본을 계속 쌓아
+심사 통과 시 최종본(v4) 제출**. v3 산출물은 main 에 보존(롤백·참조용).
