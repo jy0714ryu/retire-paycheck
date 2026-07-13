@@ -20,8 +20,8 @@ const String _kPensionCompassUrl =
 /// 화면1 — 자산 입력 (v3: 계좌 중심 IA).
 ///
 /// 계좌가 최상위 컨테이너다. 위→아래 구성:
-/// ①자동 저장 안내 → ②계좌 카드들(effectiveAccounts) → ③[+ 계좌 추가]
-/// → ④공통 설정(인출 토글·연금나침반 CTA·현재 나이) → ⑤(선택) 연 이자소득.
+/// ①자동 저장 안내 → ②계좌 카드들(effectiveAccounts, 계좌별 인출 스위치) →
+/// ③[+ 계좌 추가] → ④공통 설정(연금나침반 CTA·현재 나이) → ⑤(선택) 연 이자소득.
 /// 모든 값은 provider 를 통해 SharedPreferences 에 즉시 영속된다.
 class InputScreen extends ConsumerWidget {
   const InputScreen({super.key});
@@ -29,9 +29,6 @@ class InputScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final accounts = ref.watch(effectiveAccountsProvider);
-    final isWithdrawing = ref.watch(
-      retirementInputProvider.select((s) => s.isWithdrawing),
-    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -52,7 +49,7 @@ class InputScreen extends ConsumerWidget {
 
             // 계좌 카드들 — effectiveAccounts 순서(기본 4개 + 유저 계좌).
             for (final account in accounts) ...[
-              _AccountCard(account: account, isWithdrawing: isWithdrawing),
+              _AccountCard(account: account),
               const SizedBox(height: 16),
             ],
 
@@ -141,13 +138,13 @@ class _AutoSaveNotice extends StatelessWidget {
 /// 계좌 카드 — 계좌 중심 IA 의 최상위 컨테이너(스펙 §4 목업).
 ///
 /// 헤더(계좌명 + 유형 배지 + 유저 계좌 삭제) / 소속 종목 리스트(수량·스와이프
-/// 삭제) / "+ 종목 추가" / 유형이 isa·pension 이면 잔액 + (인출 모드 ON 시)
-/// 월 인출 필드. 일반계좌는 종목만 노출한다.
+/// 삭제) / "+ 종목 추가" / 유형이 isa·pension 이면 현금성 잔액 + 계좌별
+/// "인출 개시" 스위치 + (인출 ON 시) 월 인출·소진 캡션·재원 안내.
+/// 일반계좌는 종목만 노출한다.
 class _AccountCard extends ConsumerWidget {
   final Account account;
-  final bool isWithdrawing;
 
-  const _AccountCard({required this.account, required this.isWithdrawing});
+  const _AccountCard({required this.account});
 
   String get _typeLabel {
     switch (account.type) {
@@ -162,14 +159,35 @@ class _AccountCard extends ConsumerWidget {
 
   bool get _hasBalance => account.type != AccountType.general;
 
-  /// 잔액 필드 라벨 — ISA 는 "현금성 잔액", 연금(연금저축·IRP)은 "잔액".
-  String get _balanceLabel =>
-      account.type == AccountType.isa ? '현금성 잔액' : '잔액';
+  /// 잔액 필드 라벨 — ISA·연금·IRP 카드 전부 "현금성 잔액" 으로 통일(v4).
+  String get _balanceLabel => '현금성 잔액';
 
   /// 월 인출 helperText — 연금은 과세, ISA 는 비과세 취급.
   String get _withdrawalHelper => account.type == AccountType.pension
       ? '과세 대상 — 나이별 연금소득세(5.5~3.3%)가 붙습니다'
       : '비과세 취급 — 세금 없이 그대로 수령합니다';
+
+  /// 잔액 소진 예상 캡션 — 현금성 잔액 ÷ (월 인출 × 12) 로 년·개월 환산.
+  /// 월 인출이 0 이면 계산 불가 → null(캡션 미노출).
+  String? get _depletionCaption {
+    final w = account.monthlyWithdrawal;
+    if (w <= 0) return null;
+    final totalMonths = account.balance ~/ w;
+    if (totalMonths < 12) return '이 속도면 약 $totalMonths개월분';
+    final years = totalMonths ~/ 12;
+    final months = totalMonths % 12;
+    if (months == 0) return '이 속도면 약 $years년분';
+    return '이 속도면 약 $years년 $months개월분';
+  }
+
+  void _toggleWithdrawing(WidgetRef ref, bool v) {
+    final notifier = ref.read(accountsProvider.notifier);
+    if (account.isDefault) {
+      notifier.updateDefaults(account.id, isWithdrawing: v);
+    } else {
+      notifier.updateUser(account.id, isWithdrawing: v);
+    }
+  }
 
   void _updateBalance(WidgetRef ref, int v) {
     final notifier = ref.read(accountsProvider.notifier);
@@ -260,7 +278,8 @@ class _AccountCard extends ConsumerWidget {
           else
             ...entries.map((e) => _HoldingRow(index: e.key, holding: e.value)),
 
-          // 유형 isa·pension: 잔액 + (인출 모드) 월 인출.
+          // 유형 isa·pension: 현금성 잔액 + 계좌별 인출 개시 스위치 +
+          // (인출 ON 시) 월 인출·소진 캡션·재원 안내.
           if (_hasBalance) ...[
             const SizedBox(height: 8),
             AmountInputField(
@@ -269,8 +288,20 @@ class _AccountCard extends ConsumerWidget {
               value: account.balance,
               onChanged: (v) => _updateBalance(ref, v),
             ),
-            if (isWithdrawing) ...[
-              const SizedBox(height: 16),
+            // 계좌별 인출 개시 스위치 — Material 래핑(가장 가까운 흰 배경
+            // Container 가 조상이면 SwitchListTile 잉크 경고가 발생한다).
+            Material(
+              type: MaterialType.transparency,
+              child: SwitchListTile(
+                key: ValueKey('withdrawSwitch_${account.id}'),
+                contentPadding: EdgeInsets.zero,
+                title: const Text('인출 개시', style: AppTextStyles.label),
+                value: account.isWithdrawing,
+                activeThumbColor: AppColors.navy,
+                onChanged: (v) => _toggleWithdrawing(ref, v),
+              ),
+            ),
+            if (account.isWithdrawing) ...[
               AmountInputField(
                 key: ValueKey('withdrawal_${account.id}'),
                 label: '월 인출',
@@ -278,6 +309,23 @@ class _AccountCard extends ConsumerWidget {
                 onChanged: (v) => _updateWithdrawal(ref, v),
                 helperText: _withdrawalHelper,
               ),
+              if (_depletionCaption != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  _depletionCaption!,
+                  style: AppTextStyles.caption
+                      .copyWith(color: AppColors.gray500),
+                ),
+              ],
+              if (entries.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  '월 지급액은 현금성 잔액에서 나갑니다 '
+                  '(ETF·종목은 매달 자동 매도되지 않아요)',
+                  style: AppTextStyles.caption
+                      .copyWith(color: AppColors.gray500),
+                ),
+              ],
             ],
           ],
           const SizedBox(height: 12),
@@ -872,9 +920,10 @@ class _AddAccountDialogState extends State<_AddAccountDialog> {
   }
 }
 
-/// 공통 설정 카드 — 연금 인출 토글 + 연금나침반 CTA + 현재 나이.
+/// 공통 설정 카드 — 연금나침반 CTA + 현재 나이.
 ///
-/// 인출 토글 OFF: 모든 계좌 카드의 월 인출 필드가 숨겨진다(스펙 §4).
+/// v4: 전역 "연금 인출 중" 토글은 제거됐다. 인출 개시는 각 계좌 카드의
+/// 계좌별 스위치로 갱신되며(스펙 §4), 여기선 나이·CTA 만 남는다.
 class _CommonSettingsCard extends ConsumerWidget {
   const _CommonSettingsCard();
 
@@ -885,21 +934,6 @@ class _CommonSettingsCard extends ConsumerWidget {
       title: '공통 설정',
       icon: Icons.tune,
       children: [
-        // Material 래핑 — SwitchListTile 은 가장 가까운 Material 조상에
-        // 배경/잉크를 그리는데, InputSectionCard 의 흰 배경 Container 가
-        // 바로 그 조상이면 프레임워크 경고가 발생한다.
-        Material(
-          type: MaterialType.transparency,
-          child: SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('연금 인출 중', style: AppTextStyles.label),
-            value: input.isWithdrawing,
-            activeThumbColor: AppColors.navy,
-            onChanged: (v) => ref
-                .read(retirementInputProvider.notifier)
-                .update((s) => s.copyWith(isWithdrawing: v)),
-          ),
-        ),
         InkWell(
           onTap: _openPensionCompass,
           child: Padding(

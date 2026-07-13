@@ -33,7 +33,8 @@ void main() {
     expect(find.byType(AmountInputField), findsNWidgets(3));
   });
 
-  testWidgets('인출 토글 ON 시 ISA·연금 계좌 카드에 월 인출 필드 노출', (tester) async {
+  testWidgets('계좌별 인출 스위치 ON 시 해당 계좌 카드에 월 인출 필드 노출',
+      (tester) async {
     await tester.pumpWidget(
       const ProviderScope(child: MaterialApp(home: InputScreen())),
     );
@@ -42,17 +43,16 @@ void main() {
     // OFF(기본) → 월 인출 필드 없음.
     expect(find.text('월 인출'), findsNothing);
 
-    final switchFinder = find.byType(Switch);
-    await tester.ensureVisible(switchFinder);
-    await tester.tap(switchFinder);
+    // v4: 계좌별 스위치 — 첫 스위치(ISA) ON → 그 계좌에만 노출.
+    final firstSwitch = find.byType(Switch).first;
+    await tester.ensureVisible(firstSwitch);
+    await tester.tap(firstSwitch);
     await tester.pumpAndSettle();
-
-    // ON → 잔액 있는 3계좌(ISA·연금저축·IRP)에 월 인출 노출.
-    expect(find.text('월 인출'), findsNWidgets(3));
+    expect(find.text('월 인출'), findsOneWidget);
 
     // 다시 OFF → 재차 숨김.
-    await tester.ensureVisible(switchFinder);
-    await tester.tap(switchFinder);
+    await tester.ensureVisible(find.byType(Switch).first);
+    await tester.tap(find.byType(Switch).first);
     await tester.pumpAndSettle();
     expect(find.text('월 인출'), findsNothing);
   });
