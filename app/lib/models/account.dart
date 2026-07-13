@@ -15,23 +15,33 @@ class Account {
   /// 월 인출액(원) — 인출 모드 ON 일 때 달력·세금에 반영. 일반계좌는 항상 0.
   final int monthlyWithdrawal;
 
+  /// 계좌별 인출 개시 여부 — true 면 이 계좌의 월 인출액이 달력·세금에 반영된다.
+  final bool isWithdrawing;
+
   const Account({
     required this.id,
     required this.name,
     required this.type,
     this.balance = 0,
     this.monthlyWithdrawal = 0,
+    this.isWithdrawing = false,
   });
 
   bool get isDefault => id.startsWith('default_');
 
-  Account copyWith({String? name, int? balance, int? monthlyWithdrawal}) =>
+  Account copyWith({
+    String? name,
+    int? balance,
+    int? monthlyWithdrawal,
+    bool? isWithdrawing,
+  }) =>
       Account(
         id: id,
         name: name ?? this.name,
         type: type,
         balance: balance ?? this.balance,
         monthlyWithdrawal: monthlyWithdrawal ?? this.monthlyWithdrawal,
+        isWithdrawing: isWithdrawing ?? this.isWithdrawing,
       );
 
   Map<String, dynamic> toJson() => {
@@ -40,6 +50,7 @@ class Account {
         'type': type.name,
         'balance': balance,
         'monthly_withdrawal': monthlyWithdrawal,
+        'is_withdrawing': isWithdrawing,
       };
 
   factory Account.fromJson(Map<String, dynamic> json) => Account(
@@ -49,6 +60,7 @@ class Account {
             AccountType.general,
         balance: (json['balance'] as num?)?.toInt() ?? 0,
         monthlyWithdrawal: (json['monthly_withdrawal'] as num?)?.toInt() ?? 0,
+        isWithdrawing: json['is_withdrawing'] as bool? ?? false,
       );
 
   @override
@@ -59,10 +71,12 @@ class Account {
           name == other.name &&
           type == other.type &&
           balance == other.balance &&
-          monthlyWithdrawal == other.monthlyWithdrawal;
+          monthlyWithdrawal == other.monthlyWithdrawal &&
+          isWithdrawing == other.isWithdrawing;
 
   @override
-  int get hashCode => Object.hash(id, name, type, balance, monthlyWithdrawal);
+  int get hashCode => Object.hash(
+      id, name, type, balance, monthlyWithdrawal, isWithdrawing);
 }
 
 /// 기본 계좌 4개 — 삭제·이름변경 불가. 연금은 연금저축·IRP 로 분리(구 단일

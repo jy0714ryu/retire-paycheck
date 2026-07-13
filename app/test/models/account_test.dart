@@ -49,4 +49,20 @@ void main() {
     final a = Account.fromJson({'id': 'x', 'name': 'y', 'type': 'weird'});
     expect(a.type, AccountType.general);
   });
+
+  test('isWithdrawing json 왕복 + 레거시 폴백 false', () {
+    final a = Account(
+        id: 'default_isa', name: 'ISA', type: AccountType.isa,
+        balance: 10000000, monthlyWithdrawal: 1200000, isWithdrawing: true);
+    expect(Account.fromJson(a.toJson()).isWithdrawing, isTrue);
+    final legacy = Account.fromJson(
+        {'id': 'default_irp', 'name': 'IRP', 'type': 'pension'});
+    expect(legacy.isWithdrawing, isFalse);
+  });
+
+  test('copyWith — isWithdrawing 갱신', () {
+    const base = Account(id: 'default_isa', name: 'ISA', type: AccountType.isa);
+    expect(base.copyWith(isWithdrawing: true).isWithdrawing, isTrue);
+    expect(base.copyWith(balance: 100).isWithdrawing, isFalse); // 미지정 시 유지
+  });
 }
