@@ -12,7 +12,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     await runMigrations(prefs);
-    expect(prefs.getInt('schema_version'), 3);
+    expect(prefs.getInt('schema_version'), 4);
     expect(prefs.getString('interest_items'), isNull);
   });
 
@@ -35,7 +35,7 @@ void main() {
     expect(input['is_withdrawing'], isTrue);
     // 구 필드 보존 (롤백 안전 — Global Constraints).
     expect(input['annual_interest_income'], 1200000);
-    expect(prefs.getInt('schema_version'), 3);
+    expect(prefs.getInt('schema_version'), 4);
   });
 
   test('시나리오3 멱등성 — 2회 실행해도 이자 항목 1개', () async {
@@ -86,7 +86,7 @@ void main() {
     // v3 블록은 version<3 이라 이번에 처음 수행된다. 크래시 없이 통과해야 한다.
     await runMigrations(prefs);
 
-    expect(prefs.getInt('schema_version'), 3);
+    expect(prefs.getInt('schema_version'), 4);
 
     // 이자 항목 중복 생성 없음(여전히 1개 — 재마이그레이션 스킵 확인).
     final items = jsonDecode(prefs.getString('interest_items')!) as List;
@@ -112,7 +112,7 @@ void main() {
     SharedPreferences.setMockInitialValues({'retirement_input': '{broken'});
     final prefs = await SharedPreferences.getInstance();
     await runMigrations(prefs);
-    expect(prefs.getInt('schema_version'), 3);
+    expect(prefs.getInt('schema_version'), 4);
   });
 
   test('v2→v3 — flat 잔액·인출이 기본 계좌 오버라이드로 이관', () async {
@@ -143,7 +143,7 @@ void main() {
     // flat 필드 보존 (v2 롤백 안전).
     final input = jsonDecode(prefs.getString('retirement_input')!) as Map<String, dynamic>;
     expect(input['pension_savings'], 10000000);
-    expect(prefs.getInt('schema_version'), 3);
+    expect(prefs.getInt('schema_version'), 4);
   });
 
   test('v3 멱등 — 재실행해도 오버라이드 불변', () async {
@@ -190,9 +190,43 @@ void main() {
     });
     final prefs = await SharedPreferences.getInstance();
     await runMigrations(prefs);
-    expect(prefs.getInt('schema_version'), 3);
+    expect(prefs.getInt('schema_version'), 4);
     expect(jsonDecode(prefs.getString('interest_items')!), hasLength(1));
     final ov = jsonDecode(prefs.getString('default_account_overrides')!) as Map<String, dynamic>;
     expect(ov['default_pension_savings']['monthly_withdrawal'], 500000);
+  });
+
+  test('v3→v4 — 전역 인출 ON 이 ISA·연금 기본 계좌로 전파', () async {
+    SharedPreferences.setMockInitialValues({
+      'schema_version': 3,
+      'retirement_input': jsonEncode({'is_withdrawing': true, 'current_age': 60}),
+      'default_account_overrides': jsonEncode({
+        'default_pension_savings': {'balance': 10000000, 'monthly_withdrawal': 1200000},
+        'default_isa': {'balance': 5000000, 'monthly_withdrawal': 300000},
+      }),
+    });
+    final prefs = await SharedPreferences.getInstance();
+    await runMigrations(prefs);
+    final ov = jsonDecode(prefs.getString('default_account_overrides')!) as Map<String, dynamic>;
+    expect(ov['default_pension_savings']['is_withdrawing'], isTrue);
+    expect(ov['default_isa']['is_withdrawing'], isTrue);
+    expect(prefs.getInt('schema_version'), 4);
+    // 구 전역 필드 보존.
+    expect((jsonDecode(prefs.getString('retirement_input')!) as Map)['is_withdrawing'], isTrue);
+  });
+
+  test('v3→v4 — 전역 인출 OFF 면 전파 없음', () async {
+    SharedPreferences.setMockInitialValues({
+      'schema_version': 3,
+      'retirement_input': jsonEncode({'is_withdrawing': false, 'current_age': 60}),
+      'default_account_overrides': jsonEncode({
+        'default_pension_savings': {'balance': 10000000, 'monthly_withdrawal': 1200000},
+      }),
+    });
+    final prefs = await SharedPreferences.getInstance();
+    await runMigrations(prefs);
+    final ov = jsonDecode(prefs.getString('default_account_overrides')!) as Map<String, dynamic>;
+    expect(ov['default_pension_savings']['is_withdrawing'], anyOf(isNull, isFalse));
+    expect(prefs.getInt('schema_version'), 4);
   });
 }

@@ -4,9 +4,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/interest_item.dart';
 
-const int _kCurrentSchema = 3;
+const int _kCurrentSchema = 4;
 
-/// v1→v2→v3 스키마 마이그레이션 — schema_version 가드로 각 단계 1회만 실행(스펙 §1.5).
+/// v1→v2→v3→v4 스키마 마이그레이션 — schema_version 가드로 각 단계 1회만 실행(스펙 §1.5).
 ///
 /// 구 필드(annual_interest_income 등 flat 잔액·인출 필드)는 지우지 않는다 —
 /// 구버전 롤백 시 데이터 유실 방지. Holding.accountId 는 fromJson 폴백이
@@ -100,6 +100,83 @@ Future<void> runMigrations(SharedPreferences prefs) async {
         }
         if (changed) {
           await prefs.setString('holdings', jsonEncode(holdings));
+        }
+      }
+    } catch (_) {
+      // 손상 데이터 — 각 스토어의 fromJson 폴백에 맡기고 마이그레이션은 종료.
+    }
+  }
+
+  if (version < 4) {
+    // 구 전역 `retirement_input.is_withdrawing` 을 계좌별 인출 개시 여부로 전파.
+    // 전역 필드 자체는 지우지 않는다(롤백 안전). false 면 계좌별 기본값(false)을
+    // 그대로 두고 아무것도 하지 않는다.
+    // (M4) 오버라이드(default_account_overrides)와 유저 계좌(accounts)는 서로
+    // 독립적인 저장소이므로 v3 패턴을 따라 try/catch 를 분리한다 — 한쪽 예외가
+    // 다른 쪽 전파를 막지 않도록.
+    try {
+      final raw = prefs.getString('retirement_input');
+      if (raw != null && raw.isNotEmpty) {
+        final input = jsonDecode(raw) as Map<String, dynamic>;
+        final globalWithdrawing = input['is_withdrawing'] as bool? ?? false;
+        if (globalWithdrawing) {
+          final overridesRaw = prefs.getString('default_account_overrides');
+          final overrides = overridesRaw != null && overridesRaw.isNotEmpty
+              ? jsonDecode(overridesRaw) as Map<String, dynamic>
+              : <String, dynamic>{};
+
+          // ISA·연금 기본 계좌만 대상 — default_general 은 인출 개념 없음.
+          const targets = [
+            'default_isa',
+            'default_pension_savings',
+            'default_irp',
+          ];
+          var changed = false;
+          for (final id in targets) {
+            final existing = overrides[id];
+            final entry = existing is Map<String, dynamic>
+                ? existing
+                : <String, dynamic>{};
+            // 이미 is_withdrawing 이 기록돼 있으면 유저 수정으로 보고 덮어쓰지
+            // 않는다(v3 패턴 답습 — 멱등 이중 안전망).
+            if (!entry.containsKey('is_withdrawing')) {
+              entry['is_withdrawing'] = true;
+              overrides[id] = entry;
+              changed = true;
+            }
+          }
+          if (changed) {
+            await prefs.setString(
+                'default_account_overrides', jsonEncode(overrides));
+          }
+        }
+      }
+    } catch (_) {
+      // 손상 데이터 — 각 스토어의 fromJson 폴백에 맡기고 다음 단계로 진행.
+    }
+
+    try {
+      final raw = prefs.getString('retirement_input');
+      if (raw != null && raw.isNotEmpty) {
+        final input = jsonDecode(raw) as Map<String, dynamic>;
+        final globalWithdrawing = input['is_withdrawing'] as bool? ?? false;
+        if (globalWithdrawing) {
+          final accountsRaw = prefs.getString('accounts');
+          if (accountsRaw != null && accountsRaw.isNotEmpty) {
+            final accounts = jsonDecode(accountsRaw) as List<dynamic>;
+            var changed = false;
+            for (final a in accounts) {
+              if (a is Map<String, dynamic> &&
+                  (a['type'] == 'isa' || a['type'] == 'pension') &&
+                  a['is_withdrawing'] != true) {
+                a['is_withdrawing'] = true;
+                changed = true;
+              }
+            }
+            if (changed) {
+              await prefs.setString('accounts', jsonEncode(accounts));
+            }
+          }
         }
       }
     } catch (_) {
