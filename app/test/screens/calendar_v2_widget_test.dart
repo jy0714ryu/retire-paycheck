@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:retire_paycheck/models/account.dart';
 import 'package:retire_paycheck/models/dividend_event.dart';
 import 'package:retire_paycheck/models/holding.dart';
 import 'package:retire_paycheck/models/interest_item.dart';
@@ -74,6 +75,9 @@ Future<void> _pump(
   List<DividendEvent> events = const [],
   List<InterestItem> interestItems = const [],
   RetirementInput input = _input,
+  // v4: 연금 타일·절벽 캡션 게이트는 전역 input.isWithdrawing 이 아니라
+  // 계좌별 Account.isWithdrawing (최종 리뷰 C1). null 이면 유저 계좌 없음.
+  List<Account>? accounts,
   DateTime? initialMonth,
 }) async {
   await tester.pumpWidget(
@@ -89,6 +93,14 @@ Future<void> _pump(
         retirementInputProvider.overrideWith(
           (ref) => RetirementInputNotifier()..update((_) => input),
         ),
+        if (accounts != null)
+          accountsProvider.overrideWith((ref) {
+            final n = AccountsNotifier(ref);
+            for (final a in accounts) {
+              n.add(a);
+            }
+            return n;
+          }),
         interestItemsProvider.overrideWith((ref) {
           final n = InterestItemsNotifier();
           for (final i in interestItems) {
@@ -263,29 +275,36 @@ void main() {
     expect(find.text('연금 인출'), findsNothing);
   });
 
-  testWidgets('연금 인출 모드 ON → 달력에 연금 타일 노출', (WidgetTester tester) async {
+  testWidgets(
+      '전역 OFF(신규 유저 기본)라도 계좌별 인출 ON 이면 연금 타일·절벽 캡션 노출(C1 회귀)',
+      (WidgetTester tester) async {
+    // _input.isWithdrawing = false (신규 유저 기본, v4 는 전역 토글 없음).
+    // 그럼에도 pension 계좌 인출 ON + 월 인출 140만(연 1,680만 > 1,500만)이면
+    // 연금 타일과 절벽 경고 캡션이 떠야 한다 — C1 이 고쳐지기 전엔 실패.
     await _pump(
       tester,
       holdings: const [
         Holding(corpCode: 'A', corpName: '일반주', shares: 1000),
       ],
       events: [_eventGeneral],
-      input: const RetirementInput(
-        pensionSavings: 0,
-        irpBalance: 0,
-        isaBalance: 0,
-        currentAge: 60,
-        monthlyPensionWithdrawal: 1000000,
-        monthlyOtherWithdrawal: 0,
-        annualInterestIncome: 0,
-        isWithdrawing: true,
-      ),
+      accounts: const [
+        Account(
+          id: 'wp',
+          name: '연금인출',
+          type: AccountType.pension,
+          monthlyWithdrawal: 1400000,
+          isWithdrawing: true,
+        ),
+      ],
       initialMonth: DateTime(2026, 4),
     );
 
-    final pensionTitle = find.text('연금 인출');
-    await tester.scrollUntilVisible(pensionTitle, 200);
-    expect(pensionTitle, findsOneWidget);
+    // 절벽 캡션(유니크)을 앵커로 스크롤 — 보이면 연금 섹션이 렌더된 것.
+    final cliff = find.text('연 1,500만원 초과 — 16.5% 적용');
+    await tester.scrollUntilVisible(cliff, 200,
+        scrollable: find.byType(Scrollable).first);
+    expect(cliff, findsOneWidget);
+    expect(find.text('연금 인출'), findsWidgets);
   });
 
   testWidgets(

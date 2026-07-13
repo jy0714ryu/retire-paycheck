@@ -229,4 +229,22 @@ void main() {
     expect(ov['default_pension_savings']['is_withdrawing'], anyOf(isNull, isFalse));
     expect(prefs.getInt('schema_version'), 4);
   });
+
+  test('v3→v4 M1 — 잔액·인출 0 인 빈 계좌엔 인출 스위치 안 켜짐', () async {
+    // 스펙 §2.3: 잔액이나 월 인출이 있는 계좌만 전파 대상. 빈 계좌에 유령
+    // "인출 개시" 스위치가 켜지면 안 된다(최종 리뷰 M1).
+    SharedPreferences.setMockInitialValues({
+      'schema_version': 3,
+      'retirement_input': jsonEncode({'is_withdrawing': true, 'current_age': 60}),
+      'default_account_overrides': jsonEncode({
+        'default_pension_savings': {'balance': 10000000, 'monthly_withdrawal': 1200000},
+        'default_irp': {'balance': 0, 'monthly_withdrawal': 0}, // 빈 계좌
+      }),
+    });
+    final prefs = await SharedPreferences.getInstance();
+    await runMigrations(prefs);
+    final ov = jsonDecode(prefs.getString('default_account_overrides')!) as Map<String, dynamic>;
+    expect(ov['default_pension_savings']['is_withdrawing'], isTrue); // 자산 있음 → ON
+    expect(ov['default_irp']['is_withdrawing'], anyOf(isNull, isFalse)); // 빈 계좌 → 스킵
+  });
 }

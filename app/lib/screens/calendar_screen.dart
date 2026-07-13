@@ -157,12 +157,13 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         gauges.financialIncome.ratio > 1.0 || gauges.pensionLowRate.ratio > 1.0;
 
     // 사적연금 연 인출액이 저율 한도(1,500만원)를 초과하면 전액 16.5% 절벽 적용.
-    // v3: flat 필드가 아니라 pension 유형 계좌 monthlyWithdrawal 합산 × 12
-    // (엔진 buildGauges.pensionLowRate 와 동일 SSOT — CashflowEngine.
-    // pensionMonthlyWithdrawal, M2) — isWithdrawing 게이트 유지.
+    // v4: flat 필드도 전역 게이트도 아니라 pension 유형 계좌 monthlyWithdrawal
+    // 합산 × 12 (엔진 buildGauges.pensionLowRate 와 동일 SSOT — CashflowEngine.
+    // pensionMonthlyWithdrawal 이 이미 계좌별 Account.isWithdrawing 게이트를
+    // 적용하므로 전역 게이트는 없음 — 최종 리뷰 C1).
     final monthlyPensionWithdrawal =
         CashflowEngine.pensionMonthlyWithdrawal(effectiveAccounts);
-    final pensionOverLowRate = input.isWithdrawing &&
+    final pensionOverLowRate =
         monthlyPensionWithdrawal * 12 > kPensionLowRateLimit;
 
     // 연간 배당 요약(예측 포함) — 배당이 특정 월에 몰려 비어 보이는 문제 보완.
@@ -206,9 +207,11 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final filteredReinvestGross =
         filteredReinvest.fold<int>(0, (s, l) => s + l.amountGross);
     // 연금 인출 섹션 — 계좌 소속이 아니므로 '전체'/'연금' 필터에서만 노출.
-    // 인출 모드 OFF(스펙 §2·§3)면 필터와 무관하게 타일 자체를 렌더하지 않는다.
+    // v4: 전역 게이트가 아니라 cf.pensionGross(계좌별 게이트 적용된 합산)로
+    // 판정 — 인출 켠 pension·isa 계좌가 하나도 없으면 자동 0/숨김(게이지
+    // 화면과 동일 패턴 — 최종 리뷰 C1).
     final showPension =
-        input.isWithdrawing && (filter == 'all' || filter == 'type:pension');
+        cf.pensionGross > 0 && (filter == 'all' || filter == 'type:pension');
 
     return RefreshIndicator(
       onRefresh: () async {

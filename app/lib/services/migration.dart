@@ -137,6 +137,13 @@ Future<void> runMigrations(SharedPreferences prefs) async {
             final entry = existing is Map<String, dynamic>
                 ? existing
                 : <String, dynamic>{};
+            // 스펙 §2.3: 잔액이나 월 인출이 있는 계좌만 대상 — 오버라이드
+            // 항목 자체가 없거나 잔액·인출이 전부 0 인 빈 기본 계좌엔 유령
+            // "인출 개시" 스위치를 켜지 않는다(최종 리뷰 M1).
+            final balance = (entry['balance'] as num?)?.toInt() ?? 0;
+            final monthlyWithdrawal =
+                (entry['monthly_withdrawal'] as num?)?.toInt() ?? 0;
+            if (balance <= 0 && monthlyWithdrawal <= 0) continue;
             // 이미 is_withdrawing 이 기록돼 있으면 유저 수정으로 보고 덮어쓰지
             // 않는다(v3 패턴 답습 — 멱등 이중 안전망).
             if (!entry.containsKey('is_withdrawing')) {
