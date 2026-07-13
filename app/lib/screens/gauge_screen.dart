@@ -86,9 +86,12 @@ class GaugeScreen extends ConsumerWidget {
       accounts: accounts,
       year: targetYear,
     );
-    // 연금 인출 모드 OFF 면 절벽 게이지는 실제 인출 전 시뮬레이션 값 —
-    // 건보 참고용 배지 패턴을 재사용해 "인출 전" 임을 명시한다.
-    final pensionIsReference = !input.isWithdrawing;
+    // 인출을 켠 pension 계좌가 하나도 없으면 절벽 게이지는 실제 인출 전
+    // 시뮬레이션 값 — 건보 참고용 배지 패턴을 재사용해 "인출 전" 임을 명시한다.
+    // v4: 전역 input.isWithdrawing 이 아니라 계좌별 Account.isWithdrawing 기준
+    // (buildGauges 와 동일 게이트 — Task 4).
+    final pensionIsReference =
+        !accounts.any((a) => a.type == AccountType.pension && a.isWithdrawing);
 
     return ListView(
       padding: const EdgeInsets.all(16),
