@@ -53,7 +53,8 @@ const _inputOver = RetirementInput(
 Future<void> _pumpGauge(
   WidgetTester tester, {
   required RetirementInput input,
-  // v3: 인출 소스는 계좌 합산 — 과세 인출은 pension 계좌 monthlyWithdrawal 로 주입.
+  // v4: 인출 게이트는 계좌별 isWithdrawing — 과세 인출은 인출을 켠 pension
+  // 계좌 monthlyWithdrawal 로 주입.
   int monthlyPensionWithdrawal = 1000000,
 }) async {
   await tester.pumpWidget(
@@ -72,7 +73,8 @@ Future<void> _pumpGauge(
                 id: 'wp',
                 name: '연금인출',
                 type: AccountType.pension,
-                monthlyWithdrawal: monthlyPensionWithdrawal)),
+                monthlyWithdrawal: monthlyPensionWithdrawal,
+                isWithdrawing: true)),
         ),
         dividendEventsProvider.overrideWith((ref) async => DividendFetchResult(
               events: [_eventA],

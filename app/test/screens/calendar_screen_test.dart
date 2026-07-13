@@ -35,7 +35,8 @@ const _input = RetirementInput(
   annualInterestIncome: 0,
 );
 
-// v3: 인출 소스는 계좌 합산 — 과세 월 100만(pension) + 비과세 월 50만(isa).
+// v4: 인출 게이트는 계좌별 isWithdrawing — 과세 월 100만(pension ON) +
+// 비과세 월 50만(isa ON). 인출을 켠 계좌만 엔진에 산입된다.
 List<Override> _withdrawAccountsOverride() => [
       accountsProvider.overrideWith(
         (ref) => AccountsNotifier(ref)
@@ -43,12 +44,14 @@ List<Override> _withdrawAccountsOverride() => [
               id: 'wp',
               name: '연금인출',
               type: AccountType.pension,
-              monthlyWithdrawal: 1000000))
+              monthlyWithdrawal: 1000000,
+              isWithdrawing: true))
           ..add(const Account(
               id: 'wi',
               name: 'ISA인출',
               type: AccountType.isa,
-              monthlyWithdrawal: 500000)),
+              monthlyWithdrawal: 500000,
+              isWithdrawing: true)),
       ),
     ];
 
@@ -208,7 +211,7 @@ void main() {
                     annualInterestIncome: 0,
                   )),
           ),
-          // v3: 절벽 판정 소스는 flat 필드가 아니라 pension 계좌 monthlyWithdrawal
+          // v4: 절벽 판정 소스는 인출을 켠 pension 계좌 monthlyWithdrawal
           // 합산 × 12 (엔진 buildGauges 와 동일 기준) — 계좌 오버라이드로 주입.
           accountsProvider.overrideWith(
             (ref) => AccountsNotifier(ref)
@@ -216,7 +219,8 @@ void main() {
                   id: 'wp',
                   name: '연금인출',
                   type: AccountType.pension,
-                  monthlyWithdrawal: 2000000)), // ×12 = 2,400만 초과
+                  monthlyWithdrawal: 2000000,
+                  isWithdrawing: true)), // ×12 = 2,400만 초과
           ),
           dividendEventsProvider.overrideWith((ref) async => DividendFetchResult(
                 events: [_eventA],

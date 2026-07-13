@@ -27,11 +27,13 @@ final _input = const RetirementInput(
   isWithdrawing: true,
 );
 
-// v3: 인출 소스는 flat 필드가 아니라 계좌 합산 — 과세=pension 계좌, 비과세=isa 계좌.
-// 기존 시나리오(과세 월 100만·비과세 월 50만)를 계좌로 그대로 옮긴다(기대 계산값 불변).
+// v4: 인출 게이트는 계좌별 isWithdrawing — 과세=pension 계좌, 비과세=isa 계좌.
+// 기존 시나리오(과세 월 100만·비과세 월 50만)를 인출 켠 계좌로 옮긴다(기대 계산값 불변).
 final _withdrawAccounts = [
-  kDefaultAccounts[2].copyWith(monthlyWithdrawal: 1000000), // 연금저축 과세 100만
-  kDefaultAccounts[1].copyWith(monthlyWithdrawal: 500000), // ISA 비과세 50만
+  kDefaultAccounts[2].copyWith(
+      monthlyWithdrawal: 1000000, isWithdrawing: true), // 연금저축 과세 100만
+  kDefaultAccounts[1]
+      .copyWith(monthlyWithdrawal: 500000, isWithdrawing: true), // ISA 비과세 50만
 ];
 
 void main() {
@@ -162,8 +164,10 @@ void main() {
         from: DateTime(2026, 1),
         monthCount: 12,
         accounts: [
-          kDefaultAccounts[2].copyWith(monthlyWithdrawal: 1250000),
-          kDefaultAccounts[1].copyWith(monthlyWithdrawal: 500000),
+          kDefaultAccounts[2]
+              .copyWith(monthlyWithdrawal: 1250000, isWithdrawing: true),
+          kDefaultAccounts[1]
+              .copyWith(monthlyWithdrawal: 500000, isWithdrawing: true),
         ],
       );
       // net = 1,250,000×0.945 + 500,000 = 1,181,250 + 500,000
@@ -192,8 +196,10 @@ void main() {
         from: DateTime(2026, 1),
         monthCount: 12,
         accounts: [
-          kDefaultAccounts[2].copyWith(monthlyWithdrawal: 2000000),
-          kDefaultAccounts[1].copyWith(monthlyWithdrawal: 500000),
+          kDefaultAccounts[2]
+              .copyWith(monthlyWithdrawal: 2000000, isWithdrawing: true),
+          kDefaultAccounts[1]
+              .copyWith(monthlyWithdrawal: 500000, isWithdrawing: true),
         ],
       );
       // net = 2,000,000×0.835 + 500,000 = 1,670,000 + 500,000

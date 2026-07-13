@@ -146,13 +146,12 @@ class CashflowEngine {
   }) {
     final eventsByCorp = _indexEvents(events);
 
-    // 연금 인출 모드(운용기 OFF): 인출 입력이 있어도 0 취급 (스펙 §1.3).
-    // 인출 소스는 flat 필드가 아니라 계좌 합산(v3) — 과세=pension 계좌, 비과세=isa 계좌.
-    final withdrawing = input.isWithdrawing;
-    final monthlyTaxable =
-        withdrawing ? pensionMonthlyWithdrawal(accounts) : 0;
-    final monthlyTaxFree =
-        withdrawing ? _monthlyWithdrawalByType(accounts, AccountType.isa) : 0;
+    // 연금 인출 게이트는 전역 input.isWithdrawing 이 아니라 계좌별
+    // Account.isWithdrawing (v4) — 인출을 켠 계좌만 산입한다. 운용기 계좌
+    // (isWithdrawing=false)는 인출액이 있어도 0 취급 (스펙 §1.3).
+    // 과세=pension 계좌 합, 비과세=isa 계좌 합 (둘 다 헬퍼가 게이트 적용).
+    final monthlyTaxable = pensionMonthlyWithdrawal(accounts);
+    final monthlyTaxFree = _monthlyWithdrawalByType(accounts, AccountType.isa);
     final pensionGross = monthlyTaxable + monthlyTaxFree;
     // 사적연금 절벽: 연 인출액(과세분)이 1,500만원을 초과하면 저율(3.3~5.5%)이 아니라
     // 전액 16.5% 분리과세 (분리과세 선택 가정). 초과분이 아니라 전액에 적용.
@@ -269,11 +268,10 @@ class CashflowEngine {
     // 금융소득(세전) = 일반계좌 배당 gross 합 + 이자소득.
     final financialIncomeTotal = generalDividendGross + interestAnnual;
 
-    // 연금 인출 모드 OFF 면 과세대상 인출 0 (절벽 게이지 0).
-    // 과세 인출은 flat 필드가 아니라 pension 계좌 monthlyWithdrawal 합산(v3).
-    final annualPensionTaxable = input.isWithdrawing
-        ? pensionMonthlyWithdrawal(accounts) * 12
-        : 0;
+    // 절벽 게이지 = 인출을 켠 pension 계좌(Account.isWithdrawing) 합산 × 12
+    // (v4). 헬퍼가 계좌별 게이트를 적용하므로 운용기 계좌는 자동 제외 —
+    // 전역 input.isWithdrawing 게이트는 더 이상 읽지 않는다.
+    final annualPensionTaxable = pensionMonthlyWithdrawal(accounts) * 12;
 
     // 건보 산입: 금융소득이 1,000만 초과면 전액, 이하면 0.
     // 사적연금 인출은 건보 소득 미산입 (공적연금만 — 2026-07 현행).
@@ -364,20 +362,22 @@ class CashflowEngine {
     return (isaGross * kDividendWithholding).round();
   }
 
-  /// 지정 유형([type]) 계좌들의 월 인출액([Account.monthlyWithdrawal]) 합산(v3).
-  /// 인출 소스가 RetirementInput flat 필드에서 계좌 합산으로 이관됨 —
-  /// 과세 연금 인출 = pension 계좌 합, 비과세 인출 = isa 계좌 합.
+  /// 지정 유형([type]) 이면서 **인출을 켠**([Account.isWithdrawing]) 계좌들의
+  /// 월 인출액([Account.monthlyWithdrawal]) 합산(v4). 인출 게이트가 전역
+  /// input.isWithdrawing 에서 계좌별 Account.isWithdrawing 으로 이관됨 —
+  /// 과세 연금 인출 = 인출 켠 pension 계좌 합, 비과세 인출 = 인출 켠 isa 계좌 합.
   static int _monthlyWithdrawalByType(List<Account> accounts, AccountType type) {
     var sum = 0;
     for (final a in accounts) {
-      if (a.type == type) sum += a.monthlyWithdrawal;
+      if (a.type == type && a.isWithdrawing) sum += a.monthlyWithdrawal;
     }
     return sum;
   }
 
-  /// 연금(pension) 유형 계좌들의 월 인출액 합산 — 절벽 판정(엔진 내부)과 달력
-  /// 화면(calendar_screen.dart)이 공유하는 단일 SSOT. 한쪽만 바뀌어 절벽
-  /// 캡션과 세율이 어긋나는 것을 방지한다(M2).
+  /// 인출을 켠 연금(pension) 유형 계좌들의 월 인출액 합산 — 절벽 판정(엔진 내부)과
+  /// 달력 화면(calendar_screen.dart)·게이지가 공유하는 단일 SSOT. 절벽은 인출을
+  /// 켠 pension 계좌 합(사람 단위)으로 판정하며, 한쪽만 바뀌어 절벽 캡션과 세율이
+  /// 어긋나는 것을 방지한다(M2).
   static int pensionMonthlyWithdrawal(List<Account> accounts) =>
       _monthlyWithdrawalByType(accounts, AccountType.pension);
 
