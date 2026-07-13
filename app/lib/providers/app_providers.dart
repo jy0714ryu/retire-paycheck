@@ -224,6 +224,7 @@ class AccountsNotifier extends StateNotifier<List<Account>> {
     return base.copyWith(
       balance: (json['balance'] as num?)?.toInt(),
       monthlyWithdrawal: (json['monthly_withdrawal'] as num?)?.toInt(),
+      isWithdrawing: json['is_withdrawing'] as bool?,
     );
   }
 
@@ -244,6 +245,7 @@ class AccountsNotifier extends StateNotifier<List<Account>> {
           entry.key: {
             'balance': entry.value.balance,
             'monthly_withdrawal': entry.value.monthlyWithdrawal,
+            'is_withdrawing': entry.value.isWithdrawing,
           },
       }),
     );
@@ -278,9 +280,10 @@ class AccountsNotifier extends StateNotifier<List<Account>> {
         .reassignAccount(id, defaultAccountIdFor(removed.type));
   }
 
-  /// 기본 계좌(`default_*`)의 잔액·월 인출액 오버라이드 — prefs
+  /// 기본 계좌(`default_*`)의 잔액·월 인출액·인출 개시 여부 오버라이드 — prefs
   /// [_kDefaultAccountOverridesKey] 에 영속하고 [effective] 에 즉시 반영.
-  void updateDefaults(String id, {int? balance, int? monthlyWithdrawal}) {
+  void updateDefaults(String id,
+      {int? balance, int? monthlyWithdrawal, bool? isWithdrawing}) {
     if (!kDefaultAccounts.any((a) => a.id == id)) return;
     final current = _overrides[id] ??
         kDefaultAccounts.firstWhere((a) => a.id == id);
@@ -289,20 +292,23 @@ class AccountsNotifier extends StateNotifier<List<Account>> {
       id: current.copyWith(
         balance: balance,
         monthlyWithdrawal: monthlyWithdrawal,
+        isWithdrawing: isWithdrawing,
       ),
     };
     state = [...state]; // effectiveAccountsProvider 리스너 트리거.
     _persistOverrides();
   }
 
-  /// 유저 계좌의 잔액·월 인출액 갱신.
-  void updateUser(String id, {int? balance, int? monthlyWithdrawal}) {
+  /// 유저 계좌의 잔액·월 인출액·인출 개시 여부 갱신.
+  void updateUser(String id,
+      {int? balance, int? monthlyWithdrawal, bool? isWithdrawing}) {
     final idx = state.indexWhere((a) => a.id == id);
     if (idx < 0) return;
     final next = [...state];
     next[idx] = next[idx].copyWith(
       balance: balance,
       monthlyWithdrawal: monthlyWithdrawal,
+      isWithdrawing: isWithdrawing,
     );
     state = next;
     _persist();
