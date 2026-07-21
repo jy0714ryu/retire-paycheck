@@ -15,7 +15,7 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.quantlog.retire_paycheck"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36  // targetSdk 36 요구
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -35,7 +35,9 @@ android {
     defaultConfig {
         applicationId = "com.quantlog.retirepaycheck"
         minSdk = flutter.minSdkVersion
-        targetSdk = 35  // Android 15 (AdMob WorkManager 호환성)
+        // Play 정책(2026-08-31): API 36 타겟 필수. 구 35 고정 사유였던
+        // AdMob WorkManager 크래시는 work-runtime 명시+proguard keep 으로 수정됨.
+        targetSdk = 36  // Android 16
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
