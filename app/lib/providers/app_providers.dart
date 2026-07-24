@@ -158,13 +158,19 @@ final retirementInputProvider =
   (ref) => RetirementInputNotifier(),
 );
 
-/// 배당 이벤트 목록 — DividendApi.fetchAll (24h 캐시·오프라인 폴백).
+/// 배당 API 클라이언트 provider — 단일 인스턴스를 공유하고, 위젯/유닛 테스트에서
+/// MockClient·시드 캐시를 주입할 오버라이드 지점을 제공한다. (기존에는
+/// [dividendEventsProvider] 안에서 `DividendApi()` 를 직접 생성해 테스트가
+/// 실제 새로고침 경로를 검증할 수 없었다.)
+final dividendApiProvider = Provider<DividendApi>((ref) => DividendApi());
+
+/// 배당 이벤트 목록 — DividendApi.fetchAll (캐시·오프라인 폴백).
 ///
 /// 종목 검색 소스(corp_name dedupe)와 CashflowEngine 입력으로 공용.
 final dividendEventsProvider =
     FutureProvider<DividendFetchResult>((ref) async {
   final force = ref.watch(forceRefreshProvider) > 0;
-  return DividendApi().fetchAll(force: force);
+  return ref.watch(dividendApiProvider).fetchAll(force: force);
 });
 
 /// 당겨서 새로고침 카운터 — 증가시키면 [dividendEventsProvider] 가 신선 캐시를

@@ -216,8 +216,13 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     return RefreshIndicator(
       onRefresh: () async {
         // 당겨서 새로고침 — 신선 캐시를 무시하고 배당 데이터를 강제 갱신한다.
+        // 카운터 증가 → dividendEventsProvider(force=true) 재조회.
         ref.read(forceRefreshProvider.notifier).state++;
-        await ref.read(dividendEventsProvider.future);
+        // 화면이 실제 소비하는 provider(combinedEventsProvider)의 future 를 await 한다.
+        // dividendEventsProvider 만 await 하면 스피너가 멎는 시점에 화면 provider 가
+        // 아직 rebuild 되지 않아 옛 데이터가 남을 수 있다. combined 를 await 하면
+        // 네트워크 재조회 + 화면 데이터 rebuild 완료까지 스피너가 유지된다.
+        await ref.read(combinedEventsProvider(_month.year).future);
       },
       child: ListView(
         padding: const EdgeInsets.all(16),

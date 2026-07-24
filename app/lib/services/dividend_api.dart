@@ -7,7 +7,14 @@ import '../models/dividend_event.dart';
 
 const String _kCacheBodyKey = 'dividends_cache_body';
 const String _kCacheAtKey = 'dividends_cache_at';
-const Duration _kCacheTtl = Duration(hours: 24);
+
+/// 신선 캐시 유효기간. 이 기간 이내면 네트워크를 생략하고 캐시를 반환한다.
+///
+/// 과거 24h 는 서버 배당 갱신(payment_date 추가 등)이 만 하루 동안 앱에 반영되지
+/// 않는 스테일 창을 만들었다(앱 재시작도 디스크 캐시라 무효 — 출시 차단 버그).
+/// 3h 로 축소해 자동 스테일 상한을 좁힌다. 오프라인/네트워크 실패 시 폴백은 이
+/// TTL 을 무시하고 캐시를 계속 사용하므로 오프라인 사용성은 유지된다.
+const Duration _kCacheTtl = Duration(hours: 3);
 
 /// 배당 API 조회 결과 — 캐시 여부와 기준 시각을 함께 담는다.
 class DividendFetchResult {
@@ -28,8 +35,8 @@ class DividendFetchResult {
 /// 항상 무파라미터(페이징 한도만) 전체 목록 조회.
 ///
 /// 성공 시 응답 본문+시각을 SharedPreferences에 캐시하고, 네트워크 실패/오프라인
-/// 시에는 캐시를 TTL 무시하고 반환한다(fromCache=true). 캐시가 24시간 이내면
-/// 네트워크 호출 자체를 생략한다.
+/// 시에는 캐시를 TTL 무시하고 반환한다(fromCache=true). 캐시가 [_kCacheTtl](3시간)
+/// 이내면 네트워크 호출 자체를 생략한다.
 class DividendApi {
   static const String _baseUrl =
       'https://api.quant-view.co.kr/dividends?limit=1000&include_predicted=true';
