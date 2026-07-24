@@ -63,11 +63,11 @@ void main() {
     expect(result.events.first.corpName, '폴레드');
   });
 
-  test('캐시 24h 이내 → 네트워크 미호출(호출 카운터 0)', () async {
+  test('캐시 신선(<TTL, 2h) → 네트워크 미호출(호출 카운터 0)', () async {
     SharedPreferences.setMockInitialValues({
       'dividends_cache_body': _sampleJson,
       'dividends_cache_at': DateTime.now()
-          .subtract(const Duration(hours: 1))
+          .subtract(const Duration(hours: 2))
           .millisecondsSinceEpoch,
     });
     final prefs = await SharedPreferences.getInstance();
@@ -85,6 +85,58 @@ void main() {
     expect(callCount, 0);
     expect(result.fromCache, true);
     expect(result.events.length, 1);
+  });
+
+  test('캐시 만료(>TTL, 4h) + force 없음 → 네트워크 호출(TTL 3h 축소 검증)',
+      () async {
+    // 과거 24h TTL 에선 4h 캐시가 신선으로 취급돼 서버 갱신이 안 왔다.
+    // 3h 로 축소했으므로 4h 캐시는 만료 → 네트워크 재조회해야 한다.
+    SharedPreferences.setMockInitialValues({
+      'dividends_cache_body': '[]',
+      'dividends_cache_at': DateTime.now()
+          .subtract(const Duration(hours: 4))
+          .millisecondsSinceEpoch,
+    });
+    final prefs = await SharedPreferences.getInstance();
+
+    var callCount = 0;
+    final mockClient = MockClient((request) async {
+      callCount++;
+      return http.Response(_sampleJson, 200,
+          headers: {'content-type': 'application/json; charset=utf-8'});
+    });
+
+    final api = DividendApi(client: mockClient, prefs: prefs);
+    final result = await api.fetchAll();
+
+    expect(callCount, 1, reason: '4h(>3h TTL) 캐시는 만료 → 네트워크 호출');
+    expect(result.fromCache, false);
+    expect(result.events.first.corpName, '폴레드');
+  });
+
+  test('force=true → 신선 캐시(1h)여도 네트워크 우선 호출', () async {
+    // 당겨서 새로고침 경로: 신선 캐시가 있어도 무조건 서버 재조회.
+    SharedPreferences.setMockInitialValues({
+      'dividends_cache_body': '[]', // 신선하지만 빈(옛) 캐시.
+      'dividends_cache_at': DateTime.now()
+          .subtract(const Duration(hours: 1))
+          .millisecondsSinceEpoch,
+    });
+    final prefs = await SharedPreferences.getInstance();
+
+    var callCount = 0;
+    final mockClient = MockClient((request) async {
+      callCount++;
+      return http.Response(_sampleJson, 200,
+          headers: {'content-type': 'application/json; charset=utf-8'});
+    });
+
+    final api = DividendApi(client: mockClient, prefs: prefs);
+    final result = await api.fetchAll(force: true);
+
+    expect(callCount, 1, reason: 'force 는 신선 캐시를 무시하고 네트워크 우선');
+    expect(result.fromCache, false);
+    expect(result.events.first.corpName, '폴레드');
   });
 
   test('손상된 신선 캐시(24h 이내) + 정상 네트워크 → 네트워크 결과 반환(24h 마비 방지)',
