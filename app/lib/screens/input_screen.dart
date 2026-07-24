@@ -938,10 +938,10 @@ class _AddAccountDialogState extends State<_AddAccountDialog> {
   }
 }
 
-/// 공통 설정 카드 — 연금나침반 CTA + 현재 나이.
+/// 공통 설정 카드 — 인출 시작 시점 + 연금나침반 CTA + 현재 나이.
 ///
 /// v4: 전역 "연금 인출 중" 토글은 제거됐다. 인출 개시는 각 계좌 카드의
-/// 계좌별 스위치로 갱신되며(스펙 §4), 여기선 나이·CTA 만 남는다.
+/// 계좌별 스위치로 갱신되며(스펙 §4), 여기선 인출 시작 시점·나이·CTA 만 남는다.
 class _CommonSettingsCard extends ConsumerWidget {
   const _CommonSettingsCard();
 
@@ -952,6 +952,8 @@ class _CommonSettingsCard extends ConsumerWidget {
       title: '공통 설정',
       icon: Icons.tune,
       children: [
+        _WithdrawalStartMonthField(start: input.withdrawalStartMonth),
+        const SizedBox(height: 16),
         InkWell(
           onTap: _openPensionCompass,
           child: Padding(
@@ -975,6 +977,183 @@ class _CommonSettingsCard extends ConsumerWidget {
       ],
     );
   }
+}
+
+/// 전역 인출 시작 시점 선택 필드 — 탭하면 연·월 선택 다이얼로그가 열린다.
+/// null 이면 "지금부터", 값이 있으면 "YYYY년 M월부터" 를 노출한다.
+class _WithdrawalStartMonthField extends ConsumerWidget {
+  final DateTime? start;
+
+  const _WithdrawalStartMonthField({required this.start});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final label = start == null
+        ? '지금부터 (설정 안 함)'
+        : '${start!.year}년 ${start!.month}월부터';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('인출 시작 시점', style: AppTextStyles.label),
+        const SizedBox(height: 6),
+        InkWell(
+          key: const ValueKey('withdrawalStartMonthField'),
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => _openPicker(context, ref),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: AppColors.gray50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.gray200),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.event_outlined,
+                    size: 18, color: AppColors.navy),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(label, style: AppTextStyles.bodyLarge),
+                ),
+                const Icon(Icons.expand_more, color: AppColors.gray400),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          '은퇴가 미래라면 인출 시작 월을 정하세요. 그 전 달은 인출 없이 배당만 표시됩니다.',
+          style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
+        ),
+      ],
+    );
+  }
+
+  void _openPicker(BuildContext context, WidgetRef ref) {
+    showDialog<void>(
+      context: context,
+      builder: (_) => _WithdrawalStartMonthDialog(
+        initial: start,
+        onConfirm: (month) => ref
+            .read(retirementInputProvider.notifier)
+            .updateWithdrawalStartMonth(month),
+      ),
+    );
+  }
+}
+
+/// 인출 시작 시점 선택 다이얼로그 — 연/월 드롭다운 + "설정 안 함(지금부터)".
+class _WithdrawalStartMonthDialog extends StatefulWidget {
+  final DateTime? initial;
+  final void Function(DateTime? month) onConfirm;
+
+  const _WithdrawalStartMonthDialog({
+    required this.initial,
+    required this.onConfirm,
+  });
+
+  @override
+  State<_WithdrawalStartMonthDialog> createState() =>
+      _WithdrawalStartMonthDialogState();
+}
+
+class _WithdrawalStartMonthDialogState
+    extends State<_WithdrawalStartMonthDialog> {
+  late int _year;
+  late int _month;
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    _year = widget.initial?.year ?? now.year;
+    _month = widget.initial?.month ?? now.month;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final nowYear = DateTime.now().year;
+    // 과거 저장값도 목록에 포함되도록 시작 연도를 보정(min).
+    final firstYear = _year < nowYear ? _year : nowYear;
+    final years = [for (var y = firstYear; y <= nowYear + 40; y++) y];
+
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: const Text('인출 시작 시점'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '연금·계좌 월 인출을 언제부터 시작할지 선택하세요.',
+            style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<int>(
+                  key: const ValueKey('withdrawalStartYear'),
+                  initialValue: _year,
+                  decoration: _dropdownDecoration('연도'),
+                  items: [
+                    for (final y in years)
+                      DropdownMenuItem(value: y, child: Text('$y년')),
+                  ],
+                  onChanged: (v) => setState(() => _year = v ?? _year),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: DropdownButtonFormField<int>(
+                  key: const ValueKey('withdrawalStartMonth'),
+                  initialValue: _month,
+                  decoration: _dropdownDecoration('월'),
+                  items: [
+                    for (var m = 1; m <= 12; m++)
+                      DropdownMenuItem(value: m, child: Text('$m월')),
+                  ],
+                  onChanged: (v) => setState(() => _month = v ?? _month),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+      actions: [
+        // 설정 안 함(지금부터) — null 로 초기화.
+        TextButton(
+          key: const ValueKey('clearWithdrawalStart'),
+          onPressed: () {
+            widget.onConfirm(null);
+            Navigator.of(context).pop();
+          },
+          child: const Text('설정 안 함 (지금부터)',
+              style: TextStyle(color: AppColors.gray600)),
+        ),
+        TextButton(
+          key: const ValueKey('confirmWithdrawalStart'),
+          onPressed: () {
+            widget.onConfirm(DateTime(_year, _month));
+            Navigator.of(context).pop();
+          },
+          child: const Text('확인'),
+        ),
+      ],
+    );
+  }
+
+  InputDecoration _dropdownDecoration(String label) => InputDecoration(
+        labelText: label,
+        filled: true,
+        fillColor: AppColors.gray50,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.gray200),
+        ),
+      );
 }
 
 /// (선택) 연 이자소득 카드 — InterestItem 리스트 + 항목 추가 시트.
