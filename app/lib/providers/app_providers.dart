@@ -48,9 +48,12 @@ class HoldingsNotifier extends StateNotifier<List<Holding>> {
     );
   }
 
-  /// 종목 추가(동일 corpCode 존재 시 수량 갱신).
+  /// 종목 추가 — 같은 계좌(accountId) 안 같은 종목(corpCode)만 수량 갱신,
+  /// 다른 계좌면 별도 추가. corpCode 단독 판정은 같은 종목을 두 계좌에 나눠
+  /// 담을 때 한쪽을 덮어써 보유분이 사라지고 배당 과세 집계가 왜곡된다.
   void add(Holding holding) {
-    final idx = state.indexWhere((h) => h.corpCode == holding.corpCode);
+    final idx = state.indexWhere((h) =>
+        h.corpCode == holding.corpCode && h.accountId == holding.accountId);
     if (idx >= 0) {
       final next = [...state];
       next[idx] = holding;
@@ -72,10 +75,22 @@ class HoldingsNotifier extends StateNotifier<List<Holding>> {
   /// (`from` 소속 종목을 같은 유형 기본 계좌 `to` 로 재배정).
   void reassignAccount(String from, String to) {
     if (!state.any((h) => h.accountId == from)) return;
-    state = [
+    final remapped = [
       for (final h in state)
         h.accountId == from ? h.copyWith(accountId: to) : h,
     ];
+    // 재배정으로 같은 (corpCode, accountId) 가 둘 이상 생기면 병합(수량 합산).
+    // calendar_screen 의 sharesByAccount(Map)·Dismissible 키가 이 조합의
+    // 유일성을 전제하므로 병합하지 않으면 수량 오표시·키 충돌 크래시가 난다.
+    final merged = <String, Holding>{};
+    for (final h in remapped) {
+      final key = '${h.accountId}|${h.corpCode}';
+      final existing = merged[key];
+      merged[key] = existing == null
+          ? h
+          : existing.copyWith(shares: existing.shares + h.shares);
+    }
+    state = merged.values.toList();
     _persist();
   }
 }

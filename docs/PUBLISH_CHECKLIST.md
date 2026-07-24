@@ -12,7 +12,7 @@
 - [x] AdMob 배선 (`google_mobile_ads ^9.0.0`)
   - 적응 배너: 달력·게이지 화면 하단 (`bottomNavigationBar: SafeArea(child: BannerAdWidget())`)
   - 전면 광고: 달력 월 네비게이션 2회당 1회 (첫 호출 면제 — `AdService` 카운터)
-  - App ID (AndroidManifest): `ca-app-pub-7975666616683761~8296037385`
+  - App ID (AndroidManifest): `ca-app-pub-7975666616683761~8665295367`
     (pension-compass와 동일 AdMob **계정** — 앱 등록·광고단위는 대장님 후속)
   - **debug/기본값 = Google 테스트 광고 ID** — 실 광고는 릴리스 빌드에 `--dart-define` 주입 필요 (아래 대장님 액션 2)
 - [x] 첫 실행 면책 다이얼로그 (SharedPreferences `disclaimer_accepted` 1회 게이트)
