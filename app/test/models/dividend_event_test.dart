@@ -35,4 +35,58 @@ void main() {
     expect(e.perShare, 200);
     expect(e.expectedPaymentMonth, DateTime(2026, 8)); // 7월 기준일 → 8월
   });
+
+  // Task ①: 백엔드가 payment_date 를 채우면 그 연-월을 지급월로 확정한다.
+  // 월배당 12월 배당락 → payment 익년 1월 시나리오(휴리스틱은 4월로 밀림).
+  test('fromJson — payment_date 있으면 그 연-월 우선 (12월 배당락 → 익년 1월)', () {
+    final e = DividendEvent.fromJson({
+      'corp_name': '월배당ETF',
+      'corp_code': 'ETF1',
+      'ex_date': '2026-12-30',
+      'record_date': '2026-12-31',
+      'per_share': 100,
+      'is_confirmed': false,
+      'payment_date': '2027-01-15',
+    });
+    // 휴리스틱이면 12월 기준일 → 2027-04 로 밀리지만 payment_date 가 우선.
+    expect(e.explicitPaymentMonth, DateTime(2027, 1));
+    expect(e.expectedPaymentMonth, DateTime(2027, 1));
+  });
+
+  test('fromJson — payment_date null 이면 기존 휴리스틱 폴백 (12월 → 익년 4월)', () {
+    final e = DividendEvent.fromJson({
+      'corp_name': 'A',
+      'corp_code': '1',
+      'record_date': '2026-12-31',
+      'per_share': 500,
+      'is_confirmed': true,
+      'payment_date': null,
+    });
+    expect(e.explicitPaymentMonth, isNull);
+    expect(e.expectedPaymentMonth, DateTime(2027, 4)); // 휴리스틱 폴백
+  });
+
+  test('fromJson — payment_date 키 자체가 없어도 휴리스틱 폴백 (3월 → 4월)', () {
+    final e = DividendEvent.fromJson({
+      'corp_name': 'B',
+      'corp_code': '2',
+      'record_date': '2026-03-31',
+      'per_share': 300,
+      'is_confirmed': true,
+    });
+    expect(e.explicitPaymentMonth, isNull);
+    expect(e.expectedPaymentMonth, DateTime(2026, 4));
+  });
+
+  test('fromJson — payment_date 는 연-월만 취한다 (일자 무시)', () {
+    final e = DividendEvent.fromJson({
+      'corp_name': 'C',
+      'corp_code': '3',
+      'record_date': '2026-06-30',
+      'per_share': 100,
+      'is_confirmed': true,
+      'payment_date': '2026-08-25',
+    });
+    expect(e.explicitPaymentMonth, DateTime(2026, 8));
+  });
 }

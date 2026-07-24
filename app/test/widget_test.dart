@@ -21,7 +21,7 @@ void main() {
 
       // 하단 3탭 라벨이 모두 보인다
       expect(find.text('입력'), findsWidgets);
-      expect(find.text('달력'), findsWidgets);
+      expect(find.text('월급 달력'), findsWidgets);
       expect(find.text('게이지'), findsWidgets);
 
       // 첫 탭(입력) — 자산 입력 화면 표시(v3: 계좌 카드 구조)

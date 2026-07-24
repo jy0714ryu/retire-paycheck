@@ -164,4 +164,46 @@ void main() {
     expect(h.manualPaymentMonths, [4, 10]);
     expect(h.accountId, 'default_general');
   });
+
+  // Task ②: 인출 시작 시점 필드 — 기본 "지금부터" → 다이얼로그 확인 시 개시월 설정,
+  // 재개시 후 "설정 안 함" → null 복원.
+  testWidgets('인출 시작 시점 — 다이얼로그 확인/해제 → provider 반영',
+      (WidgetTester tester) async {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(home: InputScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 기본값 null → 필드는 "지금부터 (설정 안 함)".
+    expect(container.read(retirementInputProvider).withdrawalStartMonth, isNull);
+    final field = find.byKey(const ValueKey('withdrawalStartMonthField'));
+    await tester.ensureVisible(field);
+    expect(find.text('지금부터 (설정 안 함)'), findsOneWidget);
+
+    // 필드 탭 → 다이얼로그 → 확인(기본 = 현재 연-월).
+    await tester.tap(field);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('confirmWithdrawalStart')));
+    await tester.pumpAndSettle();
+
+    final now = DateTime.now();
+    expect(container.read(retirementInputProvider).withdrawalStartMonth,
+        DateTime(now.year, now.month));
+
+    // 다시 열어 "설정 안 함 (지금부터)" → null 복원.
+    await tester.ensureVisible(field);
+    await tester.tap(field);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('clearWithdrawalStart')));
+    await tester.pumpAndSettle();
+
+    expect(container.read(retirementInputProvider).withdrawalStartMonth, isNull);
+    expect(find.text('지금부터 (설정 안 함)'), findsOneWidget);
+  });
 }

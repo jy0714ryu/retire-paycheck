@@ -104,7 +104,7 @@ class _HomeShellState extends State<HomeShell> {
           NavigationDestination(
             icon: Icon(Icons.calendar_month_outlined),
             selectedIcon: Icon(Icons.calendar_month),
-            label: '달력',
+            label: '월급 달력',
           ),
           NavigationDestination(
             icon: Icon(Icons.speed_outlined),

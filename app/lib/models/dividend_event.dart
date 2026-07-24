@@ -25,8 +25,15 @@ class DividendEvent {
     this.source = 'api',
   });
 
-  /// API 실측 스키마(ex_date/record_date 'YYYY-MM-DD' 문자열, null 허용)를 안전 파싱한다.
+  /// API 실측 스키마(ex_date/record_date/payment_date 'YYYY-MM-DD' 문자열,
+  /// null 허용)를 안전 파싱한다.
+  ///
+  /// payment_date(신설) 가 오면 그 연-월을 [explicitPaymentMonth] 로 확정해
+  /// [expectedPaymentMonth] 휴리스틱(12월→익년4월 등)을 건너뛴다. null 이거나
+  /// 키가 없으면(과거 실측·수동 서버 응답) explicitPaymentMonth 를 만들지 않고
+  /// 기존 record/exDate 역산 휴리스틱을 그대로 폴백한다(회귀 금지).
   factory DividendEvent.fromJson(Map<String, dynamic> json) {
+    final payment = _parseDate(json['payment_date']);
     return DividendEvent(
       corpCode: json['corp_code'] as String? ?? '',
       corpName: json['corp_name'] as String? ?? '',
@@ -34,6 +41,8 @@ class DividendEvent {
       recordDate: _parseDate(json['record_date']),
       perShare: (json['per_share'] as num?)?.toInt() ?? 0,
       isConfirmed: json['is_confirmed'] as bool? ?? false,
+      explicitPaymentMonth:
+          payment == null ? null : DateTime(payment.year, payment.month),
       source: json['source'] as String? ?? 'api',
     );
   }

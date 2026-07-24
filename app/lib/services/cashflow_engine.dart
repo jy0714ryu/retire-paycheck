@@ -159,14 +159,25 @@ class CashflowEngine {
     final pensionRate = annualPensionTaxable > kPensionLowRateLimit
         ? kPensionCliffRate
         : pensionTaxRate(input.currentAge);
-    final pensionNet =
+    final basePensionNet =
         (monthlyTaxable * (1 - pensionRate)).round() + monthlyTaxFree;
 
     final start = DateTime(from.year, from.month, 1);
+    // 전역 인출 개시월 — 이 월 이전 달은 모든 인출(연금·계좌 monthlyWithdrawal)을
+    // 0 으로 게이팅한다. null 이면 게이팅 없음(현재월부터 = 기존 동작). 배당은
+    // 개시월과 무관하게 항상 표시(게이팅 대상 아님).
+    final gateStart = input.withdrawalStartMonth == null
+        ? null
+        : DateTime(input.withdrawalStartMonth!.year,
+            input.withdrawalStartMonth!.month);
     final result = <MonthlyCashflow>[];
 
     for (var i = 0; i < monthCount; i++) {
       final month = DateTime(start.year, start.month + i, 1);
+      // 개시월 이전이면 인출 0, 개시월(포함) 이후면 기존대로.
+      final gated = gateStart != null && month.isBefore(gateStart);
+      final monthPensionGross = gated ? 0 : pensionGross;
+      final monthPensionNet = gated ? 0 : basePensionNet;
 
       final lines = <DividendLine>[];
       final reinvestLines = <DividendLine>[];
@@ -220,8 +231,8 @@ class CashflowEngine {
         month: month,
         dividendGross: dividendGross,
         dividendNet: dividendNet,
-        pensionGross: pensionGross,
-        pensionNet: pensionNet,
+        pensionGross: monthPensionGross,
+        pensionNet: monthPensionNet,
         interestGross: interestGross,
         interestNet: interestNet,
         reinvestGross: reinvestGross,
@@ -268,10 +279,15 @@ class CashflowEngine {
     // 금융소득(세전) = 일반계좌 배당 gross 합 + 이자소득.
     final financialIncomeTotal = generalDividendGross + interestAnnual;
 
-    // 절벽 게이지 = 인출을 켠 pension 계좌(Account.isWithdrawing) 합산 × 12
-    // (v4). 헬퍼가 계좌별 게이트를 적용하므로 운용기 계좌는 자동 제외 —
-    // 전역 input.isWithdrawing 게이트는 더 이상 읽지 않는다.
-    final annualPensionTaxable = pensionMonthlyWithdrawal(accounts) * 12;
+    // 절벽 게이지 = 인출을 켠 pension 계좌(Account.isWithdrawing) 합산 ×
+    // 그 해 실제 인출 개월 수 (v5). 헬퍼가 계좌별 게이트를 적용하므로 운용기
+    // 계좌는 자동 제외 — 전역 input.isWithdrawing 게이트는 읽지 않는다. 전역
+    // 개시월(withdrawalStartMonth) 이 미래면 그 해 인출 0, 개시 연도면 개시월~12월
+    // 개월 수만 산입한다(세금 계산은 개시월 이후 인출 기준). null 이면 12(기존).
+    final withdrawingMonths =
+        _withdrawingMonthsInYear(input.withdrawalStartMonth, year);
+    final annualPensionTaxable =
+        pensionMonthlyWithdrawal(accounts) * withdrawingMonths;
 
     // 건보 산입: 금융소득이 1,000만 초과면 전액, 이하면 0.
     // 사적연금 인출은 건보 소득 미산입 (공적연금만 — 2026-07 현행).
@@ -380,6 +396,16 @@ class CashflowEngine {
   /// 어긋나는 것을 방지한다(M2).
   static int pensionMonthlyWithdrawal(List<Account> accounts) =>
       _monthlyWithdrawalByType(accounts, AccountType.pension);
+
+  /// [year] 의 1~12월 중 인출이 실제 발생하는 개월 수 — 전역 인출 개시월 게이트.
+  /// [start] 가 null 이면 12(연중 전체, 기존 동작). 개시월이 그 해보다 미래면 0,
+  /// 과거 연도면 12, 개시 연도면 개시월~12월 개월 수.
+  static int _withdrawingMonthsInYear(DateTime? start, int year) {
+    if (start == null) return 12;
+    if (start.year > year) return 0;
+    if (start.year < year) return 12;
+    return 12 - start.month + 1;
+  }
 
   /// 종목의 계좌 유형 해석 — 삭제된 계좌 참조는 일반계좌로 폴백(안전망).
   static AccountType _typeOf(Holding h, List<Account> accounts) =>

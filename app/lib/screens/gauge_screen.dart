@@ -86,11 +86,15 @@ class GaugeScreen extends ConsumerWidget {
       accounts: accounts,
       year: targetYear,
     );
-    // 인출을 켠 pension 계좌가 하나도 없으면 절벽 게이지는 실제 인출 전
-    // 시뮬레이션 값 — 건보 참고용 배지 패턴을 재사용해 "인출 전" 임을 명시한다.
-    // v4: 전역 input.isWithdrawing 이 아니라 계좌별 Account.isWithdrawing 기준
-    // (buildGauges 와 동일 게이트 — Task 4).
-    final pensionIsReference =
+    // 인출을 켠 pension 계좌가 하나도 없거나, 전역 인출 개시월이 미래면(오늘 <
+    // 개시월) 절벽 게이지는 실제 인출 전 시뮬레이션 값 — 건보 참고용 배지 패턴을
+    // 재사용해 "인출 시작 전" 임을 명시한다. v4: 계좌별 Account.isWithdrawing 게이트
+    // (buildGauges 와 동일), v5: 전역 withdrawalStartMonth 게이트를 추가로 반영.
+    final start = input.withdrawalStartMonth;
+    final now = DateTime.now();
+    final globalStartInFuture = start != null &&
+        DateTime(now.year, now.month).isBefore(DateTime(start.year, start.month));
+    final pensionIsReference = globalStartInFuture ||
         !accounts.any((a) => a.type == AccountType.pension && a.isWithdrawing);
 
     return ListView(

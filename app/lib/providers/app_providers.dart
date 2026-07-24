@@ -144,6 +144,13 @@ class RetirementInputNotifier extends StateNotifier<RetirementInput> {
   void updateCurrentAge(int v) => update((s) => s.copyWith(currentAge: v));
   void updateAnnualInterestIncome(int v) =>
       update((s) => s.copyWith(annualInterestIncome: v));
+
+  /// 전역 인출 개시 연-월 설정. null 이면 "설정 안 함(지금부터)" — 즉시 인출.
+  void updateWithdrawalStartMonth(DateTime? month) => update(
+        (s) => month == null
+            ? s.copyWith(clearWithdrawalStartMonth: true)
+            : s.copyWith(withdrawalStartMonth: month),
+      );
 }
 
 final retirementInputProvider =
