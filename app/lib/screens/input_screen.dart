@@ -173,6 +173,8 @@ class _AccountCard extends ConsumerWidget {
     final w = account.monthlyWithdrawal;
     if (w <= 0) return null;
     final totalMonths = account.balance ~/ w;
+    // 잔액 0(미입력)인데 인출만 켜면 "약 0개월분" 이 뜬다 → 1개월 미만은 숨김.
+    if (totalMonths < 1) return null;
     if (totalMonths < 12) return '이 속도면 약 $totalMonths개월분';
     final years = totalMonths ~/ 12;
     final months = totalMonths % 12;
@@ -396,7 +398,7 @@ class _AccountCard extends ConsumerWidget {
   }
 }
 
-/// 계좌 카드 안의 종목 행 — 수량 표시 + 스와이프(→←) 삭제.
+/// 계좌 카드 안의 종목 행 — 수량 표시 + 휴지통 버튼(탭 삭제) + 스와이프(→←) 삭제.
 class _HoldingRow extends ConsumerWidget {
   final int index;
   final Holding holding;
@@ -405,8 +407,11 @@ class _HoldingRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Dismissible 키는 (accountId, corpCode) 복합 — 같은 종목을 두 계좌에 나눠
+    // 보유하면 corpCode 단독 키가 같아져 "Duplicate keys" 크래시가 난다.
+    // reassignAccount 병합이 계좌 내 corpCode 유일성을 보장하므로 이 조합은 유일.
     return Dismissible(
-      key: ValueKey('holding_${holding.corpCode}'),
+      key: ValueKey('holding_${holding.accountId}_${holding.corpCode}'),
       direction: DismissDirection.endToStart,
       onDismissed: (_) =>
           ref.read(holdingsProvider.notifier).removeAt(index),
@@ -446,6 +451,19 @@ class _HoldingRow extends ConsumerWidget {
               ),
             ),
             Text('${holding.shares}주', style: AppTextStyles.captionBold),
+            const SizedBox(width: 4),
+            // 명시적 삭제 버튼 — 스와이프를 모르는 사용자를 위한 탭 삭제 경로.
+            IconButton(
+              key: ValueKey(
+                  'deleteHolding_${holding.accountId}_${holding.corpCode}'),
+              icon: const Icon(Icons.delete_outline,
+                  color: AppColors.error, size: 20),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              tooltip: '삭제',
+              onPressed: () =>
+                  ref.read(holdingsProvider.notifier).removeAt(index),
+            ),
           ],
         ),
       ),

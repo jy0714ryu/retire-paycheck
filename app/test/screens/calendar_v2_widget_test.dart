@@ -266,13 +266,13 @@ void main() {
       initialMonth: DateTime(2026, 4),
     );
 
-    // 전체(all) 필터에서도 "연금 인출" 섹션 자체가 렌더되지 않아야 한다.
-    expect(find.text('연금 인출'), findsNothing);
+    // 전체(all) 필터에서도 "계좌 인출" 섹션 자체가 렌더되지 않아야 한다.
+    expect(find.text('계좌 인출'), findsNothing);
 
     // '연금' 칩으로 바꿔도(과거엔 이 필터에서 무조건 노출) 여전히 미노출.
     await tester.tap(find.widgetWithText(ChoiceChip, '연금'));
     await tester.pumpAndSettle();
-    expect(find.text('연금 인출'), findsNothing);
+    expect(find.text('계좌 인출'), findsNothing);
   });
 
   testWidgets(
@@ -304,7 +304,7 @@ void main() {
     await tester.scrollUntilVisible(cliff, 200,
         scrollable: find.byType(Scrollable).first);
     expect(cliff, findsOneWidget);
-    expect(find.text('연금 인출'), findsWidgets);
+    expect(find.text('계좌 인출'), findsWidgets);
   });
 
   testWidgets(

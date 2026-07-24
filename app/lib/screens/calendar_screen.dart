@@ -273,7 +273,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           ],
           if (showPension) ...[
             const SizedBox(height: 16),
-            Text('연금 인출', style: AppTextStyles.h4),
+            Text('계좌 인출', style: AppTextStyles.h4),
             const SizedBox(height: 8),
             _PensionTile(
               pensionNet: cf.pensionNet,
@@ -600,7 +600,7 @@ class _PensionTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('연금 인출', style: AppTextStyles.bodyLarge),
+                Text('계좌 인출', style: AppTextStyles.bodyLarge),
                 const SizedBox(height: 2),
                 Text(
                   '세전 ${CalendarScreenFmt.man(pensionGross)}만원',
