@@ -398,11 +398,11 @@ class _MainCard extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             interestGross > 0
-                ? '세전 ${CalendarScreenFmt.man(gross)}만원 · '
+                ? '세전 ${CalendarScreenFmt.man(gross)}만원 = '
                     '배당 ${CalendarScreenFmt.man(dividendGross)}만 + '
                     '연금 ${CalendarScreenFmt.man(pensionGross)}만 + '
                     '이자 ${CalendarScreenFmt.man(interestGross)}만'
-                : '세전 ${CalendarScreenFmt.man(gross)}만원 · '
+                : '세전 ${CalendarScreenFmt.man(gross)}만원 = '
                     '배당 ${CalendarScreenFmt.man(dividendGross)}만 + '
                     '연금 ${CalendarScreenFmt.man(pensionGross)}만',
             style: const TextStyle(

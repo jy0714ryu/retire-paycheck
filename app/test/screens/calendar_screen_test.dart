@@ -104,7 +104,7 @@ void main() {
     expect(find.text('186.8만원'), findsOneWidget);
     // 서브: 세전 200만원 = 세전 배당 50만 + 세전 연금 150만 (세전끼리 합 일치).
     expect(
-      find.textContaining('세전 200만원 · 배당 50만 + 연금 150만'),
+      find.textContaining('세전 200만원 = 배당 50만 + 연금 150만'),
       findsOneWidget,
     );
 
