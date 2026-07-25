@@ -1,7 +1,7 @@
 // 화면3 v2 바인딩 — buildGauges accounts/interestItems 전달 + ISA 절세효과 카드
 // + 연금 모드 OFF 참고용 캡션.
 // 시드: ISA 계좌 B사 1,000주 · per_share 500 · 2026-04 지급 (ISA 배당 gross 50만).
-// ISA 절세효과 = 50만 × 15.4% = 77,000원 → "7만원"(정수 절사).
+// ISA 절세효과 = 50만 × 15.4% = 77,000원 → "7.7만원"(만원 소수 한 자리 반올림).
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -120,8 +120,8 @@ void main() {
       events: [_eventIsa],
     );
 
-    // ISA 배당 gross 50만 × 15.4% = 77,000원 → 만원 단위 절사 "7만원".
-    expect(find.textContaining('ISA 덕분에 연 7만원 절세 중'), findsOneWidget);
+    // ISA 배당 gross 50만 × 15.4% = 77,000원 → 만원 소수 한 자리 "7.7만원".
+    expect(find.textContaining('ISA 덕분에 연 7.7만원 절세 중'), findsOneWidget);
     expect(find.text('(일반계좌 대비 · 비과세 한도 내 기준)'), findsOneWidget);
   });
 
