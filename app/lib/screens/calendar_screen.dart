@@ -13,6 +13,7 @@ import '../services/cashflow_engine.dart';
 import '../services/tax_constants.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
+import '../utils/currency_format.dart';
 import '../widgets/banner_ad_widget.dart';
 
 /// 달력 상세·차트 필터(화면 로컬). 값: 'all' | 'type:general|isa|pension' |
@@ -994,6 +995,5 @@ class _ErrorView extends StatelessWidget {
 /// 만원 단위 포맷 헬퍼(위젯 공용).
 class CalendarScreenFmt {
   CalendarScreenFmt._();
-  static final NumberFormat _fmt = NumberFormat('#,###');
-  static String man(int won) => _fmt.format(won ~/ 10000);
+  static String man(int won) => CurrencyFormat.man(won);
 }

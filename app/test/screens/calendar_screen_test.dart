@@ -1,7 +1,7 @@
 // 화면2 은퇴 월급 달력 — 월 네비게이션 + 세후 메인 카드 합계 텍스트 검증.
 // Task 4 시나리오 재사용: A사 1,000주 / per_share 500 / 2025-12 기준일 → 2026-04 지급.
 // 나이 60(세율 5.5%), 과세 인출 월 100만, 비과세 월 50만.
-// 기대: 4월 실수령(net) = 1,868,000원 → 186만원.
+// 기대: 4월 실수령(net) = 1,868,000원 → 186.8만원(만원 단위 소수 한 자리 표시).
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -86,7 +86,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  testWidgets('4월로 네비게이션 → 세후 메인 카드 실수령 186만원 표시',
+  testWidgets('4월로 네비게이션 → 세후 메인 카드 실수령 186.8만원 표시',
       (WidgetTester tester) async {
     await _pumpCalendar(tester, initialMonth: DateTime(2026, 7));
 
@@ -100,8 +100,8 @@ void main() {
     }
     expect(find.text('2026년 4월'), findsOneWidget);
 
-    // 메인 카드: 실수령(net) 1,868,000 → 186만원.
-    expect(find.text('186만원'), findsOneWidget);
+    // 메인 카드: 실수령(net) 1,868,000 → 186.8만원.
+    expect(find.text('186.8만원'), findsOneWidget);
     // 서브: 세전 200만원 = 세전 배당 50만 + 세전 연금 150만 (세전끼리 합 일치).
     expect(
       find.textContaining('세전 200만원 · 배당 50만 + 연금 150만'),
@@ -125,8 +125,8 @@ void main() {
     final empty = find.text('이 달 예정 배당 없음');
     await tester.scrollUntilVisible(empty, 200);
     expect(empty, findsOneWidget);
-    // 배당 없는 달 실수령 = 연금 net 144만원.
-    expect(find.text('144만원'), findsWidgets);
+    // 배당 없는 달 실수령 = 연금 net 945,000(과세)+500,000(ISA비과세) = 1,445,000 → 144.5만원.
+    expect(find.text('144.5만원'), findsWidgets);
   });
 
   testWidgets('하단 고지 텍스트 노출(단정 표기 금지)', (WidgetTester tester) async {
@@ -142,9 +142,9 @@ void main() {
     // 3월(배당 없는 달)이라도 연간 요약은 2026-04 지급분(50만)을 집계.
     await _pumpCalendar(tester, initialMonth: DateTime(2026, 3));
     expect(find.textContaining('올해 예상 배당'), findsOneWidget);
-    // gross 50만 → 세후 42.3만. 만원 반올림 표기.
+    // gross 50만 → 세후 500,000×(1-0.154)=423,000 → 42.3만. 만원 소수 한 자리 반올림 표기.
     expect(find.textContaining('총 50만원'), findsOneWidget);
-    expect(find.textContaining('세후 42만원'), findsOneWidget);
+    expect(find.textContaining('세후 42.3만원'), findsOneWidget);
     expect(find.textContaining('확정 1건'), findsOneWidget);
     expect(find.textContaining('예측 0건'), findsOneWidget);
   });

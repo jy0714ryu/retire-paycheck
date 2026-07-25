@@ -1,7 +1,7 @@
 // 화면2 v2 바인딩 — 최종 합산 고정·계좌 필터 칩·재투자 아코디언.
 // 시드: 일반계좌 A사 1,000주 + ISA B사 1,000주, 둘 다 per_share 500 · 2026-04 지급.
-// 4월 실수령(all) = 일반 net 423,000 + ISA net 500,000 = 923,000 → 92만원.
-// ISA 필터로 바꿔도 상단 합산 카드(92만원)는 불변 + 상세에서 일반주(A사) 사라짐.
+// 4월 실수령(all) = 일반 net 423,000 + ISA net 500,000 = 923,000 → 92.3만원.
+// ISA 필터로 바꿔도 상단 합산 카드(92.3만원)는 불변 + 상세에서 일반주(A사) 사라짐.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -144,8 +144,8 @@ void main() {
       initialMonth: DateTime(2026, 4),
     );
 
-    // 전체(all) 상단 합산 카드 = 92만원(일반 42.3만 + ISA 50만).
-    expect(find.text('92만원'), findsOneWidget);
+    // 전체(all) 상단 합산 카드 = 92.3만원(일반 42.3만 + ISA 50만).
+    expect(find.text('92.3만원'), findsOneWidget);
     // 상세: 전체 모드에선 일반주·ISA주 둘 다 노출(스크롤로 뷰포트에 올림).
     final general = find.text('일반주');
     await tester.scrollUntilVisible(general, 200);
@@ -158,8 +158,8 @@ void main() {
     await tester.tap(find.widgetWithText(ChoiceChip, 'ISA'));
     await tester.pumpAndSettle();
 
-    // 상단 합산 카드 불변(92만원 그대로 — 필터와 무관).
-    expect(find.text('92만원'), findsOneWidget);
+    // 상단 합산 카드 불변(92.3만원 그대로 — 필터와 무관).
+    expect(find.text('92.3만원'), findsOneWidget);
 
     // 상세로 스크롤 → ISA주만 남고 일반주는 사라짐.
     final isaLine = find.text('ISA주');
@@ -169,7 +169,7 @@ void main() {
   });
 
   testWidgets(
-      '배당 라인 타일 — 일반계좌는 세후 42만원, ISA는 비과세 50만원 그대로 표시(C1 회귀 가드)',
+      '배당 라인 타일 — 일반계좌는 세후 42.3만원, ISA는 비과세 50만원 그대로 표시(C1 회귀 가드)',
       (WidgetTester tester) async {
     await _pump(
       tester,
@@ -186,13 +186,13 @@ void main() {
       initialMonth: DateTime(2026, 4),
     );
 
-    // 일반계좌 라인: gross 500,000 × (1-0.154) = 423,000 → 세후 "42만원".
+    // 일반계좌 라인: gross 500,000 × (1-0.154) = 423,000 → 세후 "42.3만원".
     final generalLine = find.text('일반주');
     await tester.scrollUntilVisible(generalLine, 200);
-    expect(find.text('42만원'), findsOneWidget);
+    expect(find.text('42.3만원'), findsOneWidget);
 
     // ISA 라인: 비과세 — line.amountNet(=gross 그대로) 을 재계산 없이 표시 →
-    // "50만원"(라인이 gross×0.846 으로 재계산하면 "42만원"이 되어 실패한다).
+    // "50만원"(라인이 gross×0.846 으로 재계산하면 "42.3만원"이 되어 실패한다).
     final isaLine = find.text('ISA주');
     await tester.scrollUntilVisible(isaLine, 200);
     expect(find.text('50만원'), findsOneWidget);

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
 import '../models/account.dart';
 import '../models/dividend_event.dart';
@@ -11,6 +10,7 @@ import '../providers/app_providers.dart';
 import '../services/cashflow_engine.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
+import '../utils/currency_format.dart';
 import '../widgets/banner_ad_widget.dart';
 
 /// 화면3 — 세금 임계치 게이지 3종.
@@ -268,10 +268,8 @@ class _GaugeCard extends StatelessWidget {
     return AppColors.success;
   }
 
-  static final NumberFormat _fmt = NumberFormat('#,###');
-
-  /// 원 → 만원(정수 절사) + 천단위 콤마.
-  static String _man(int won) => _fmt.format(won ~/ 10000);
+  /// 원 → 만원(소수 한 자리, 반올림) + 천단위 콤마.
+  static String _man(int won) => CurrencyFormat.man(won);
 
   /// 비율 → 퍼센트 문자열. 정수면 정수, 아니면 소수 1자리.
   static String _pct(double ratio) {
