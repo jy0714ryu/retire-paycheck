@@ -519,9 +519,11 @@ class _AddHoldingSheetState extends ConsumerState<_AddHoldingSheet> {
   }
 
   List<DividendEvent> _filtered(List<DividendEvent> candidates) {
-    if (_query.isEmpty) return candidates.take(30).toList();
+    // 대소문자 무시 매칭 — 'ace' 로 'ACE 미국나스닥100' 검색 가능해야 한다.
+    final q = _query.trim().toLowerCase();
+    if (q.isEmpty) return candidates.take(30).toList();
     return candidates
-        .where((e) => e.corpName.contains(_query))
+        .where((e) => e.corpName.toLowerCase().contains(q))
         .take(30)
         .toList();
   }
@@ -563,13 +565,15 @@ class _AddHoldingSheetState extends ConsumerState<_AddHoldingSheet> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    // 시스템 내비게이션 바(제스처/3버튼) 영역 — 미반영 시 하단 '직접 입력' 링크가 겹친다.
+    final navBarInset = MediaQuery.of(context).viewPadding.bottom;
     // 내용이 길어질 수 있어(직접 입력 폼) SingleChildScrollView 로 스크롤 허용.
     return SingleChildScrollView(
       padding: EdgeInsets.only(
         left: 20,
         right: 20,
         top: 20,
-        bottom: 20 + bottomInset,
+        bottom: 20 + bottomInset + navBarInset,
       ),
       child: _manualMode ? _buildManualForm() : _buildSearchForm(),
     );
@@ -1308,12 +1312,13 @@ class _AddInterestItemSheetState extends State<_AddInterestItemSheet> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final navBarInset = MediaQuery.of(context).viewPadding.bottom;
     return Padding(
       padding: EdgeInsets.only(
         left: 20,
         right: 20,
         top: 20,
-        bottom: 20 + bottomInset,
+        bottom: 20 + bottomInset + navBarInset,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
