@@ -38,8 +38,10 @@ class DividendFetchResult {
 /// 시에는 캐시를 TTL 무시하고 반환한다(fromCache=true). 캐시가 [_kCacheTtl](3시간)
 /// 이내면 네트워크 호출 자체를 생략한다.
 class DividendApi {
+  // limit=8000: 국내 ETF 전수 수집(2026-07-30, 951개 ETF·5천여 이벤트) 반영.
+  // 서버는 현재 limit 을 무시하고 15개월 범위 전량 반환하나, clamp 도입 대비 상향.
   static const String _baseUrl =
-      'https://api.quant-view.co.kr/dividends?limit=1000&include_predicted=true';
+      'https://api.quant-view.co.kr/dividends?limit=8000&include_predicted=true';
 
   final http.Client _client;
   SharedPreferences? _prefs;
