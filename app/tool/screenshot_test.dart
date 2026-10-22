@@ -2,6 +2,7 @@
 // 디자인 확인용 화면 렌더 (회귀 테스트 아님 — test/ 밖, 수동 실행):
 //   flutter test tool/screenshot_test.dart --update-goldens
 // 실제 내장 글꼴과 Material 아이콘을 불러와 1080×2340 PNG 로 tool/goldens/ 에 저장한다.
+// 스토어용(세로 ≤ 가로×2): --dart-define=SHOT_H=1920 → tool/goldens/store/
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -69,9 +70,12 @@ List<Override> _overrides() => [
     ];
 
 void _phone(WidgetTester t) {
-  t.view.physicalSize = const Size(1080, 2340);
+  t.view.physicalSize = const Size(1080, _shotH);
   t.view.devicePixelRatio = 2.625;
 }
+
+const double _shotH = int.fromEnvironment('SHOT_H', defaultValue: 2340) + 0.0;
+const String _dir = _shotH == 2340 ? 'goldens/' : 'goldens/store/';
 
 void main() {
   setUpAll(_loadFonts);
@@ -82,16 +86,16 @@ void main() {
         {kDisclaimerAcceptedKey: true, kQuickStartDoneKey: true});
     await t.pumpWidget(ProviderScope(overrides: _overrides(), child: const RetirePaycheckApp()));
     await t.pumpAndSettle();
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/1_this_month.png'));
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('${_dir}1_this_month.png'));
     await t.tap(find.byIcon(Icons.timeline_outlined));
     await t.pumpAndSettle();
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/2_plan.png'));
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('${_dir}2_plan.png'));
     await t.tap(find.byIcon(Icons.notifications_none_outlined));
     await t.pumpAndSettle();
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/3_alerts.png'));
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('${_dir}3_alerts.png'));
     await t.tap(find.byIcon(Icons.account_balance_wallet_outlined));
     await t.pumpAndSettle();
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/4_assets.png'));
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('${_dir}4_assets.png'));
   });
 
   testWidgets('quick start', (t) async {
@@ -100,6 +104,6 @@ void main() {
     await t.pumpWidget(const ProviderScope(child: RetirePaycheckApp()));
     await t.pumpAndSettle();
     expect(find.byType(QuickStartScreen), findsOneWidget);
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/0_quick_start.png'));
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('${_dir}0_quick_start.png'));
   });
 }
