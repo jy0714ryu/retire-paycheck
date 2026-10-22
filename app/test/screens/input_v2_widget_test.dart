@@ -15,8 +15,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  testWidgets('계좌별 인출 스위치 OFF 시 월 인출 필드 숨김, ON 시 다시 노출',
-      (tester) async {
+  testWidgets('계좌별 인출 스위치 OFF 시 월 인출 필드 숨김, ON 시 다시 노출', (tester) async {
     await tester.pumpWidget(
       const ProviderScope(child: MaterialApp(home: InputScreen())),
     );
@@ -45,7 +44,8 @@ void main() {
     var tapped = 0;
     await tester.pumpWidget(
       ProviderScope(
-          child: MaterialApp(home: InputScreen(onGoToPlan: () => tapped++))),
+        child: MaterialApp(home: InputScreen(onGoToPlan: () => tapped++)),
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -80,7 +80,9 @@ void main() {
     await tester.tap(addBtn);
     await tester.pumpAndSettle();
     await tester.enterText(
-        find.byKey(const ValueKey('newAccountName')), '연금저축B');
+      find.byKey(const ValueKey('newAccountName')),
+      '연금저축B',
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('confirmAddAccount')));
     await tester.pumpAndSettle();
@@ -95,9 +97,9 @@ void main() {
   testWidgets('유저 계좌 카드 삭제 확인 다이얼로그 문구', (tester) async {
     final container = ProviderContainer();
     addTearDown(container.dispose);
-    container.read(accountsProvider.notifier).add(
-          const Account(id: 'user_1', name: '테스트계좌', type: AccountType.isa),
-        );
+    container
+        .read(accountsProvider.notifier)
+        .add(const Account(id: 'user_1', name: '테스트계좌', type: AccountType.isa));
 
     await tester.pumpWidget(
       UncontrolledProviderScope(
@@ -140,10 +142,14 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.enterText(
-        find.byKey(const ValueKey('interestItemName')), '정기예금');
+      find.byKey(const ValueKey('interestItemName')),
+      '정기예금',
+    );
     // 만원 단위 입력(M3 — 다른 금액 필드와 통일): 120 → 1,200,000원.
     await tester.enterText(
-        find.byKey(const ValueKey('interestItemAmount')), '120');
+      find.byKey(const ValueKey('interestItemAmount')),
+      '120',
+    );
     await tester.pumpAndSettle();
 
     // 기본 지급방식 = 월 균등 → 바로 제출 가능.
@@ -185,10 +191,14 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.enterText(
-        find.byKey(const ValueKey('interestItemName')), '예금');
+      find.byKey(const ValueKey('interestItemName')),
+      '예금',
+    );
     // 만원 단위 입력(M3): 60 → 600,000원.
     await tester.enterText(
-        find.byKey(const ValueKey('interestItemAmount')), '60');
+      find.byKey(const ValueKey('interestItemAmount')),
+      '60',
+    );
     final specificMonthToggle = find.text('특정월');
     await tester.ensureVisible(specificMonthToggle);
     await tester.tap(specificMonthToggle);
@@ -196,7 +206,8 @@ void main() {
 
     // 특정월 미선택 상태 → 제출 버튼 비활성.
     final submitBtn = tester.widget<ElevatedButton>(
-        find.byKey(const ValueKey('interestItemSubmit')));
+      find.byKey(const ValueKey('interestItemSubmit')),
+    );
     expect(submitBtn.onPressed, isNull);
 
     final month6Chip = find.byKey(const ValueKey('interestMonth_6'));

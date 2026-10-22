@@ -47,9 +47,9 @@ class DividendApi {
   SharedPreferences? _prefs;
 
   DividendApi({http.Client? client, SharedPreferences? prefs})
-      : _client = client ?? http.Client(),
-        // ignore: prefer_initializing_formals
-        _prefs = prefs;
+    : _client = client ?? http.Client(),
+      // ignore: prefer_initializing_formals
+      _prefs = prefs;
 
   Future<SharedPreferences> _prefsInstance() async {
     return _prefs ??= await SharedPreferences.getInstance();

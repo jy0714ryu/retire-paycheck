@@ -49,16 +49,16 @@ class Holding {
   }
 
   Map<String, dynamic> toJson() => {
-        'corp_code': corpCode,
-        'corp_name': corpName,
-        'shares': shares,
-        // 하위호환: 수동 종목만 새 키를 기록(API 종목 저장분은 키 없이 유지).
-        if (manualPerShareAnnual != null)
-          'manual_per_share_annual': manualPerShareAnnual,
-        if (manualPaymentMonths != null)
-          'manual_payment_months': manualPaymentMonths,
-        'account_id': accountId,
-      };
+    'corp_code': corpCode,
+    'corp_name': corpName,
+    'shares': shares,
+    // 하위호환: 수동 종목만 새 키를 기록(API 종목 저장분은 키 없이 유지).
+    if (manualPerShareAnnual != null)
+      'manual_per_share_annual': manualPerShareAnnual,
+    if (manualPaymentMonths != null)
+      'manual_payment_months': manualPaymentMonths,
+    'account_id': accountId,
+  };
 
   factory Holding.fromJson(Map<String, dynamic> json) {
     final months = json['manual_payment_months'];
@@ -88,15 +88,13 @@ class Holding {
 
   @override
   int get hashCode => Object.hash(
-        corpCode,
-        corpName,
-        shares,
-        manualPerShareAnnual,
-        manualPaymentMonths == null
-            ? null
-            : Object.hashAll(manualPaymentMonths!),
-        accountId,
-      );
+    corpCode,
+    corpName,
+    shares,
+    manualPerShareAnnual,
+    manualPaymentMonths == null ? null : Object.hashAll(manualPaymentMonths!),
+    accountId,
+  );
 
   static bool _listEq(List<int>? a, List<int>? b) {
     if (identical(a, b)) return true;

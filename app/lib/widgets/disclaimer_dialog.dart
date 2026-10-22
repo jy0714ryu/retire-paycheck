@@ -11,9 +11,7 @@ class DisclaimerDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -38,10 +36,7 @@ class DisclaimerDialog extends StatelessWidget {
             // 제목
             const Text(
               '이용 전 확인사항',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-              ),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 16),
 
@@ -62,7 +57,8 @@ class DisclaimerDialog extends StatelessWidget {
                   SizedBox(height: 12),
                   _DisclaimerItem(
                     icon: Icons.calendar_month,
-                    text: '배당 지급월은 예상이며 회사별로 다를 수 있습니다. 실제 지급액·시기와 차이가 날 수 있습니다.',
+                    text:
+                        '배당 지급월은 예상이며 회사별로 다를 수 있습니다. 실제 지급액·시기와 차이가 날 수 있습니다.',
                   ),
                   SizedBox(height: 12),
                   _DisclaimerItem(
@@ -72,7 +68,8 @@ class DisclaimerDialog extends StatelessWidget {
                   SizedBox(height: 12),
                   _DisclaimerItem(
                     icon: Icons.verified_user_outlined,
-                    text: '국민연금공단·국민건강보험공단과 무관한 민간 계산기입니다. '
+                    text:
+                        '국민연금공단·국민건강보험공단과 무관한 민간 계산기입니다. '
                         '입력한 자산 정보는 서버로 보내지 않으며, 광고 제공 과정에서 '
                         '광고 SDK가 기기·이용 정보를 처리할 수 있습니다.',
                   ),
@@ -114,10 +111,7 @@ class _DisclaimerItem extends StatelessWidget {
   final IconData icon;
   final String text;
 
-  const _DisclaimerItem({
-    required this.icon,
-    required this.text,
-  });
+  const _DisclaimerItem({required this.icon, required this.text});
 
   @override
   Widget build(BuildContext context) {

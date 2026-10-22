@@ -4,21 +4,28 @@ import 'package:retire_paycheck/models/account.dart';
 void main() {
   test('기본 계좌 4개 — id·유형 고정 (연금저축·IRP 분리)', () {
     expect(kDefaultAccounts.map((a) => a.id), [
-      'default_general', 'default_isa', 'default_pension_savings',
+      'default_general',
+      'default_isa',
+      'default_pension_savings',
       'default_irp',
     ]);
-    expect(
-      kDefaultAccounts.map((a) => a.type),
-      [AccountType.general, AccountType.isa, AccountType.pension,
-        AccountType.pension],
-    );
+    expect(kDefaultAccounts.map((a) => a.type), [
+      AccountType.general,
+      AccountType.isa,
+      AccountType.pension,
+      AccountType.pension,
+    ]);
     expect(kDefaultAccounts.every((a) => a.isDefault), isTrue);
   });
 
   test('balance·monthlyWithdrawal json 왕복 + 레거시 폴백 0', () {
     final a = Account(
-        id: 'u1', name: '미래에셋 IRP', type: AccountType.pension,
-        balance: 5000000, monthlyWithdrawal: 400000);
+      id: 'u1',
+      name: '미래에셋 IRP',
+      type: AccountType.pension,
+      balance: 5000000,
+      monthlyWithdrawal: 400000,
+    );
     expect(Account.fromJson(a.toJson()), a);
     final legacy = Account.fromJson({'id': 'x', 'name': 'y', 'type': 'isa'});
     expect(legacy.balance, 0);
@@ -27,7 +34,10 @@ void main() {
 
   test('copyWith — 잔액·인출 갱신', () {
     const base = Account(id: 'default_isa', name: 'ISA', type: AccountType.isa);
-    final updated = base.copyWith(balance: 10000000, monthlyWithdrawal: 1200000);
+    final updated = base.copyWith(
+      balance: 10000000,
+      monthlyWithdrawal: 1200000,
+    );
     expect(updated.balance, 10000000);
     expect(updated.id, 'default_isa');
   });
@@ -52,11 +62,19 @@ void main() {
 
   test('isWithdrawing json 왕복 + 레거시 폴백 false', () {
     final a = Account(
-        id: 'default_isa', name: 'ISA', type: AccountType.isa,
-        balance: 10000000, monthlyWithdrawal: 1200000, isWithdrawing: true);
+      id: 'default_isa',
+      name: 'ISA',
+      type: AccountType.isa,
+      balance: 10000000,
+      monthlyWithdrawal: 1200000,
+      isWithdrawing: true,
+    );
     expect(Account.fromJson(a.toJson()).isWithdrawing, isTrue);
-    final legacy = Account.fromJson(
-        {'id': 'default_irp', 'name': 'IRP', 'type': 'pension'});
+    final legacy = Account.fromJson({
+      'id': 'default_irp',
+      'name': 'IRP',
+      'type': 'pension',
+    });
     expect(legacy.isWithdrawing, isFalse);
   });
 

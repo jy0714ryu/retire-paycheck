@@ -44,14 +44,19 @@ const List<DrawStep> _taxFreeSteps = [
 ];
 
 const List<DrawStep> _taxableCappedSteps = [
-  DrawStep(WithdrawalSource.pensionDeducted,
-      useBracketCap: true, usePayoutCap: true),
+  DrawStep(
+    WithdrawalSource.pensionDeducted,
+    useBracketCap: true,
+    usePayoutCap: true,
+  ),
   DrawStep(WithdrawalSource.irpSelf, useBracketCap: true, usePayoutCap: true),
   DrawStep(WithdrawalSource.earnings, useBracketCap: true, usePayoutCap: true),
 ];
 
-const DrawStep _retirementCapped =
-    DrawStep(WithdrawalSource.irpRetirement, usePayoutCap: true);
+const DrawStep _retirementCapped = DrawStep(
+  WithdrawalSource.irpRetirement,
+  usePayoutCap: true,
+);
 
 /// 전략 B — 매년 저율 1,500만원 한도를 채우고 부족분은 비과세로 (Fill the Bracket)
 final fillBracket = WithdrawalStrategy(
@@ -77,12 +82,24 @@ final deferTaxable = WithdrawalStrategy(
   steps: [
     ..._taxFreeSteps,
     _retirementCapped,
-    const DrawStep(WithdrawalSource.pensionDeducted,
-        useBracketCap: true, usePayoutCap: true, activeFromAge: 70),
-    const DrawStep(WithdrawalSource.irpSelf,
-        useBracketCap: true, usePayoutCap: true, activeFromAge: 70),
-    const DrawStep(WithdrawalSource.earnings,
-        useBracketCap: true, usePayoutCap: true, activeFromAge: 70),
+    const DrawStep(
+      WithdrawalSource.pensionDeducted,
+      useBracketCap: true,
+      usePayoutCap: true,
+      activeFromAge: 70,
+    ),
+    const DrawStep(
+      WithdrawalSource.irpSelf,
+      useBracketCap: true,
+      usePayoutCap: true,
+      activeFromAge: 70,
+    ),
+    const DrawStep(
+      WithdrawalSource.earnings,
+      useBracketCap: true,
+      usePayoutCap: true,
+      activeFromAge: 70,
+    ),
   ],
 );
 

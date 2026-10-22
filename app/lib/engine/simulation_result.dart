@@ -3,13 +3,13 @@
 class SimulationResult {
   /// 연도별 인출 스케줄
   final List<YearlyWithdrawal> schedule;
-  
+
   /// 총 세금 (최적화 방식)
   final int totalTaxOptimal;
-  
+
   /// 총 세금 (기존 방식)
   final int totalTaxBaseline;
-  
+
   /// 최적 인출 순서
   final List<WithdrawalSource> optimalSequence;
 
@@ -74,10 +74,10 @@ class SimulationResult {
 class YearlyWithdrawal {
   /// 연차 (1부터 시작)
   final int year;
-  
+
   /// 해당 연도 나이
   final int age;
-  
+
   /// 인출 상세 내역
   final List<WithdrawalDetail> withdrawals;
 
@@ -103,13 +103,13 @@ class YearlyWithdrawal {
 class WithdrawalDetail {
   /// 인출 출처
   final WithdrawalSource source;
-  
+
   /// 인출 금액 (원)
   final int amount;
-  
+
   /// 세금 (원)
   final int tax;
-  
+
   /// 적용 세율 (%)
   final double taxRate;
 
@@ -125,13 +125,13 @@ class WithdrawalDetail {
 enum WithdrawalSource {
   /// ISA 수익분 (비과세)
   isaProfit('ISA 수익분', '비과세'),
-  
+
   /// ISA 원금 (비과세)
   isaPrincipal('ISA 원금', '비과세'),
-  
+
   /// 연금저축 비공제분 (비과세)
   pensionNonDeducted('연금저축 (비공제분)', '비과세'),
-  
+
   /// 연금저축 공제분 (3.3~5.5%)
   pensionDeducted('연금저축 (공제분)', '연금소득세'),
 
@@ -140,7 +140,7 @@ enum WithdrawalSource {
 
   /// IRP 자기납입분 (3.3~5.5%)
   irpSelf('IRP (자기납입분)', '연금소득세'),
-  
+
   /// IRP 퇴직금분 (퇴직소득세 70%)
   irpRetirement('IRP (퇴직금)', '퇴직소득세 30% 감면');
 

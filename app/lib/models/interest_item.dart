@@ -14,20 +14,20 @@ class InterestItem {
   });
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'annual_amount': annualAmount,
-        'months': months,
-      };
+    'id': id,
+    'name': name,
+    'annual_amount': annualAmount,
+    'months': months,
+  };
 
   factory InterestItem.fromJson(Map<String, dynamic> json) => InterestItem(
-        id: json['id'] as String? ?? '',
-        name: json['name'] as String? ?? '',
-        annualAmount: (json['annual_amount'] as num?)?.toInt() ?? 0,
-        months: (json['months'] is List)
-            ? (json['months'] as List).map((e) => (e as num).toInt()).toList()
-            : const [],
-      );
+    id: json['id'] as String? ?? '',
+    name: json['name'] as String? ?? '',
+    annualAmount: (json['annual_amount'] as num?)?.toInt() ?? 0,
+    months: (json['months'] is List)
+        ? (json['months'] as List).map((e) => (e as num).toInt()).toList()
+        : const [],
+  );
 
   @override
   bool operator ==(Object other) =>

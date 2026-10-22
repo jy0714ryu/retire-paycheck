@@ -52,15 +52,15 @@ void main() {
     await tester.pumpAndSettle();
 
     // ISA 인출 스위치 ON.
-    final isaSwitch =
-        find.byKey(const ValueKey('withdrawSwitch_default_isa'));
+    final isaSwitch = find.byKey(const ValueKey('withdrawSwitch_default_isa'));
     await tester.ensureVisible(isaSwitch);
     await tester.tap(isaSwitch);
     await tester.pumpAndSettle();
 
     // 월 인출 100만원 입력(만원 단위 100).
-    final withdrawalField =
-        find.byKey(const ValueKey('withdrawal_default_isa'));
+    final withdrawalField = find.byKey(
+      const ValueKey('withdrawal_default_isa'),
+    );
     await tester.ensureVisible(withdrawalField);
     await tester.enterText(withdrawalField, '100');
     await tester.pumpAndSettle();

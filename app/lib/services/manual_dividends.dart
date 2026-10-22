@@ -35,16 +35,18 @@ List<DividendEvent> synthesizeManualEvents({
 
     for (var i = 0; i < months.length; i++) {
       final perShare = base + (i == 0 ? remainder : 0);
-      events.add(DividendEvent(
-        corpCode: h.corpCode,
-        corpName: h.corpName,
-        exDate: null,
-        recordDate: null,
-        perShare: perShare,
-        isConfirmed: false,
-        explicitPaymentMonth: DateTime(year, months[i]),
-        source: 'manual',
-      ));
+      events.add(
+        DividendEvent(
+          corpCode: h.corpCode,
+          corpName: h.corpName,
+          exDate: null,
+          recordDate: null,
+          perShare: perShare,
+          isConfirmed: false,
+          explicitPaymentMonth: DateTime(year, months[i]),
+          source: 'manual',
+        ),
+      );
     }
   }
 

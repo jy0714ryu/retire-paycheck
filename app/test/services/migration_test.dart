@@ -31,7 +31,8 @@ void main() {
     expect(items.first['annual_amount'], 1200000);
     expect(items.first['months'], isEmpty); // 월 균등
     final input =
-        jsonDecode(prefs.getString('retirement_input')!) as Map<String, dynamic>;
+        jsonDecode(prefs.getString('retirement_input')!)
+            as Map<String, dynamic>;
     expect(input['is_withdrawing'], isTrue);
     // 구 필드 보존 (롤백 안전 — Global Constraints).
     expect(input['annual_interest_income'], 1200000);
@@ -40,8 +41,10 @@ void main() {
 
   test('시나리오3 멱등성 — 2회 실행해도 이자 항목 1개', () async {
     SharedPreferences.setMockInitialValues({
-      'retirement_input': jsonEncode(
-          {'annual_interest_income': 1200000, 'current_age': 60}),
+      'retirement_input': jsonEncode({
+        'annual_interest_income': 1200000,
+        'current_age': 60,
+      }),
     });
     final prefs = await SharedPreferences.getInstance();
     await runMigrations(prefs);
@@ -96,7 +99,8 @@ void main() {
     // schema_version 가드로 손대지 않음) — 모델 레벨 fromJson 폴백이 인출액>0 규칙으로
     // 재판정한다.
     final input =
-        jsonDecode(prefs.getString('retirement_input')!) as Map<String, dynamic>;
+        jsonDecode(prefs.getString('retirement_input')!)
+            as Map<String, dynamic>;
     expect(input.containsKey('is_withdrawing'), isFalse);
     expect(RetirementInput.fromJson(input).isWithdrawing, isTrue);
 
@@ -119,18 +123,29 @@ void main() {
     SharedPreferences.setMockInitialValues({
       'schema_version': 2,
       'retirement_input': jsonEncode({
-        'pension_savings': 10000000, 'irp_balance': 5000000, 'isa_balance': 3000000,
-        'monthly_pension_withdrawal': 1200000, 'monthly_other_withdrawal': 300000,
-        'current_age': 60, 'is_withdrawing': true,
+        'pension_savings': 10000000,
+        'irp_balance': 5000000,
+        'isa_balance': 3000000,
+        'monthly_pension_withdrawal': 1200000,
+        'monthly_other_withdrawal': 300000,
+        'current_age': 60,
+        'is_withdrawing': true,
       }),
       'holdings': jsonEncode([
-        {'corp_code': 'c1', 'corp_name': '연금주', 'shares': 5, 'account_id': 'default_pension'},
+        {
+          'corp_code': 'c1',
+          'corp_name': '연금주',
+          'shares': 5,
+          'account_id': 'default_pension',
+        },
       ]),
     });
     final prefs = await SharedPreferences.getInstance();
     await runMigrations(prefs);
 
-    final ov = jsonDecode(prefs.getString('default_account_overrides')!) as Map<String, dynamic>;
+    final ov =
+        jsonDecode(prefs.getString('default_account_overrides')!)
+            as Map<String, dynamic>;
     expect(ov['default_pension_savings']['balance'], 10000000);
     expect(ov['default_pension_savings']['monthly_withdrawal'], 1200000);
     expect(ov['default_irp']['balance'], 5000000);
@@ -141,7 +156,9 @@ void main() {
     expect(holdings.first['account_id'], 'default_pension_savings');
 
     // flat 필드 보존 (v2 롤백 안전).
-    final input = jsonDecode(prefs.getString('retirement_input')!) as Map<String, dynamic>;
+    final input =
+        jsonDecode(prefs.getString('retirement_input')!)
+            as Map<String, dynamic>;
     expect(input['pension_savings'], 10000000);
     expect(prefs.getInt('schema_version'), 4);
   });
@@ -150,12 +167,21 @@ void main() {
     SharedPreferences.setMockInitialValues({
       'schema_version': 2,
       'retirement_input': jsonEncode({
-        'pension_savings': 10000000, 'irp_balance': 5000000, 'isa_balance': 3000000,
-        'monthly_pension_withdrawal': 1200000, 'monthly_other_withdrawal': 300000,
-        'current_age': 60, 'is_withdrawing': true,
+        'pension_savings': 10000000,
+        'irp_balance': 5000000,
+        'isa_balance': 3000000,
+        'monthly_pension_withdrawal': 1200000,
+        'monthly_other_withdrawal': 300000,
+        'current_age': 60,
+        'is_withdrawing': true,
       }),
       'holdings': jsonEncode([
-        {'corp_code': 'c1', 'corp_name': '연금주', 'shares': 5, 'account_id': 'default_pension'},
+        {
+          'corp_code': 'c1',
+          'corp_name': '연금주',
+          'shares': 5,
+          'account_id': 'default_pension',
+        },
       ]),
     });
     final prefs = await SharedPreferences.getInstance();
@@ -168,7 +194,10 @@ void main() {
     await prefs.setString(
       'default_account_overrides',
       jsonEncode({
-        'default_pension_savings': {'balance': 99999999, 'monthly_withdrawal': 1200000},
+        'default_pension_savings': {
+          'balance': 99999999,
+          'monthly_withdrawal': 1200000,
+        },
         'default_irp': {'balance': 5000000, 'monthly_withdrawal': 0},
         'default_isa': {'balance': 3000000, 'monthly_withdrawal': 300000},
       }),
@@ -177,14 +206,17 @@ void main() {
 
     await runMigrations(prefs);
 
-    final ov = jsonDecode(prefs.getString('default_account_overrides')!) as Map<String, dynamic>;
+    final ov =
+        jsonDecode(prefs.getString('default_account_overrides')!)
+            as Map<String, dynamic>;
     expect(ov['default_pension_savings']['balance'], 99999999);
   });
 
   test('v1(버전 없음)→3 직행 — v2 단계(이자·isWithdrawing)와 v3 단계 모두 수행', () async {
     SharedPreferences.setMockInitialValues({
       'retirement_input': jsonEncode({
-        'annual_interest_income': 1200000, 'monthly_pension_withdrawal': 500000,
+        'annual_interest_income': 1200000,
+        'monthly_pension_withdrawal': 500000,
         'current_age': 60,
       }),
     });
@@ -192,41 +224,66 @@ void main() {
     await runMigrations(prefs);
     expect(prefs.getInt('schema_version'), 4);
     expect(jsonDecode(prefs.getString('interest_items')!), hasLength(1));
-    final ov = jsonDecode(prefs.getString('default_account_overrides')!) as Map<String, dynamic>;
+    final ov =
+        jsonDecode(prefs.getString('default_account_overrides')!)
+            as Map<String, dynamic>;
     expect(ov['default_pension_savings']['monthly_withdrawal'], 500000);
   });
 
   test('v3→v4 — 전역 인출 ON 이 ISA·연금 기본 계좌로 전파', () async {
     SharedPreferences.setMockInitialValues({
       'schema_version': 3,
-      'retirement_input': jsonEncode({'is_withdrawing': true, 'current_age': 60}),
+      'retirement_input': jsonEncode({
+        'is_withdrawing': true,
+        'current_age': 60,
+      }),
       'default_account_overrides': jsonEncode({
-        'default_pension_savings': {'balance': 10000000, 'monthly_withdrawal': 1200000},
+        'default_pension_savings': {
+          'balance': 10000000,
+          'monthly_withdrawal': 1200000,
+        },
         'default_isa': {'balance': 5000000, 'monthly_withdrawal': 300000},
       }),
     });
     final prefs = await SharedPreferences.getInstance();
     await runMigrations(prefs);
-    final ov = jsonDecode(prefs.getString('default_account_overrides')!) as Map<String, dynamic>;
+    final ov =
+        jsonDecode(prefs.getString('default_account_overrides')!)
+            as Map<String, dynamic>;
     expect(ov['default_pension_savings']['is_withdrawing'], isTrue);
     expect(ov['default_isa']['is_withdrawing'], isTrue);
     expect(prefs.getInt('schema_version'), 4);
     // 구 전역 필드 보존.
-    expect((jsonDecode(prefs.getString('retirement_input')!) as Map)['is_withdrawing'], isTrue);
+    expect(
+      (jsonDecode(prefs.getString('retirement_input')!)
+          as Map)['is_withdrawing'],
+      isTrue,
+    );
   });
 
   test('v3→v4 — 전역 인출 OFF 면 전파 없음', () async {
     SharedPreferences.setMockInitialValues({
       'schema_version': 3,
-      'retirement_input': jsonEncode({'is_withdrawing': false, 'current_age': 60}),
+      'retirement_input': jsonEncode({
+        'is_withdrawing': false,
+        'current_age': 60,
+      }),
       'default_account_overrides': jsonEncode({
-        'default_pension_savings': {'balance': 10000000, 'monthly_withdrawal': 1200000},
+        'default_pension_savings': {
+          'balance': 10000000,
+          'monthly_withdrawal': 1200000,
+        },
       }),
     });
     final prefs = await SharedPreferences.getInstance();
     await runMigrations(prefs);
-    final ov = jsonDecode(prefs.getString('default_account_overrides')!) as Map<String, dynamic>;
-    expect(ov['default_pension_savings']['is_withdrawing'], anyOf(isNull, isFalse));
+    final ov =
+        jsonDecode(prefs.getString('default_account_overrides')!)
+            as Map<String, dynamic>;
+    expect(
+      ov['default_pension_savings']['is_withdrawing'],
+      anyOf(isNull, isFalse),
+    );
     expect(prefs.getInt('schema_version'), 4);
   });
 
@@ -235,16 +292,30 @@ void main() {
     // "인출 개시" 스위치가 켜지면 안 된다(최종 리뷰 M1).
     SharedPreferences.setMockInitialValues({
       'schema_version': 3,
-      'retirement_input': jsonEncode({'is_withdrawing': true, 'current_age': 60}),
+      'retirement_input': jsonEncode({
+        'is_withdrawing': true,
+        'current_age': 60,
+      }),
       'default_account_overrides': jsonEncode({
-        'default_pension_savings': {'balance': 10000000, 'monthly_withdrawal': 1200000},
+        'default_pension_savings': {
+          'balance': 10000000,
+          'monthly_withdrawal': 1200000,
+        },
         'default_irp': {'balance': 0, 'monthly_withdrawal': 0}, // 빈 계좌
       }),
     });
     final prefs = await SharedPreferences.getInstance();
     await runMigrations(prefs);
-    final ov = jsonDecode(prefs.getString('default_account_overrides')!) as Map<String, dynamic>;
-    expect(ov['default_pension_savings']['is_withdrawing'], isTrue); // 자산 있음 → ON
-    expect(ov['default_irp']['is_withdrawing'], anyOf(isNull, isFalse)); // 빈 계좌 → 스킵
+    final ov =
+        jsonDecode(prefs.getString('default_account_overrides')!)
+            as Map<String, dynamic>;
+    expect(
+      ov['default_pension_savings']['is_withdrawing'],
+      isTrue,
+    ); // 자산 있음 → ON
+    expect(
+      ov['default_irp']['is_withdrawing'],
+      anyOf(isNull, isFalse),
+    ); // 빈 계좌 → 스킵
   });
 }

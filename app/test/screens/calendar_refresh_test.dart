@@ -31,16 +31,20 @@ const _serverJson = '''
 Future<int Function()> _pump(WidgetTester tester) async {
   SharedPreferences.setMockInitialValues({
     'dividends_cache_body': _cachedJson,
-    'dividends_cache_at':
-        DateTime.now().subtract(const Duration(hours: 1)).millisecondsSinceEpoch,
+    'dividends_cache_at': DateTime.now()
+        .subtract(const Duration(hours: 1))
+        .millisecondsSinceEpoch,
   });
   final prefs = await SharedPreferences.getInstance();
 
   var netCalls = 0;
   final mockClient = MockClient((req) async {
     netCalls++;
-    return http.Response(_serverJson, 200,
-        headers: {'content-type': 'application/json; charset=utf-8'});
+    return http.Response(
+      _serverJson,
+      200,
+      headers: {'content-type': 'application/json; charset=utf-8'},
+    );
   });
   final api = DividendApi(client: mockClient, prefs: prefs);
 
@@ -61,8 +65,7 @@ Future<int Function()> _pump(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets('당겨서 새로고침(프로그램 트리거) → 신선 캐시 무시하고 새 서버 데이터 표시',
-      (tester) async {
+  testWidgets('당겨서 새로고침(프로그램 트리거) → 신선 캐시 무시하고 새 서버 데이터 표시', (tester) async {
     final netCalls = await _pump(tester);
 
     // 초기: 신선 캐시(주당 500원) → 네트워크 미호출.
@@ -72,8 +75,9 @@ void main() {
     expect(old, findsOneWidget);
 
     // RefreshIndicator.onRefresh 를 결정적으로 트리거.
-    final refreshState =
-        tester.state<RefreshIndicatorState>(find.byType(RefreshIndicator));
+    final refreshState = tester.state<RefreshIndicatorState>(
+      find.byType(RefreshIndicator),
+    );
     unawaited(refreshState.show());
     await tester.pumpAndSettle();
 
@@ -82,8 +86,11 @@ void main() {
     final updated = find.textContaining('주당 1,000원');
     await tester.scrollUntilVisible(updated, 200);
     expect(updated, findsOneWidget, reason: '화면이 새 서버 데이터로 갱신돼야 함');
-    expect(find.textContaining('주당 500원'), findsNothing,
-        reason: '옛 캐시 데이터는 사라져야 함');
+    expect(
+      find.textContaining('주당 500원'),
+      findsNothing,
+      reason: '옛 캐시 데이터는 사라져야 함',
+    );
   });
 
   testWidgets('당겨서 새로고침(드래그 제스처) → 새 서버 데이터 표시', (tester) async {

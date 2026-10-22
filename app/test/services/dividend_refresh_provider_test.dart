@@ -34,8 +34,11 @@ void main() {
     var netCalls = 0;
     final mockClient = MockClient((req) async {
       netCalls++;
-      return http.Response(_serverJson, 200,
-          headers: {'content-type': 'application/json; charset=utf-8'});
+      return http.Response(
+        _serverJson,
+        200,
+        headers: {'content-type': 'application/json; charset=utf-8'},
+      );
     });
     final api = DividendApi(client: mockClient, prefs: prefs);
 
@@ -45,8 +48,11 @@ void main() {
     addTearDown(c.dispose);
 
     // 화면이 combined 를 watch 하는 상황 재현(구독 유지).
-    final sub = c.listen(combinedEventsProvider(2026), (_, _) {},
-        fireImmediately: true);
+    final sub = c.listen(
+      combinedEventsProvider(2026),
+      (_, _) {},
+      fireImmediately: true,
+    );
     addTearDown(sub.close);
 
     // 초기: 신선 캐시 → 올드, 네트워크 미호출.

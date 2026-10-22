@@ -25,7 +25,8 @@ class AdService {
     defaultValue: _testInterstitialId,
   );
 
-  String get _adUnitId => kDebugMode ? _testInterstitialId : _prodInterstitialId;
+  String get _adUnitId =>
+      kDebugMode ? _testInterstitialId : _prodInterstitialId;
 
   InterstitialAd? _interstitialAd;
   bool _isLoading = false;

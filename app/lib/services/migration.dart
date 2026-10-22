@@ -26,15 +26,16 @@ Future<void> runMigrations(SharedPreferences prefs) async {
             (input['annual_interest_income'] as num?)?.toInt() ?? 0;
         if (interest > 0 && prefs.getString('interest_items') == null) {
           final item = InterestItem(
-              id: 'migrated_v1', name: '이자소득', annualAmount: interest);
+            id: 'migrated_v1',
+            name: '이자소득',
+            annualAmount: interest,
+          );
           await prefs.setString('interest_items', jsonEncode([item.toJson()]));
         }
 
         // 2) isWithdrawing 판정 결과를 명시 키로 고정.
-        final withdrawing = ((input['monthly_pension_withdrawal'] as num?)
-                        ?.toInt() ??
-                    0) >
-                0 ||
+        final withdrawing =
+            ((input['monthly_pension_withdrawal'] as num?)?.toInt() ?? 0) > 0 ||
             ((input['monthly_other_withdrawal'] as num?)?.toInt() ?? 0) > 0;
         input['is_withdrawing'] = withdrawing;
         await prefs.setString('retirement_input', jsonEncode(input));
@@ -65,20 +66,29 @@ Future<void> runMigrations(SharedPreferences prefs) async {
             overrides.putIfAbsent(accountId, () => {})[key] = v;
           }
 
-          setIfNonzero('default_pension_savings', 'balance',
-              input['pension_savings'] as num?);
           setIfNonzero(
-              'default_irp', 'balance', input['irp_balance'] as num?);
+            'default_pension_savings',
+            'balance',
+            input['pension_savings'] as num?,
+          );
+          setIfNonzero('default_irp', 'balance', input['irp_balance'] as num?);
+          setIfNonzero('default_isa', 'balance', input['isa_balance'] as num?);
           setIfNonzero(
-              'default_isa', 'balance', input['isa_balance'] as num?);
-          setIfNonzero('default_pension_savings', 'monthly_withdrawal',
-              input['monthly_pension_withdrawal'] as num?);
-          setIfNonzero('default_isa', 'monthly_withdrawal',
-              input['monthly_other_withdrawal'] as num?);
+            'default_pension_savings',
+            'monthly_withdrawal',
+            input['monthly_pension_withdrawal'] as num?,
+          );
+          setIfNonzero(
+            'default_isa',
+            'monthly_withdrawal',
+            input['monthly_other_withdrawal'] as num?,
+          );
 
           if (overrides.isNotEmpty) {
             await prefs.setString(
-                'default_account_overrides', jsonEncode(overrides));
+              'default_account_overrides',
+              jsonEncode(overrides),
+            );
           }
         }
       }
@@ -154,7 +164,9 @@ Future<void> runMigrations(SharedPreferences prefs) async {
           }
           if (changed) {
             await prefs.setString(
-                'default_account_overrides', jsonEncode(overrides));
+              'default_account_overrides',
+              jsonEncode(overrides),
+            );
           }
         }
       }

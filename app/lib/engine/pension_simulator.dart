@@ -49,7 +49,8 @@ class PensionSimulator {
   /// 연차 11년+ 무제한. ×1.2 는 정수 연산 (평가액×12 ÷ ((11-연차)×10)).
   static int payoutLimitFor(Map<WithdrawalSource, int> pools, int year) {
     if (year >= 11) return 1 << 60;
-    final base = (pools[WithdrawalSource.pensionNonDeducted] ?? 0) +
+    final base =
+        (pools[WithdrawalSource.pensionNonDeducted] ?? 0) +
         (pools[WithdrawalSource.pensionDeducted] ?? 0) +
         (pools[WithdrawalSource.irpSelf] ?? 0) +
         (pools[WithdrawalSource.earnings] ?? 0) +
@@ -77,35 +78,43 @@ class PensionSimulator {
     ]) {
       final split = ledger[src];
       if (split == null || split.total <= 0) continue;
-      details.add(WithdrawalDetail(
-        source: src, amount: split.total, tax: 0, taxRate: 0));
+      details.add(
+        WithdrawalDetail(source: src, amount: split.total, tax: 0, taxRate: 0),
+      );
     }
 
     // 2) 사적연금 과세재원 — 절벽 판정 (수령한도 내 인정액 합계 기준)
     final recognized = kBracketSources.fold<int>(
-        0, (sum, src) => sum + (ledger[src]?.within ?? 0));
+      0,
+      (sum, src) => sum + (ledger[src]?.within ?? 0),
+    );
     final cliff = recognized > kAnnualPensionBracket;
-    final withinRate =
-        cliff ? kPenaltyRate : TaxCalculator.getPensionTaxRate(age);
+    final withinRate = cliff
+        ? kPenaltyRate
+        : TaxCalculator.getPensionTaxRate(age);
     for (final src in kBracketSources) {
       final split = ledger[src];
       if (split == null) continue;
       if (split.within > 0) {
-        details.add(WithdrawalDetail(
-          source: src,
-          amount: split.within,
-          tax: (split.within * withinRate).round(),
-          taxRate: withinRate * 100,
-        ));
+        details.add(
+          WithdrawalDetail(
+            source: src,
+            amount: split.within,
+            tax: (split.within * withinRate).round(),
+            taxRate: withinRate * 100,
+          ),
+        );
       }
       if (split.over > 0) {
         // 수령한도 초과 = 연금외수령 → 기타소득세 16.5%
-        details.add(WithdrawalDetail(
-          source: src,
-          amount: split.over,
-          tax: (split.over * kPenaltyRate).round(),
-          taxRate: kPenaltyRate * 100,
-        ));
+        details.add(
+          WithdrawalDetail(
+            source: src,
+            amount: split.over,
+            tax: (split.over * kPenaltyRate).round(),
+            taxRate: kPenaltyRate * 100,
+          ),
+        );
       }
     }
 
@@ -115,20 +124,24 @@ class PensionSimulator {
       final reduction = year <= 10 ? 0.7 : 0.6;
       if (ret.within > 0) {
         final rate = retirementRate * reduction;
-        details.add(WithdrawalDetail(
-          source: WithdrawalSource.irpRetirement,
-          amount: ret.within,
-          tax: (ret.within * rate).round(),
-          taxRate: rate * 100,
-        ));
+        details.add(
+          WithdrawalDetail(
+            source: WithdrawalSource.irpRetirement,
+            amount: ret.within,
+            tax: (ret.within * rate).round(),
+            taxRate: rate * 100,
+          ),
+        );
       }
       if (ret.over > 0) {
-        details.add(WithdrawalDetail(
-          source: WithdrawalSource.irpRetirement,
-          amount: ret.over,
-          tax: (ret.over * retirementRate).round(),
-          taxRate: retirementRate * 100,
-        ));
+        details.add(
+          WithdrawalDetail(
+            source: WithdrawalSource.irpRetirement,
+            amount: ret.over,
+            tax: (ret.over * retirementRate).round(),
+            taxRate: retirementRate * 100,
+          ),
+        );
       }
     }
 
@@ -160,8 +173,10 @@ class PensionSimulator {
     var totalWithdrawn = 0;
 
     // 55세 전 적립기 연수 — 연금수령연차(수령한도·퇴직세 감면)는 55세부터 기산
-    final preYears =
-        (kPensionWithdrawalMinAge - input.currentAge).clamp(0, 1 << 32);
+    final preYears = (kPensionWithdrawalMinAge - input.currentAge).clamp(
+      0,
+      1 << 32,
+    );
 
     for (int year = 1; year <= input.simulationYears; year++) {
       final age = input.currentAge + year - 1;
@@ -233,8 +248,12 @@ class PensionSimulator {
       final yearly = YearlyWithdrawal(
         year: year,
         age: age,
-        withdrawals:
-            finalizeYearTax(ledger, age, payoutYear, input.retirementTaxRate),
+        withdrawals: finalizeYearTax(
+          ledger,
+          age,
+          payoutYear,
+          input.retirementTaxRate,
+        ),
         npsAnnualAmount: npsAnnualAmount,
       );
       schedule.add(yearly);
@@ -260,14 +279,16 @@ class PensionSimulator {
     // 기말 잔액과 잠재세 (근사: 과세재원×기말나이 저율, 퇴직금×3.5%)
     final endAge = input.currentAge + schedule.length - 1;
     final taxableLeft = kBracketSources.fold<int>(
-        0, (s, src) => s + (pools[src] ?? 0));
+      0,
+      (s, src) => s + (pools[src] ?? 0),
+    );
     final retirementLeft = pools[WithdrawalSource.irpRetirement] ?? 0;
     // 잠재세는 저율 일괄 근사 — 잔여 과세재원이 커서 향후 인출이 1,500만
     // 절벽(16.5%)을 반복 유발하는 시나리오에서는 과소평가되어 과세이연
     // 전략이 유리하게 편향될 수 있다 (MVP 근사, 절벽 반영은 P1 후속).
     final latentTax =
         (taxableLeft * TaxCalculator.getPensionTaxRate(endAge)).round() +
-            (retirementLeft * input.retirementTaxRate * 0.7).round();
+        (retirementLeft * input.retirementTaxRate * 0.7).round();
     final finalBalance = pools.values.fold<int>(0, (s, v) => s + v);
 
     return StrategyOutcome(

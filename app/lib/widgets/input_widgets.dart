@@ -45,7 +45,9 @@ class _AmountInputFieldState extends State<AmountInputField> {
   @override
   void didUpdateWidget(AmountInputField oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final newText = widget.value > 0 ? _formatter.format(widget.value ~/ 10000) : '';
+    final newText = widget.value > 0
+        ? _formatter.format(widget.value ~/ 10000)
+        : '';
     if (_controller.text != newText && !_controller.text.contains(newText)) {
       _controller.text = newText;
     }
@@ -94,9 +96,7 @@ class _AmountInputFieldState extends State<AmountInputField> {
               vertical: 14,
             ),
           ),
-          style: AppTextStyles.bodyLarge.copyWith(
-            color: AppColors.gray800,
-          ),
+          style: AppTextStyles.bodyLarge.copyWith(color: AppColors.gray800),
           onChanged: (text) {
             final cleanText = text.replaceAll(',', '');
             final value = int.tryParse(cleanText) ?? 0;
@@ -129,7 +129,7 @@ class _ThousandsSeparatorFormatter extends TextInputFormatter {
 
     final cleanText = newValue.text.replaceAll(',', '');
     final value = int.tryParse(cleanText);
-    
+
     if (value == null) {
       return oldValue;
     }
@@ -171,9 +171,7 @@ class NumberInputField extends StatelessWidget {
         Row(
           children: [
             IconButton(
-              onPressed: value > min
-                  ? () => onChanged(value - 1)
-                  : null,
+              onPressed: value > min ? () => onChanged(value - 1) : null,
               icon: const Icon(Icons.remove_circle_outline),
               color: AppColors.navy,
             ),
@@ -193,9 +191,7 @@ class NumberInputField extends StatelessWidget {
               ),
             ),
             IconButton(
-              onPressed: value < max
-                  ? () => onChanged(value + 1)
-                  : null,
+              onPressed: value < max ? () => onChanged(value + 1) : null,
               icon: const Icon(Icons.add_circle_outline),
               color: AppColors.navy,
             ),

@@ -31,9 +31,13 @@ final _input = const RetirementInput(
 // 기존 시나리오(과세 월 100만·비과세 월 50만)를 인출 켠 계좌로 옮긴다(기대 계산값 불변).
 final _withdrawAccounts = [
   kDefaultAccounts[2].copyWith(
-      monthlyWithdrawal: 1000000, isWithdrawing: true), // 연금저축 과세 100만
-  kDefaultAccounts[1]
-      .copyWith(monthlyWithdrawal: 500000, isWithdrawing: true), // ISA 비과세 50만
+    monthlyWithdrawal: 1000000,
+    isWithdrawing: true,
+  ), // 연금저축 과세 100만
+  kDefaultAccounts[1].copyWith(
+    monthlyWithdrawal: 500000,
+    isWithdrawing: true,
+  ), // ISA 비과세 50만
 ];
 
 void main() {
@@ -70,8 +74,7 @@ void main() {
     expect(april.lines.first.isConfirmed, true);
   });
 
-  test(
-      '게이지: 연 배당 50만+이자0 → financial 0.025 / pension 1200만÷1500만=0.8 / '
+  test('게이지: 연 배당 50만+이자0 → financial 0.025 / pension 1200만÷1500만=0.8 / '
       '건보 산입 0 (금융 1000만 이하·사적연금 미산입) → 0 ÷ 2000만 = 0.0', () {
     final g = CashflowEngine.buildGauges(
       holdings: [_holdingA],
@@ -147,26 +150,35 @@ void main() {
 
   group('건보 게이지 — 가입 형태·공적연금·기타 소득 (v2.0.2)', () {
     int health(RetirementInput input) => CashflowEngine.buildGauges(
-          holdings: [_holdingA],
-          events: [_eventA], // 금융소득 50만 (1,000만 이하)
-          input: input,
-          year: 2026,
-        ).healthInsurance.current;
+      holdings: [_holdingA],
+      events: [_eventA], // 금융소득 50만 (1,000만 이하)
+      input: input,
+      year: 2026,
+    ).healthInsurance.current;
 
     test('피부양자: 금융 1,000만 이하 0 + 공적연금 전액(월×12) + 기타 소득', () {
       expect(health(_input), 0); // 기존 저장분 동작 그대로
       expect(
-          health(_input.copyWith(
-              publicPensionMonthly: 1000000, otherAnnualIncome: 3000000)),
-          12000000 + 3000000);
+        health(
+          _input.copyWith(
+            publicPensionMonthly: 1000000,
+            otherAnnualIncome: 3000000,
+          ),
+        ),
+        12000000 + 3000000,
+      );
     });
 
     test('직장 다님: 금융소득은 1,000만 이하여도 보수적으로 전액 합산', () {
       expect(
-          health(_input.copyWith(
-              healthInsType: HealthInsType.employee,
-              otherAnnualIncome: 5000000)),
-          500000 + 5000000);
+        health(
+          _input.copyWith(
+            healthInsType: HealthInsType.employee,
+            otherAnnualIncome: 5000000,
+          ),
+        ),
+        500000 + 5000000,
+      );
     });
 
     test('저장·복원 — 새 키 없는 기존 JSON 은 피부양자·0원', () {
@@ -178,7 +190,9 @@ void main() {
       expect(r.healthInsType, HealthInsType.dependent);
       expect(r.publicPensionMonthly, 0);
       final full = _input.copyWith(
-          healthInsType: HealthInsType.regional, publicPensionMonthly: 700000);
+        healthInsType: HealthInsType.regional,
+        publicPensionMonthly: 700000,
+      );
       expect(RetirementInput.fromJson(full.toJson()), full);
     });
   });
@@ -202,10 +216,14 @@ void main() {
         from: DateTime(2026, 1),
         monthCount: 12,
         accounts: [
-          kDefaultAccounts[2]
-              .copyWith(monthlyWithdrawal: 1250000, isWithdrawing: true),
-          kDefaultAccounts[1]
-              .copyWith(monthlyWithdrawal: 500000, isWithdrawing: true),
+          kDefaultAccounts[2].copyWith(
+            monthlyWithdrawal: 1250000,
+            isWithdrawing: true,
+          ),
+          kDefaultAccounts[1].copyWith(
+            monthlyWithdrawal: 500000,
+            isWithdrawing: true,
+          ),
         ],
       );
       // net = 1,250,000×0.945 + 500,000 = 1,181,250 + 500,000
@@ -234,10 +252,14 @@ void main() {
         from: DateTime(2026, 1),
         monthCount: 12,
         accounts: [
-          kDefaultAccounts[2]
-              .copyWith(monthlyWithdrawal: 2000000, isWithdrawing: true),
-          kDefaultAccounts[1]
-              .copyWith(monthlyWithdrawal: 500000, isWithdrawing: true),
+          kDefaultAccounts[2].copyWith(
+            monthlyWithdrawal: 2000000,
+            isWithdrawing: true,
+          ),
+          kDefaultAccounts[1].copyWith(
+            monthlyWithdrawal: 500000,
+            isWithdrawing: true,
+          ),
         ],
       );
       // net = 2,000,000×0.835 + 500,000 = 1,670,000 + 500,000

@@ -6,14 +6,14 @@ class TaxCalculator {
   TaxCalculator._();
 
   /// 연금소득세 계산 (분리과세)
-  /// 
+  ///
   /// 나이별 세율:
   /// - 55~69세: 5.5%
   /// - 70~79세: 4.4%
   /// - 80세 이상: 3.3%
   static int calculatePensionTax(int amount, int age) {
     if (amount <= 0) return 0;
-    
+
     final rate = getPensionTaxRate(age);
     return (amount * rate).round();
   }
@@ -26,7 +26,7 @@ class TaxCalculator {
   }
 
   /// ISA 만기 후 연금저축 이전 세액공제 계산
-  /// 
+  ///
   /// 조건: 만기 후 60일 내 이전
   /// 혜택: 이전액의 10% 세액공제 (최대 300만원)
   static IsaTransferResult calculateIsaTransferCredit(
@@ -35,13 +35,13 @@ class TaxCalculator {
   ) {
     // 세액공제 기준액 (이전액의 10%, 최대 300만원)
     final creditBase = (transferAmount * 0.1).clamp(0, 3000000).toInt();
-    
+
     // 공제율 (소득 수준에 따라)
     final rate = incomeLevel == IncomeLevel.high ? 0.132 : 0.165;
-    
+
     // 실제 환급액
     final taxCredit = (creditBase * rate).round();
-    
+
     return IsaTransferResult(
       transferAmount: transferAmount,
       creditBase: creditBase,
@@ -51,7 +51,7 @@ class TaxCalculator {
   }
 
   /// 퇴직소득세 계산 (간이 계산)
-  /// 
+  ///
   /// 연금 수령 시 30% 감면 적용
   static int calculateRetirementTax(
     int retirementAmount,
@@ -59,26 +59,28 @@ class TaxCalculator {
     bool isPension = true,
   }) {
     if (retirementAmount <= 0) return 0;
-    
+
     // 근속연수 공제
     final deduction = _calculateServiceDeduction(yearsOfService);
-    
+
     // 과세표준
-    final taxable = (retirementAmount - deduction).clamp(0, double.infinity).toInt();
+    final taxable = (retirementAmount - deduction)
+        .clamp(0, double.infinity)
+        .toInt();
     if (taxable <= 0) return 0;
-    
+
     // 환산급여
     final converted = (taxable * 12) ~/ yearsOfService;
-    
+
     // 세금 계산 (퇴직소득 세율표 적용)
     final annualTax = _applyRetirementTaxBracket(converted);
     final tax = (annualTax * yearsOfService) ~/ 12;
-    
+
     // 연금 수령 시 30% 감면
     if (isPension) {
       return (tax * 0.7).round();
     }
-    
+
     return tax;
   }
 
@@ -123,7 +125,7 @@ class TaxCalculator {
   }
 
   /// 종합소득세 vs 분리과세 비교
-  /// 
+  ///
   /// 연간 연금소득 1,500만원 초과 시 선택 가능
   static TaxComparisonResult compareTaxation(
     int pensionIncome,
@@ -131,16 +133,16 @@ class TaxCalculator {
     int age,
   ) {
     final separateTax = calculatePensionTax(pensionIncome, age);
-    
+
     // 종합과세 시 (다른 소득과 합산)
     final totalIncome = pensionIncome + otherIncome;
     final comprehensiveTax = _calculateComprehensiveTax(totalIncome);
-    
+
     return TaxComparisonResult(
       separateTax: separateTax,
       comprehensiveTax: comprehensiveTax,
-      recommendation: separateTax <= comprehensiveTax 
-          ? TaxationType.separate 
+      recommendation: separateTax <= comprehensiveTax
+          ? TaxationType.separate
           : TaxationType.comprehensive,
     );
   }
@@ -149,7 +151,7 @@ class TaxCalculator {
   static int _calculateComprehensiveTax(int totalIncome) {
     // 기본공제 등 생략, 간이 계산
     final taxable = totalIncome;
-    
+
     if (taxable <= 14000000) {
       return (taxable * 0.06).round();
     } else if (taxable <= 50000000) {
@@ -198,6 +200,7 @@ class TaxComparisonResult {
 enum TaxationType {
   /// 분리과세
   separate,
+
   /// 종합과세
   comprehensive,
 }

@@ -32,8 +32,9 @@ void main() {
           expect(row.totalTax, 0);
         }
       }
-      final firstActive = outcome.schedule
-          .firstWhere((r) => r.age >= kPensionWithdrawalMinAge);
+      final firstActive = outcome.schedule.firstWhere(
+        (r) => r.age >= kPensionWithdrawalMinAge,
+      );
       expect(firstActive.age, 55);
       expect(firstActive.totalAmount, 12000000);
     });
@@ -66,8 +67,9 @@ void main() {
       );
       final outcome = PensionSimulator.run(input, pensionFirst);
       final at55 = outcome.schedule.firstWhere((r) => r.age == 55);
-      final retDetail = at55.withdrawals
-          .firstWhere((d) => d.source == WithdrawalSource.irpRetirement);
+      final retDetail = at55.withdrawals.firstWhere(
+        (d) => d.source == WithdrawalSource.irpRetirement,
+      );
       expect(retDetail.taxRate, closeTo(3.5, 0.001));
     });
 
