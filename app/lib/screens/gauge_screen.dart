@@ -145,7 +145,8 @@ List<Widget> _healthCard(RetirementInput input, GaugeStatus status) {
           overWarning: '2,000만원을 넘으면 피부양자 자격을 잃고 지역가입자로 바뀔 수 있어요',
           referenceNote:
               '합산: 금융소득(1,000만원 넘으면 전액) + 공적연금 전액 + 그 밖의 소득. '
-              '연금저축·IRP 인출은 들어가지 않아요. 재산 요건은 따로 봅니다.',
+              '연금저축·IRP 인출은 들어가지 않아요. 사업자등록이 있는 사업소득은 금액과 관계없이, '
+              '재산은 따로 기준이 있어요.',
         ),
       ];
     case HealthInsType.employee:

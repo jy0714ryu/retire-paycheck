@@ -1084,7 +1084,9 @@ class _CommonSettingsCard extends ConsumerWidget {
           key: const ValueKey('other_annual_income'),
           label: '그 밖의 연 소득 (사업·임대 등)',
           value: input.otherAnnualIncome,
-          helperText: '월급(근로소득)은 넣지 않아요',
+          helperText: input.healthInsType == HealthInsType.employee
+              ? '지금 다니는 직장 월급은 넣지 않아요'
+              : '근로·사업·임대 소득을 합쳐서',
           onChanged: (v) => ref
               .read(retirementInputProvider.notifier)
               .update((s) => s.copyWith(otherAnnualIncome: v)),

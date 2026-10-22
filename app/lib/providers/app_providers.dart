@@ -162,7 +162,13 @@ class FavoriteCorpsNotifier extends StateNotifier<Set<String>> {
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getStringList(_kFavoriteCorpsKey);
-    if (saved != null) state = saved.toSet();
+    // 로드 전에 별을 눌렀어도 저장분과 합친다(덮어쓰기 유실 방지).
+    if (saved != null) {
+      state = {...saved, ...state};
+      if (state.length != saved.length) {
+        await prefs.setStringList(_kFavoriteCorpsKey, state.toList());
+      }
+    }
   }
 
   void toggle(String corpCode) {
