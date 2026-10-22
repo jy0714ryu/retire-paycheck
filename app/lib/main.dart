@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -11,6 +12,7 @@ import 'services/ad_service.dart';
 import 'services/migration.dart';
 import 'theme/app_theme.dart';
 import 'widgets/disclaimer_dialog.dart';
+import 'widgets/keyboard_safe_back.dart';
 
 /// 첫 실행 면책 동의 여부 저장 키(SharedPreferences).
 const String kDisclaimerAcceptedKey = 'disclaimer_accepted';
@@ -96,13 +98,16 @@ class _HomeShellState extends State<HomeShell> {
           .push(
             MaterialPageRoute<void>(
               fullscreenDialog: true,
-              builder: (routeContext) => QuickStartScreen(
-                onDone: () async {
-                  await prefs.setBool(kQuickStartDoneKey, true);
-                  if (!routeContext.mounted) return;
-                  Navigator.of(routeContext).pop();
-                  if (mounted) setState(() => _index = 0);
-                },
+              // 입력 중 키보드 내리기(▽)가 뒤로 가기로 새어 들어와 건너뛰기 되는 일 방지.
+              builder: (routeContext) => KeyboardSafeBack(
+                child: QuickStartScreen(
+                  onDone: () async {
+                    await prefs.setBool(kQuickStartDoneKey, true);
+                    if (!routeContext.mounted) return;
+                    Navigator.of(routeContext).pop();
+                    if (mounted) setState(() => _index = 0);
+                  },
+                ),
               ),
             ),
           )
@@ -118,34 +123,64 @@ class _HomeShellState extends State<HomeShell> {
       const GaugeScreen(),
       InputScreen(onGoToPlan: () => setState(() => _index = kPlanTab)),
     ];
-    return Scaffold(
-      body: SafeArea(child: tabs[_index]),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: const <NavigationDestination>[
-          NavigationDestination(
-            icon: Icon(Icons.calendar_month_outlined),
-            selectedIcon: Icon(Icons.calendar_month),
-            label: '이번 달',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.timeline_outlined),
-            selectedIcon: Icon(Icons.timeline),
-            label: '계획',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.notifications_none_outlined),
-            selectedIcon: Icon(Icons.notifications),
-            label: '경보',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.account_balance_wallet_outlined),
-            selectedIcon: Icon(Icons.account_balance_wallet),
-            label: '내 자산',
-          ),
-        ],
+    // 뒤로 가기: 입력 중이면 키보드만 → 다른 탭이면 첫 탭 → 첫 탭이면 2초 안 두 번 눌러 종료.
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) => _onBack(didPop),
+      child: Scaffold(
+        body: SafeArea(child: tabs[_index]),
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: _index,
+          onDestinationSelected: (i) => setState(() => _index = i),
+          destinations: const <NavigationDestination>[
+            NavigationDestination(
+              icon: Icon(Icons.calendar_month_outlined),
+              selectedIcon: Icon(Icons.calendar_month),
+              label: '이번 달',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.timeline_outlined),
+              selectedIcon: Icon(Icons.timeline),
+              label: '계획',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.notifications_none_outlined),
+              selectedIcon: Icon(Icons.notifications),
+              label: '경보',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.account_balance_wallet_outlined),
+              selectedIcon: Icon(Icons.account_balance_wallet),
+              label: '내 자산',
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  DateTime? _lastBackAt;
+
+  void _onBack(bool didPop) {
+    if (didPop || dismissKeyboardIfFocused()) return;
+    if (_index != 0) {
+      setState(() => _index = 0);
+      return;
+    }
+    final now = DateTime.now();
+    if (_lastBackAt != null &&
+        now.difference(_lastBackAt!) < const Duration(seconds: 2)) {
+      SystemNavigator.pop();
+      return;
+    }
+    _lastBackAt = now;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text('한 번 더 누르면 종료돼요'),
+          duration: Duration(seconds: 2),
+        ),
+      );
   }
 }

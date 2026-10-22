@@ -11,6 +11,7 @@ import '../providers/app_providers.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 import '../widgets/input_widgets.dart';
+import '../widgets/keyboard_safe_back.dart';
 
 /// 화면1 — 자산 입력 (v3: 계좌 중심 IA).
 ///
@@ -362,9 +363,11 @@ class _AccountCard extends ConsumerWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => _AddHoldingSheet(
-        accountId: account.id,
-        onAdd: (holding) => ref.read(holdingsProvider.notifier).add(holding),
+      builder: (_) => KeyboardSafeBack(
+        child: _AddHoldingSheet(
+          accountId: account.id,
+          onAdd: (holding) => ref.read(holdingsProvider.notifier).add(holding),
+        ),
       ),
     );
   }
@@ -1234,8 +1237,10 @@ class _InterestItemsSection extends ConsumerWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => _AddInterestItemSheet(
-        onAdd: (item) => ref.read(interestItemsProvider.notifier).add(item),
+      builder: (_) => KeyboardSafeBack(
+        child: _AddInterestItemSheet(
+          onAdd: (item) => ref.read(interestItemsProvider.notifier).add(item),
+        ),
       ),
     );
   }
