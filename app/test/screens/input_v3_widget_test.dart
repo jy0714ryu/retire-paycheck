@@ -28,9 +28,9 @@ void main() {
     expect(find.text('연금저축'), findsOneWidget);
     expect(find.text('IRP'), findsOneWidget);
 
-    // 잔액 필드는 ISA·연금저축·IRP 만(일반계좌 제외) → 총 3개.
-    // 인출 토글 OFF(기본)이므로 월 인출 필드는 없다.
-    expect(find.byType(AmountInputField), findsNWidgets(3));
+    // 잔액 필드는 ISA·연금저축·IRP 만(일반계좌 제외) → 3개 + 공통 설정의
+    // 공적연금·그 밖의 소득(v2.0.2) 2개 = 5개. 인출 토글 OFF라 월 인출 필드는 없다.
+    expect(find.byType(AmountInputField), findsNWidgets(5));
   });
 
   testWidgets('계좌별 인출 스위치 ON 시 해당 계좌 카드에 월 인출 필드 노출',
@@ -109,5 +109,60 @@ void main() {
 
     final holdings = container.read(holdingsProvider);
     expect(holdings.single.accountId, 'default_isa');
+  });
+
+  testWidgets('종목 즐겨찾기 — 별 누르면 검색 목록 맨 위로, 다시 열어도 유지', (tester) async {
+    DividendEvent ev(String code, String name) => DividendEvent(
+          corpCode: code,
+          corpName: name,
+          exDate: null,
+          recordDate: null,
+          perShare: 100,
+          isConfirmed: true,
+        );
+    final result = DividendFetchResult(
+      events: [ev('A', '가나다'), ev('B', '라마바'), ev('458730', 'TIGER 미국배당다우존스')],
+      fetchedAt: DateTime(2026, 1, 1),
+      fromCache: false,
+    );
+    final container = ProviderContainer(overrides: [
+      dividendEventsProvider.overrideWith((ref) async => result),
+    ]);
+    addTearDown(container.dispose);
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: const MaterialApp(home: InputScreen()),
+    ));
+    await tester.pumpAndSettle();
+
+    Future<void> openSheet() async {
+      final add = find.byKey(const ValueKey('addHolding_default_general'));
+      await tester.ensureVisible(add);
+      await tester.tap(add);
+      await tester.pumpAndSettle();
+    }
+
+    List<String> order() => tester
+        .widgetList<ListTile>(find.byType(ListTile))
+        .map((t) => ((t.title as Text).data ?? ''))
+        .where((n) => ['가나다', '라마바', 'TIGER 미국배당다우존스'].contains(n))
+        .toList();
+
+    await openSheet();
+    expect(order().first, 'TIGER 미국배당다우존스'); // 대문자 T 가 한글보다 앞(이름순)
+    await tester.tap(find.byKey(const ValueKey('fav_B')));
+    await tester.pumpAndSettle();
+    expect(order().first, '라마바');
+    expect(container.read(favoriteCorpsProvider), {'B'});
+
+    Navigator.of(tester.element(find.byType(ListTile).first)).pop();
+    await tester.pumpAndSettle();
+    await openSheet();
+    expect(order().first, '라마바');
+    expect(
+        tester.widget<Icon>(find.descendant(
+            of: find.byKey(const ValueKey('fav_B')),
+            matching: find.byType(Icon))).icon,
+        Icons.star_rounded);
   });
 }

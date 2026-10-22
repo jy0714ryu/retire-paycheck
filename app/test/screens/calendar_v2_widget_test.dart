@@ -225,7 +225,7 @@ void main() {
     );
 
     // 재투자 세전 = 500 × 1,000 = 500,000원. 접힌 제목 노출.
-    final title = find.text('계좌 내 재투자 +500,000원');
+    final title = find.text('연금계좌 안 배당 (재투자) +500,000원');
     await tester.scrollUntilVisible(title, 200);
     expect(title, findsOneWidget);
     // 기본 접힘 → 캡션 미노출.

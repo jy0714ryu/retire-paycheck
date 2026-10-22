@@ -123,17 +123,15 @@ void main() {
       findsOneWidget,
     );
 
-    // 건강보험: 산입 0 → 0 ÷ 2,000만 (0%) + 참고용 배지 + 디스클레이머 상시.
+    // 건강보험(피부양자 기본): 산입 0 → 0 ÷ 2,000만 (0%) + 합산 기준 안내.
     expect(find.text('건강보험 피부양자 소득'), findsOneWidget);
     expect(
       find.textContaining('연간 0만원 ÷ 기준 2,000만원 (0%)'),
       findsOneWidget,
     );
-    expect(find.text('참고용'), findsOneWidget);
-    expect(
-      find.text('공적연금·기타 소득 합산에 따라 달라질 수 있으며, 사적연금 인출은 포함되지 않습니다 (기준: 2026-07 현행)'),
-      findsOneWidget,
-    );
+    // v2.0.2: 가입 형태·공적연금 입력이 생겨 '참고용' 배지 대신 합산 기준 안내만.
+    expect(find.text('참고용'), findsNothing);
+    expect(find.textContaining('공적연금 전액'), findsOneWidget);
 
     // 색: 금융(2.5%)·건보(0%)=초록, 사적연금(80%)=노랑.
     expect(_barColorForCard(tester, '금융소득 종합과세'), AppColors.success);

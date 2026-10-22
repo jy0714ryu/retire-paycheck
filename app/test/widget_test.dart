@@ -50,6 +50,35 @@ void main() {
       expect(find.text('내 자산 입력하기'), findsOneWidget);
     });
 
+    testWidgets('뒤로 가기 — 입력 중엔 키보드만, 다른 탭은 첫 탭, 첫 탭은 두 번 눌러 종료 안내',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(const ProviderScope(child: RetirePaycheckApp()));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.account_balance_wallet_outlined));
+      await tester.pumpAndSettle();
+
+      // 입력칸에 커서 → 뒤로 가기는 키보드만 내리고 탭 유지.
+      await tester.tap(find.byType(TextField).first);
+      await tester.pump();
+      EditableText? focusedText() => FocusManager.instance.primaryFocus?.context
+          ?.findAncestorWidgetOfExactType<EditableText>();
+      expect(focusedText(), isNotNull);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text('일반계좌'), findsOneWidget);
+      expect(focusedText(), isNull);
+
+      // 다음 뒤로 가기 → 첫 탭(이번 달).
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text('은퇴월급'), findsOneWidget);
+
+      // 첫 탭에서 뒤로 가기 → 종료하지 않고 안내.
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      expect(find.text('한 번 더 누르면 종료돼요'), findsOneWidget);
+    });
+
     testWidgets('내 자산 → "어떤 순서로 빼야…" 안내는 계획 탭으로 이동 (연금나침반 외부 링크 없음)',
         (WidgetTester tester) async {
       await tester.pumpWidget(const ProviderScope(child: RetirePaycheckApp()));

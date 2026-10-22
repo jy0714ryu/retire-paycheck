@@ -7,10 +7,12 @@ import '../models/account.dart';
 import '../models/dividend_event.dart';
 import '../models/holding.dart';
 import '../models/interest_item.dart';
+import '../models/retirement_input.dart';
 import '../providers/app_providers.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 import '../widgets/input_widgets.dart';
+import '../widgets/keyboard_safe_back.dart';
 
 /// 화면1 — 자산 입력 (v3: 계좌 중심 IA).
 ///
@@ -277,6 +279,17 @@ class _AccountCard extends ConsumerWidget {
             )
           else
             ...entries.map((e) => _HoldingRow(index: e.key, holding: e.value)),
+          // 연금계좌 배당은 월급(실수령)에 안 잡힌다 — "반영 안 됨"으로 오해하지 않게.
+          if (entries.isNotEmpty && account.type == AccountType.pension)
+            Padding(
+              key: ValueKey('reinvestNote_${account.id}'),
+              padding: const EdgeInsets.only(top: 4, bottom: 8),
+              child: Text(
+                '이 계좌 배당은 통장으로 나오지 않고 계좌 안에서 재투자돼요. '
+                "'이번 달' 화면 아래 '연금계좌 안 배당'에서 볼 수 있어요.",
+                style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
+              ),
+            ),
 
           // 유형 isa·pension: 현금성 잔액 + 계좌별 인출 개시 스위치 +
           // (인출 ON 시) 월 인출·소진 캡션·재원 안내.
@@ -362,9 +375,11 @@ class _AccountCard extends ConsumerWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => _AddHoldingSheet(
-        accountId: account.id,
-        onAdd: (holding) => ref.read(holdingsProvider.notifier).add(holding),
+      builder: (_) => KeyboardSafeBack(
+        child: _AddHoldingSheet(
+          accountId: account.id,
+          onAdd: (holding) => ref.read(holdingsProvider.notifier).add(holding),
+        ),
       ),
     );
   }
@@ -522,14 +537,19 @@ class _AddHoldingSheetState extends ConsumerState<_AddHoldingSheet> {
       ..sort((a, b) => a.corpName.compareTo(b.corpName));
   }
 
-  List<DividendEvent> _filtered(List<DividendEvent> candidates) {
+  List<DividendEvent> _filtered(
+    List<DividendEvent> candidates,
+    Set<String> favorites,
+  ) {
     // 대소문자 무시 매칭 — 'ace' 로 'ACE 미국나스닥100' 검색 가능해야 한다.
     final q = _query.trim().toLowerCase();
-    if (q.isEmpty) return candidates.take(30).toList();
-    return candidates
-        .where((e) => e.corpName.toLowerCase().contains(q))
-        .take(30)
-        .toList();
+    final matched = q.isEmpty
+        ? candidates
+        : candidates.where((e) => e.corpName.toLowerCase().contains(q));
+    // 즐겨찾기를 맨 위로 (각 그룹 안은 이름순 유지).
+    final fav = matched.where((e) => favorites.contains(e.corpCode));
+    final rest = matched.where((e) => !favorites.contains(e.corpCode));
+    return [...fav, ...rest].take(30).toList();
   }
 
   void _submit() {
@@ -774,7 +794,8 @@ class _AddHoldingSheetState extends ConsumerState<_AddHoldingSheet> {
                 ),
               );
             }
-            final filtered = _filtered(candidates);
+            final favorites = ref.watch(favoriteCorpsProvider);
+            final filtered = _filtered(candidates, favorites);
             return ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 240),
               child: ListView.builder(
@@ -783,8 +804,23 @@ class _AddHoldingSheetState extends ConsumerState<_AddHoldingSheet> {
                 itemBuilder: (_, i) {
                   final e = filtered[i];
                   final selected = _selected?.corpCode == e.corpCode;
+                  final starred = favorites.contains(e.corpCode);
                   return ListTile(
                     dense: true,
+                    contentPadding: const EdgeInsets.only(left: 4, right: 8),
+                    leading: IconButton(
+                      key: ValueKey('fav_${e.corpCode}'),
+                      tooltip: starred ? '즐겨찾기 해제' : '즐겨찾기',
+                      icon: Icon(
+                        starred
+                            ? Icons.star_rounded
+                            : Icons.star_border_rounded,
+                        color: starred ? AppColors.gold : AppColors.gray400,
+                      ),
+                      onPressed: () => ref
+                          .read(favoriteCorpsProvider.notifier)
+                          .toggle(e.corpCode),
+                    ),
                     title: Text(e.corpName, style: AppTextStyles.body),
                     trailing: selected
                         ? const Icon(Icons.check_circle, color: AppColors.green)
@@ -1000,9 +1036,70 @@ class _CommonSettingsCard extends ConsumerWidget {
           onChanged: (v) =>
               ref.read(retirementInputProvider.notifier).updateCurrentAge(v),
         ),
+        const SizedBox(height: 20),
+        Text('건강보험', style: AppTextStyles.captionBold),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: double.infinity,
+          child: SegmentedButton<HealthInsType>(
+            key: const Key('health_ins_type'),
+            showSelectedIcon: false,
+            segments: const [
+              ButtonSegment(
+                value: HealthInsType.dependent,
+                label: Text('피부양자'),
+              ),
+              ButtonSegment(
+                value: HealthInsType.employee,
+                label: Text('직장 다님'),
+              ),
+              ButtonSegment(
+                value: HealthInsType.regional,
+                label: Text('지역가입자'),
+              ),
+            ],
+            selected: {input.healthInsType},
+            onSelectionChanged: (v) => ref
+                .read(retirementInputProvider.notifier)
+                .update((s) => s.copyWith(healthInsType: v.first)),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          _healthInsHelp(input.healthInsType),
+          style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
+        ),
+        const SizedBox(height: 14),
+        AmountInputField(
+          key: const ValueKey('public_pension_monthly'),
+          label: '국민연금 등 공적연금 (월)',
+          value: input.publicPensionMonthly,
+          helperText: '받고 있지 않으면 0',
+          onChanged: (v) => ref
+              .read(retirementInputProvider.notifier)
+              .update((s) => s.copyWith(publicPensionMonthly: v)),
+        ),
+        const SizedBox(height: 12),
+        AmountInputField(
+          key: const ValueKey('other_annual_income'),
+          label: '그 밖의 연 소득 (사업·임대 등)',
+          value: input.otherAnnualIncome,
+          helperText: input.healthInsType == HealthInsType.employee
+              ? '지금 다니는 직장 월급은 넣지 않아요'
+              : '근로·사업·임대 소득을 합쳐서',
+          onChanged: (v) => ref
+              .read(retirementInputProvider.notifier)
+              .update((s) => s.copyWith(otherAnnualIncome: v)),
+        ),
       ],
     );
   }
+
+  static String _healthInsHelp(HealthInsType t) => switch (t) {
+    HealthInsType.dependent => '가족 건강보험에 피부양자로 올라 있어요 — 연 소득 2,000만원 기준',
+    HealthInsType.employee => '본인이 직장에 다녀요 — 월급 외 소득 2,000만원 넘으면 건보료 추가',
+    HealthInsType.regional => '본인 이름으로 건보료를 내요 — 문턱 없이 소득·재산으로 부과',
+  };
 }
 
 /// 전역 인출 시작 시점 선택 필드 — 탭하면 연·월 선택 다이얼로그가 열린다.
@@ -1234,8 +1331,10 @@ class _InterestItemsSection extends ConsumerWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => _AddInterestItemSheet(
-        onAdd: (item) => ref.read(interestItemsProvider.notifier).add(item),
+      builder: (_) => KeyboardSafeBack(
+        child: _AddInterestItemSheet(
+          onAdd: (item) => ref.read(interestItemsProvider.notifier).add(item),
+        ),
       ),
     );
   }
