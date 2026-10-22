@@ -14,7 +14,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:retire_paycheck/main.dart';
 import 'package:retire_paycheck/models/dividend_event.dart';
 import 'package:retire_paycheck/models/holding.dart';
+import 'package:retire_paycheck/health_engine/engine.dart';
 import 'package:retire_paycheck/providers/app_providers.dart';
+import 'package:retire_paycheck/services/health_bridge.dart';
 import 'package:retire_paycheck/screens/quick_start_screen.dart';
 import 'package:retire_paycheck/services/dividend_api.dart';
 
@@ -45,12 +47,15 @@ DividendEvent _ev(String code, String name, DateTime record, int per) => Dividen
     corpCode: code, corpName: name, exDate: null, recordDate: record,
     perShare: per, isConfirmed: true);
 
+late HealthParams _healthParams;
+
 List<Override> _overrides() => [
+      healthParamsProvider.overrideWith((ref) async => _healthParams),
       holdingsProvider.overrideWith((ref) => HoldingsNotifier()
         ..add(const Holding(corpCode: '005930', corpName: '삼성전자', shares: 1200))
         ..add(const Holding(corpCode: '458730', corpName: 'TIGER 미국배당다우존스', shares: 3000))),
       retirementInputProvider.overrideWith((ref) => RetirementInputNotifier()
-        ..update((s) => s.copyWith(currentAge: 66))),
+        ..update((s) => s.copyWith(currentAge: 66, publicPensionMonthly: 900000, propertyTaxBase: 420000000, lastMonthlySalary: 5200000))),
       accountsProvider.overrideWith((ref) => AccountsNotifier(ref)
         ..updateDefaults('default_pension_savings',
             balance: 240000000, monthlyWithdrawal: 1420000, isWithdrawing: true)
@@ -78,7 +83,10 @@ const double _shotH = int.fromEnvironment('SHOT_H', defaultValue: 2340) + 0.0;
 const String _dir = _shotH == 2340 ? 'goldens/' : 'goldens/store/';
 
 void main() {
-  setUpAll(_loadFonts);
+  setUpAll(() async {
+    await _loadFonts();
+    _healthParams = await HealthParams.load(const FileParamsSource(), 2026);
+  });
 
   testWidgets('screens', (t) async {
     _phone(t);
