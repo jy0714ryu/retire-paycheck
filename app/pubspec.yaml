@@ -76,6 +76,10 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
+  # 건보료 제도 파라미터 (건보료나침반 엔진 이식, v2.2). 연도별 JSON 추가 시 등록.
+  assets:
+    - assets/health_params/params_2026.json
+
   # v2 프라이빗 뱅킹 테마 글꼴 (OFL, KS X 1001 서브셋 — assets/fonts/OFL-*.txt)
   fonts:
     - family: NotoSerifKR
