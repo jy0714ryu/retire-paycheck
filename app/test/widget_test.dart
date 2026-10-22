@@ -122,6 +122,25 @@ void main() {
       await tester.tap(find.byIcon(Icons.timeline_outlined));
       await tester.pumpAndSettle();
       expect(find.text('계산 결과 1위'), findsOneWidget);
+      expect(find.byKey(const Key('plan_share')), findsOneWidget);
+
+      // v2.2: 연도별 표(기본 접힘) — 펼치면 나이별 줄.
+      final yearly = find.byKey(const Key('plan_yearly_tile'));
+      await tester.scrollUntilVisible(
+        yearly,
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(yearly);
+      await tester.pumpAndSettle();
+      expect(find.text('66세'), findsOneWidget);
+      await tester.tap(yearly);
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('plan_unknown_note')),
+        -300,
+        scrollable: find.byType(Scrollable).first,
+      );
 
       // v2.1: 공제 안 받은 원금을 모름으로 두면 "기본 가정" 표시 → '없음' 답하면 사라진다.
       expect(find.byKey(const Key('plan_unknown_note')), findsOneWidget);

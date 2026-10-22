@@ -49,6 +49,9 @@ dependencies:
 
   # 외부 링크(연금나침반 스토어 페이지) 오픈
   url_launcher: ^6.3.0
+  # v2.2 연금나침반 이식 — 결과 요약 공유·리뷰 요청
+  share_plus: ^13.2.1
+  in_app_review: ^2.0.10
 
   # 광고 (9.0.0: Gradle 9.1/AGP 9.0.1 기본 툴체인과 호환되는 유일한 버전.
   # pension-compass 실측 검증판 — compileSdk 36 지원.)

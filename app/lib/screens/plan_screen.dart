@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../engine/pension_input.dart';
 import '../engine/result_narrative.dart';
@@ -8,6 +9,7 @@ import '../engine/simulation_result.dart';
 import '../engine/withdrawal_optimizer.dart';
 import '../providers/app_providers.dart';
 import '../services/plan_mapper.dart';
+import '../services/review_prompt.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 import '../utils/currency_format.dart';
@@ -35,6 +37,7 @@ class PlanScreen extends ConsumerStatefulWidget {
 }
 
 class _PlanScreenState extends ConsumerState<PlanScreen> {
+  bool _reviewCounted = false;
   late final TextEditingController _targetCtl;
   late final TextEditingController _npsCtl;
   late final TextEditingController _npsAgeCtl;
@@ -85,6 +88,14 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
     );
     final unknowns = planUnknowns(accounts, retirement);
     final result = input == null ? null : WithdrawalOptimizer.optimize(input);
+    // 리뷰 요청 판정은 화면을 열 때 한 번만 (계산 칩을 바꿀 때마다 세지 않게).
+    if (result != null && !_reviewCounted) {
+      _reviewCounted = true;
+      final savings = result.savings;
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => ReviewPrompt.onPlanViewed(savings),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(title: const Text('인출 계획')),
@@ -121,6 +132,8 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
               _section('전략별 ${_a.years}년 총 세금'),
               const SizedBox(height: 8),
               ..._strategyTiles(result),
+              const SizedBox(height: 4),
+              _YearlyTable(result: result),
             ] else
               _InfoCard(
                 text:
@@ -457,6 +470,18 @@ class _HeroCard extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 6),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              key: const Key('plan_share'),
+              onPressed: () => SharePlus.instance.share(
+                ShareParams(text: planShareText(result, years)),
+              ),
+              icon: const Icon(Icons.ios_share, size: 18),
+              label: const Text('결과 공유'),
+            ),
+          ),
         ],
       ),
     );
@@ -557,4 +582,98 @@ class _InfoCard extends StatelessWidget {
       style: AppTextStyles.body.copyWith(color: AppColors.gray600),
     ),
   );
+}
+
+/// 결과 공유 문구 — 총자산·잔액은 넣지 않는다 (개인 자산 노출 방지).
+String planShareText(SimulationResult r, int years) =>
+    '은퇴월급 계산 결과\n'
+    '세금이 가장 적게 계산된 인출 순서: ${r.optimalStrategyName}\n'
+    '$years년 총 세금 ${CurrencyFormat.man(r.totalTaxOptimal)}만원 · '
+    '통념 대비 ${CurrencyFormat.man(r.savings)}만원 적음\n'
+    '(현행 세법 기준 추정, 투자 권유 아님)\n'
+    'https://play.google.com/store/apps/details?id=com.quantlog.retirepaycheck';
+
+/// 연도별 인출·세금 표 (1위 방식) — 연금나침반 연도별 상세 이식, 접힌 상태가 기본.
+class _YearlyTable extends StatelessWidget {
+  const _YearlyTable({required this.result});
+
+  final SimulationResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = result.schedule;
+    TextStyle num0([Color? c]) => AppTextStyles.caption.copyWith(
+      fontFeatures: AppTextStyles.tabular,
+      color: c ?? AppColors.gray800,
+    );
+    Widget cell(
+      String t, {
+      bool head = false,
+      TextAlign align = TextAlign.right,
+    }) => Expanded(
+      child: Text(
+        t,
+        textAlign: align,
+        style: head
+            ? AppTextStyles.labelSmall.copyWith(color: AppColors.gray500)
+            : num0(),
+      ),
+    );
+    return Material(
+      key: const Key('plan_yearly'),
+      color: AppColors.surface,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: AppColors.gray200),
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          key: const Key('plan_yearly_tile'),
+          tilePadding: const EdgeInsets.symmetric(horizontal: 14),
+          childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+          title: Text(
+            '연도별 인출·세금 (${result.optimalStrategyName})',
+            style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600),
+          ),
+          children: [
+            Row(
+              children: [
+                cell('나이', head: true, align: TextAlign.left),
+                cell('인출', head: true),
+                cell('세금', head: true),
+                cell('국민연금', head: true),
+              ],
+            ),
+            const SizedBox(height: 4),
+            for (final y in rows)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: Row(
+                  children: [
+                    cell('${y.age}세', align: TextAlign.left),
+                    cell('${CurrencyFormat.man(y.totalAmount)}만'),
+                    cell('${CurrencyFormat.man(y.totalTax)}만'),
+                    cell(
+                      y.npsAnnualAmount > 0
+                          ? '${CurrencyFormat.man(y.npsAnnualAmount)}만'
+                          : '-',
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 4),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                '연 단위 · 국민연금은 연금계좌 인출과 따로 들어오는 돈이라 세금 계산에서 뺐어요.',
+                style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
