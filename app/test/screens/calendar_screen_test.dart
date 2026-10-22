@@ -93,7 +93,8 @@ Future<void> _pumpCalendar(WidgetTester tester, {DateTime? initialMonth}) async 
 void main() {
   setUp(() {
     // override 된 notifier 의 생성자 _load 가 읽을 mock prefs(빈 값 → 시드 유지).
-    SharedPreferences.setMockInitialValues({});
+    // 기존 회귀는 '통장 입금' 보기 기준 (v2.1 기본은 '배당 전체').
+    SharedPreferences.setMockInitialValues({'calendar_view': false});
   });
 
   testWidgets('4월로 네비게이션 → 세후 메인 카드 실수령 186.8만원 표시',
@@ -181,6 +182,9 @@ void main() {
 
     final bar4 = find.byKey(const ValueKey('yearlyBar_4'));
     await tester.scrollUntilVisible(bar4, 100);
+    // v2.1 보기 전환 탭이 생겨 화면이 길어졌다 — 막대를 화면 안쪽까지 올린다.
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -150));
+    await tester.pumpAndSettle();
     await tester.tap(bar4);
     await tester.pumpAndSettle();
 

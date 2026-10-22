@@ -46,28 +46,58 @@ ThemeData buildPrivateBankingTheme() {
       backgroundColor: AppColors.surface,
       indicatorColor: AppColors.goldSoft,
       surfaceTintColor: Colors.transparent,
-      labelTextStyle: WidgetStateProperty.resolveWith((states) => TextStyle(
-            fontFamily: AppTextStyles.sans,
-            fontSize: 12,
-            fontWeight: states.contains(WidgetState.selected)
-                ? FontWeight.w600
-                : FontWeight.w400,
-            color: states.contains(WidgetState.selected)
-                ? AppColors.navy
-                : AppColors.gray500,
-          )),
-      iconTheme: WidgetStateProperty.resolveWith((states) => IconThemeData(
-            color: states.contains(WidgetState.selected)
-                ? AppColors.navy
-                : AppColors.gray500,
-          )),
+      labelTextStyle: WidgetStateProperty.resolveWith(
+        (states) => TextStyle(
+          fontFamily: AppTextStyles.sans,
+          fontSize: 12,
+          fontWeight: states.contains(WidgetState.selected)
+              ? FontWeight.w600
+              : FontWeight.w400,
+          color: states.contains(WidgetState.selected)
+              ? AppColors.navy
+              : AppColors.gray500,
+        ),
+      ),
+      iconTheme: WidgetStateProperty.resolveWith(
+        (states) => IconThemeData(
+          color: states.contains(WidgetState.selected)
+              ? AppColors.navy
+              : AppColors.gray500,
+        ),
+      ),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         backgroundColor: AppColors.navy,
         foregroundColor: AppColors.surface,
         textStyle: const TextStyle(
-            fontFamily: AppTextStyles.sans, fontWeight: FontWeight.w600),
+          fontFamily: AppTextStyles.sans,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    ),
+    // 보기 전환·질문형 선택 — 기본 하늘색 대신 골드 소프트 + 남색 글자.
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: ButtonStyle(
+        backgroundColor: WidgetStateProperty.resolveWith(
+          (s) => s.contains(WidgetState.selected)
+              ? AppColors.goldSoft
+              : AppColors.surface,
+        ),
+        foregroundColor: WidgetStateProperty.resolveWith(
+          (s) => s.contains(WidgetState.selected)
+              ? AppColors.navy
+              : AppColors.gray600,
+        ),
+        side: const WidgetStatePropertyAll(
+          BorderSide(color: AppColors.gray300),
+        ),
+        textStyle: const WidgetStatePropertyAll(
+          TextStyle(
+            fontFamily: AppTextStyles.sans,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
     ),
     inputDecorationTheme: const InputDecorationTheme(

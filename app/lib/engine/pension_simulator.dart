@@ -64,8 +64,9 @@ class PensionSimulator {
   static List<WithdrawalDetail> finalizeYearTax(
     Map<WithdrawalSource, DrawSplit> ledger,
     int age,
-    int year,
-  ) {
+    int year, [
+    double retirementRate = kRetirementEffectiveRate,
+  ]) {
     final details = <WithdrawalDetail>[];
 
     // 1) 비과세 소스
@@ -113,7 +114,7 @@ class PensionSimulator {
     if (ret != null) {
       final reduction = year <= 10 ? 0.7 : 0.6;
       if (ret.within > 0) {
-        final rate = kRetirementEffectiveRate * reduction;
+        final rate = retirementRate * reduction;
         details.add(WithdrawalDetail(
           source: WithdrawalSource.irpRetirement,
           amount: ret.within,
@@ -125,8 +126,8 @@ class PensionSimulator {
         details.add(WithdrawalDetail(
           source: WithdrawalSource.irpRetirement,
           amount: ret.over,
-          tax: (ret.over * kRetirementEffectiveRate).round(),
-          taxRate: kRetirementEffectiveRate * 100,
+          tax: (ret.over * retirementRate).round(),
+          taxRate: retirementRate * 100,
         ));
       }
     }
@@ -232,7 +233,8 @@ class PensionSimulator {
       final yearly = YearlyWithdrawal(
         year: year,
         age: age,
-        withdrawals: finalizeYearTax(ledger, age, payoutYear),
+        withdrawals:
+            finalizeYearTax(ledger, age, payoutYear, input.retirementTaxRate),
         npsAnnualAmount: npsAnnualAmount,
       );
       schedule.add(yearly);
@@ -265,7 +267,7 @@ class PensionSimulator {
     // 전략이 유리하게 편향될 수 있다 (MVP 근사, 절벽 반영은 P1 후속).
     final latentTax =
         (taxableLeft * TaxCalculator.getPensionTaxRate(endAge)).round() +
-            (retirementLeft * kRetirementEffectiveRate * 0.7).round();
+            (retirementLeft * input.retirementTaxRate * 0.7).round();
     final finalBalance = pools.values.fold<int>(0, (s, v) => s + v);
 
     return StrategyOutcome(

@@ -12,6 +12,8 @@ import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 import '../utils/currency_format.dart';
 import '../widgets/banner_ad_widget.dart';
+import '../widgets/nps_estimate_sheet.dart';
+import '../widgets/plan_accuracy_card.dart';
 
 /// 계획 탭 — 연금나침반 엔진으로 인출 순서 4가지 전략의 총 세금을 비교한다 (v2, 2026-10-22).
 ///
@@ -69,13 +71,19 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
   Widget build(BuildContext context) {
     ref.watch(planAssumptionsProvider);
     final accounts = ref.watch(effectiveAccountsProvider);
-    final age = ref.watch(retirementInputProvider).currentAge;
+    final retirement = ref.watch(retirementInputProvider);
+    final age = retirement.currentAge;
     final balances = planBalancesFrom(accounts);
     final input = buildPlanInput(
       accounts: accounts,
       currentAge: age,
       assumptions: _a,
+      // 국민연금 칸을 비워 둘 때만 내 자산 공적연금으로 대체 (입력 중 깜빡 바뀌지 않게).
+      extras: _npsCtl.text.trim().isEmpty
+          ? retirement
+          : retirement.copyWith(publicPensionMonthly: 0),
     );
+    final unknowns = planUnknowns(accounts, retirement);
     final result = input == null ? null : WithdrawalOptimizer.optimize(input);
 
     return Scaffold(
@@ -87,7 +95,22 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
             _EmptyCard(onGoToAssets: widget.onGoToAssets)
           else ...[
             if (result != null && input != null) ...[
-              _HeroCard(result: result, years: _a.years),
+              _HeroCard(
+                result: result,
+                years: _a.years,
+                basicAssumption: unknowns.isNotEmpty,
+              ),
+              if (unknowns.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  '${unknowns.join('·')}을(를) 모름으로 두어 기본 가정으로 비교했어요. '
+                  '아래 "더 정확하게 계산하기"에서 넣으면 순서가 바뀔 수 있어요.',
+                  key: const Key('plan_unknown_note'),
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.gray600,
+                  ),
+                ),
+              ],
               const SizedBox(height: 12),
               _NarrativeLine(
                 result: result,
@@ -105,13 +128,15 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                     '내 자산 탭에서 연금·ISA 계좌의 월 인출액을 넣어 주세요.',
               ),
             const SizedBox(height: 20),
+            const PlanAccuracyCard(),
+            const SizedBox(height: 20),
             _section('계산 가정'),
             const SizedBox(height: 8),
             _assumptions(balances),
             const SizedBox(height: 16),
             Text(
-              '내 자산에 없는 정보는 보수적으로 가정했어요: 연금저축은 전액 세액공제분, '
-              'IRP 퇴직금 이전분 0, ISA 수익 0. 세법은 현행 기준이며 투자 권유가 아닌 참고용 계산입니다.',
+              '2026년 세법 기준의 추정 계산이며 투자 권유가 아닙니다. '
+              '국민연금공단·국민건강보험공단과 무관한 민간 계산기입니다.',
               style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
             ),
           ],
@@ -202,6 +227,9 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
   }
 
   Widget _assumptions(PlanBalances b) {
+    final publicPension = ref
+        .read(retirementInputProvider)
+        .publicPensionMonthly;
     Widget chips<T>(
       String label,
       List<(T, String)> opts,
@@ -326,7 +354,30 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          if (_npsCtl.text.trim().isEmpty && publicPension > 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                '비워 두면 내 자산의 공적연금 월 ${CurrencyFormat.man(publicPension)}만원을 써요',
+                key: const Key('plan_nps_from_assets'),
+                style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
+              ),
+            ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              key: const Key('plan_nps_estimate'),
+              onPressed: () async {
+                final r = await showNpsEstimateSheet(context);
+                if (r == null || !mounted) return;
+                _npsCtl.text = '${r.monthly ~/ 10000}';
+                _npsAgeCtl.text = '${r.startAge}';
+                _syncNps();
+              },
+              child: const Text('국민연금 금액을 모르면 추정하기'),
+            ),
+          ),
+          const SizedBox(height: 4),
         ],
       ),
     );
@@ -345,9 +396,16 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
 }
 
 class _HeroCard extends StatelessWidget {
-  const _HeroCard({required this.result, required this.years});
+  const _HeroCard({
+    required this.result,
+    required this.years,
+    this.basicAssumption = false,
+  });
   final SimulationResult result;
   final int years;
+
+  /// 정확도 입력에 '모름'이 남아 있으면 "기본 가정" 비교라고 밝힌다 (단정 금지).
+  final bool basicAssumption;
 
   @override
   Widget build(BuildContext context) {
@@ -365,7 +423,9 @@ class _HeroCard extends StatelessWidget {
           Container(width: 28, height: 2, color: AppColors.gold),
           const SizedBox(height: 12),
           Text(
-            '세금이 가장 적게 계산된 인출 순서',
+            basicAssumption
+                ? '기본 가정에서 세금이 가장 적게 계산된 인출 순서'
+                : '세금이 가장 적게 계산된 인출 순서',
             style: AppTextStyles.label.copyWith(color: AppColors.gray500),
           ),
           const SizedBox(height: 6),

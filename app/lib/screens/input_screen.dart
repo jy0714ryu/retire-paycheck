@@ -279,14 +279,14 @@ class _AccountCard extends ConsumerWidget {
             )
           else
             ...entries.map((e) => _HoldingRow(index: e.key, holding: e.value)),
-          // 연금계좌 배당은 월급(실수령)에 안 잡힌다 — "반영 안 됨"으로 오해하지 않게.
-          if (entries.isNotEmpty && account.type == AccountType.pension)
+          // 연금·ISA 계좌 배당은 통장 입금에 안 잡힌다 — "반영 안 됨"으로 오해하지 않게.
+          if (entries.isNotEmpty && account.type != AccountType.general)
             Padding(
               key: ValueKey('reinvestNote_${account.id}'),
               padding: const EdgeInsets.only(top: 4, bottom: 8),
               child: Text(
-                '이 계좌 배당은 통장으로 나오지 않고 계좌 안에서 재투자돼요. '
-                "'이번 달' 화면 아래 '연금계좌 안 배당'에서 볼 수 있어요.",
+                '이 계좌 배당은 통장으로 나오지 않고 계좌 안에 남아요. '
+                "'이번 달 › 배당 전체'에서 볼 수 있어요.",
                 style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
               ),
             ),

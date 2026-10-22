@@ -42,6 +42,9 @@ class PensionInput {
   /// null이면 국민연금 미반영, 기존 동작과 100% 동일 (하위호환).
   final int? npsStartAge;
 
+  /// IRP 퇴직금 재원의 원래 퇴직소득세 실효세율 (기본 5%). 연금으로 받으면 70%(11년차부터 60%)만 낸다.
+  final double retirementTaxRate;
+
   const PensionInput({
     required this.pensionSavings,
     required this.pensionSavingsDeducted,
@@ -56,6 +59,7 @@ class PensionInput {
     this.expectedReturnRate = 0.04,
     this.npsMonthlyAmount,
     this.npsStartAge,
+    this.retirementTaxRate = 0.05,
   });
 
   /// 국민연금 정보가 완전히 입력되었는지 (월수령액·개시연령 둘 다 있어야 활성)
@@ -108,6 +112,7 @@ class PensionInput {
     double? expectedReturnRate,
     int? npsMonthlyAmount,
     int? npsStartAge,
+    double? retirementTaxRate,
   }) {
     return PensionInput(
       pensionSavings: pensionSavings ?? this.pensionSavings,
@@ -123,6 +128,7 @@ class PensionInput {
       expectedReturnRate: expectedReturnRate ?? this.expectedReturnRate,
       npsMonthlyAmount: npsMonthlyAmount ?? this.npsMonthlyAmount,
       npsStartAge: npsStartAge ?? this.npsStartAge,
+      retirementTaxRate: retirementTaxRate ?? this.retirementTaxRate,
     );
   }
 
@@ -157,6 +163,7 @@ class PensionInput {
         'expectedReturnRate': expectedReturnRate,
         'npsMonthlyAmount': npsMonthlyAmount,
         'npsStartAge': npsStartAge,
+        'retirementTaxRate': retirementTaxRate,
       };
 
   factory PensionInput.fromJson(Map<String, dynamic> json) {
@@ -181,6 +188,8 @@ class PensionInput {
           (json['expectedReturnRate'] as num?)?.toDouble() ?? 0.04,
       npsMonthlyAmount: (json['npsMonthlyAmount'] as num?)?.toInt(),
       npsStartAge: (json['npsStartAge'] as num?)?.toInt(),
+      retirementTaxRate:
+          (json['retirementTaxRate'] as num?)?.toDouble() ?? 0.05,
     );
   }
 
