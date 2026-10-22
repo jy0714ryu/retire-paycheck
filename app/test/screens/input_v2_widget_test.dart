@@ -41,15 +41,19 @@ void main() {
     expect(find.text('월 인출'), findsNothing);
   });
 
-  testWidgets('연금나침반 CTA 링크 문구 노출', (tester) async {
+  testWidgets('인출 순서 안내 → 계획 탭 콜백 (v2: 연금나침반 외부 링크 제거)', (tester) async {
+    var tapped = 0;
     await tester.pumpWidget(
-      const ProviderScope(child: MaterialApp(home: InputScreen())),
+      ProviderScope(
+          child: MaterialApp(home: InputScreen(onGoToPlan: () => tapped++))),
     );
     await tester.pumpAndSettle();
 
-    final ctaFinder = find.text('어떤 순서로 빼야 세금을 아낄까? → 연금나침반');
+    final ctaFinder = find.text('어떤 순서로 빼야 세금을 아낄까? → 계획 탭에서 비교');
     await tester.ensureVisible(ctaFinder);
-    expect(ctaFinder, findsOneWidget);
+    await tester.tap(ctaFinder);
+    expect(tapped, 1);
+    expect(find.textContaining('연금나침반'), findsNothing);
   });
 
   testWidgets('기본 계좌 4개 카드 렌더 + 계좌 추가 다이얼로그', (tester) async {

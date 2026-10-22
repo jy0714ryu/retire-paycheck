@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../models/account.dart';
 import '../models/dividend_event.dart';
@@ -13,18 +12,17 @@ import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 import '../widgets/input_widgets.dart';
 
-/// 연금나침반 Play 스토어 페이지 — 인출 순서 최적화 CTA.
-const String _kPensionCompassUrl =
-    'https://play.google.com/store/apps/details?id=com.quantlog.pensioncompass';
-
 /// 화면1 — 자산 입력 (v3: 계좌 중심 IA).
 ///
 /// 계좌가 최상위 컨테이너다. 위→아래 구성:
 /// ①자동 저장 안내 → ②계좌 카드들(effectiveAccounts, 계좌별 인출 스위치) →
-/// ③[+ 계좌 추가] → ④공통 설정(연금나침반 CTA·현재 나이) → ⑤(선택) 연 이자소득.
+/// ③[+ 계좌 추가] → ④공통 설정(계획 탭 안내·현재 나이) → ⑤(선택) 연 이자소득.
 /// 모든 값은 provider 를 통해 SharedPreferences 에 즉시 영속된다.
 class InputScreen extends ConsumerWidget {
-  const InputScreen({super.key});
+  const InputScreen({super.key, this.onGoToPlan});
+
+  /// 공통 설정의 "어떤 순서로 빼야…" 안내 → 계획 탭으로 이동 (v2 에서 연금나침반 기능 흡수).
+  final VoidCallback? onGoToPlan;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -32,9 +30,7 @@ class InputScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('내 자산'),
-      ),
+      appBar: AppBar(title: const Text('내 자산')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -55,8 +51,10 @@ class InputScreen extends ConsumerWidget {
               key: const ValueKey('addAccountButton'),
               onPressed: () => _openAddAccountDialog(context, ref),
               icon: const Icon(Icons.add, color: AppColors.navy),
-              label: const Text('계좌 추가',
-                  style: TextStyle(color: AppColors.navy)),
+              label: const Text(
+                '계좌 추가',
+                style: TextStyle(color: AppColors.navy),
+              ),
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 48),
                 side: const BorderSide(color: AppColors.navy),
@@ -67,8 +65,8 @@ class InputScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
 
-            // 공통 설정 — 연금 인출 토글 + 연금나침반 CTA + 현재 나이.
-            const _CommonSettingsCard(),
+            // 공통 설정 — 인출 시작 시점 + 계획 탭 안내 + 현재 나이.
+            _CommonSettingsCard(onGoToPlan: onGoToPlan),
             const SizedBox(height: 16),
 
             // (선택) 연 이자소득 — InterestItem 리스트.
@@ -84,7 +82,9 @@ class InputScreen extends ConsumerWidget {
     showDialog<void>(
       context: context,
       builder: (_) => _AddAccountDialog(
-        onAdd: (name, type) => ref.read(accountsProvider.notifier).add(
+        onAdd: (name, type) => ref
+            .read(accountsProvider.notifier)
+            .add(
               Account(
                 id: 'user_${DateTime.now().microsecondsSinceEpoch}',
                 name: name,
@@ -94,12 +94,6 @@ class InputScreen extends ConsumerWidget {
       ),
     );
   }
-}
-
-/// 연금나침반 Play 스토어 페이지로 이동 — 공통 설정 카드 CTA.
-Future<void> _openPensionCompass() async {
-  final uri = Uri.parse(_kPensionCompassUrl);
-  await launchUrl(uri, mode: LaunchMode.externalApplication);
 }
 
 /// 자동 저장 안내 배너 — 입력값은 변경 즉시 SharedPreferences 에 영속되므로
@@ -117,8 +111,11 @@ class _AutoSaveNotice extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.cloud_done_outlined,
-              size: 18, color: AppColors.green),
+          const Icon(
+            Icons.cloud_done_outlined,
+            size: 18,
+            color: AppColors.green,
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -237,13 +234,15 @@ class _AccountCard extends ConsumerWidget {
           Row(
             children: [
               Flexible(
-                child: Text(account.name,
-                    style: AppTextStyles.h4, overflow: TextOverflow.ellipsis),
+                child: Text(
+                  account.name,
+                  style: AppTextStyles.h4,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
               const SizedBox(width: 8),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
                   color: AppColors.gray100,
                   borderRadius: BorderRadius.circular(6),
@@ -254,8 +253,11 @@ class _AccountCard extends ConsumerWidget {
               if (!account.isDefault)
                 IconButton(
                   key: ValueKey('deleteAccount_${account.id}'),
-                  icon: const Icon(Icons.delete_outline,
-                      color: AppColors.error, size: 20),
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    color: AppColors.error,
+                    size: 20,
+                  ),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                   onPressed: () => _confirmDelete(context, ref),
@@ -270,8 +272,7 @@ class _AccountCard extends ConsumerWidget {
               padding: const EdgeInsets.only(bottom: 8),
               child: Text(
                 '아직 종목이 없습니다.',
-                style:
-                    AppTextStyles.caption.copyWith(color: AppColors.gray500),
+                style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
               ),
             )
           else
@@ -312,8 +313,9 @@ class _AccountCard extends ConsumerWidget {
                 const SizedBox(height: 8),
                 Text(
                   _depletionCaption!,
-                  style: AppTextStyles.caption
-                      .copyWith(color: AppColors.gray500),
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.gray500,
+                  ),
                 ),
               ],
               if (entries.isNotEmpty) ...[
@@ -321,8 +323,9 @@ class _AccountCard extends ConsumerWidget {
                 Text(
                   '월 지급액은 현금성 잔액에서 나갑니다 '
                   '(ETF·종목은 매달 자동 매도되지 않아요)',
-                  style: AppTextStyles.caption
-                      .copyWith(color: AppColors.gray500),
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.gray500,
+                  ),
                 ),
               ],
             ],
@@ -334,8 +337,7 @@ class _AccountCard extends ConsumerWidget {
             key: ValueKey('addHolding_${account.id}'),
             onPressed: () => _openAddHoldingSheet(context, ref),
             icon: const Icon(Icons.add, color: AppColors.navy),
-            label: const Text('종목 추가',
-                style: TextStyle(color: AppColors.navy)),
+            label: const Text('종목 추가', style: TextStyle(color: AppColors.navy)),
             style: OutlinedButton.styleFrom(
               minimumSize: const Size(double.infinity, 44),
               side: const BorderSide(color: AppColors.navy),
@@ -410,8 +412,7 @@ class _HoldingRow extends ConsumerWidget {
     return Dismissible(
       key: ValueKey('holding_${holding.accountId}_${holding.corpCode}'),
       direction: DismissDirection.endToStart,
-      onDismissed: (_) =>
-          ref.read(holdingsProvider.notifier).removeAt(index),
+      onDismissed: (_) => ref.read(holdingsProvider.notifier).removeAt(index),
       background: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
@@ -436,9 +437,11 @@ class _HoldingRow extends ConsumerWidget {
               child: Row(
                 children: [
                   Flexible(
-                    child: Text(holding.corpName,
-                        style: AppTextStyles.bodyLarge,
-                        overflow: TextOverflow.ellipsis),
+                    child: Text(
+                      holding.corpName,
+                      style: AppTextStyles.bodyLarge,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                   if (holding.isManual) ...[
                     const SizedBox(width: 8),
@@ -452,9 +455,13 @@ class _HoldingRow extends ConsumerWidget {
             // 명시적 삭제 버튼 — 스와이프를 모르는 사용자를 위한 탭 삭제 경로.
             IconButton(
               key: ValueKey(
-                  'deleteHolding_${holding.accountId}_${holding.corpCode}'),
-              icon: const Icon(Icons.delete_outline,
-                  color: AppColors.error, size: 20),
+                'deleteHolding_${holding.accountId}_${holding.corpCode}',
+              ),
+              icon: const Icon(
+                Icons.delete_outline,
+                color: AppColors.error,
+                size: 20,
+              ),
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
               tooltip: '삭제',
@@ -529,12 +536,14 @@ class _AddHoldingSheetState extends ConsumerState<_AddHoldingSheet> {
     final sel = _selected;
     final shares = int.tryParse(_sharesController.text.trim()) ?? 0;
     if (sel == null || shares <= 0) return;
-    widget.onAdd(Holding(
-      corpCode: sel.corpCode,
-      corpName: sel.corpName,
-      shares: shares,
-      accountId: widget.accountId,
-    ));
+    widget.onAdd(
+      Holding(
+        corpCode: sel.corpCode,
+        corpName: sel.corpName,
+        shares: shares,
+        accountId: widget.accountId,
+      ),
+    );
     Navigator.of(context).pop();
   }
 
@@ -542,20 +551,25 @@ class _AddHoldingSheetState extends ConsumerState<_AddHoldingSheet> {
     final name = _manualNameController.text.trim();
     final shares = int.tryParse(_manualSharesController.text.trim()) ?? 0;
     final annual = int.tryParse(_manualAnnualController.text.trim()) ?? 0;
-    return name.isNotEmpty && shares > 0 && annual > 0 && _manualMonths.isNotEmpty;
+    return name.isNotEmpty &&
+        shares > 0 &&
+        annual > 0 &&
+        _manualMonths.isNotEmpty;
   }
 
   void _submitManual() {
     if (!_manualValid) return;
-    widget.onAdd(Holding(
-      // API corp_code(8자리 숫자)와 충돌하지 않는 고유 코드.
-      corpCode: 'manual_${DateTime.now().microsecondsSinceEpoch}',
-      corpName: _manualNameController.text.trim(),
-      shares: int.parse(_manualSharesController.text.trim()),
-      manualPerShareAnnual: int.parse(_manualAnnualController.text.trim()),
-      manualPaymentMonths: _manualMonths.toList()..sort(),
-      accountId: widget.accountId,
-    ));
+    widget.onAdd(
+      Holding(
+        // API corp_code(8자리 숫자)와 충돌하지 않는 고유 코드.
+        corpCode: 'manual_${DateTime.now().microsecondsSinceEpoch}',
+        corpName: _manualNameController.text.trim(),
+        shares: int.parse(_manualSharesController.text.trim()),
+        manualPerShareAnnual: int.parse(_manualAnnualController.text.trim()),
+        manualPaymentMonths: _manualMonths.toList()..sort(),
+        accountId: widget.accountId,
+      ),
+    );
     Navigator.of(context).pop();
   }
 
@@ -612,7 +626,10 @@ class _AddHoldingSheetState extends ConsumerState<_AddHoldingSheet> {
           controller: _manualSharesController,
           keyboardType: TextInputType.number,
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          decoration: _manualFieldDecoration(labelText: '보유 수량', suffixText: '주'),
+          decoration: _manualFieldDecoration(
+            labelText: '보유 수량',
+            suffixText: '주',
+          ),
           onChanged: (_) => setState(() {}),
         ),
         const SizedBox(height: 12),
@@ -688,157 +705,159 @@ class _AddHoldingSheetState extends ConsumerState<_AddHoldingSheet> {
   Widget _buildSearchForm() {
     final asyncEvents = ref.watch(dividendEventsProvider);
     return Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('종목 추가', style: AppTextStyles.h4),
-          const SizedBox(height: 16),
-          TextField(
-            autofocus: true,
-            decoration: InputDecoration(
-              hintText: '종목명 검색',
-              prefixIcon: const Icon(Icons.search),
-              filled: true,
-              fillColor: AppColors.gray50,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.gray200),
-              ),
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('종목 추가', style: AppTextStyles.h4),
+        const SizedBox(height: 16),
+        TextField(
+          autofocus: true,
+          decoration: InputDecoration(
+            hintText: '종목명 검색',
+            prefixIcon: const Icon(Icons.search),
+            filled: true,
+            fillColor: AppColors.gray50,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.gray200),
             ),
-            onChanged: (t) => setState(() {
-              _query = t.trim();
-              _selected = null;
-            }),
           ),
-          const SizedBox(height: 12),
-          asyncEvents.when(
-            loading: () => const Padding(
-              padding: EdgeInsets.symmetric(vertical: 24),
-              child: Center(
-                child: SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
+          onChanged: (t) => setState(() {
+            _query = t.trim();
+            _selected = null;
+          }),
+        ),
+        const SizedBox(height: 12),
+        asyncEvents.when(
+          loading: () => const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Center(
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2),
               ),
             ),
-            error: (_, _) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      '배당 종목 목록을 아직 불러오지 못했습니다.\n잠시 후 다시 시도하세요.',
-                      style: AppTextStyles.caption
-                          .copyWith(color: AppColors.gray500),
+          ),
+          error: (_, _) => Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '배당 종목 목록을 아직 불러오지 못했습니다.\n잠시 후 다시 시도하세요.',
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.gray500,
                     ),
                   ),
-                  TextButton(
-                    onPressed: () =>
-                        ref.invalidate(dividendEventsProvider),
-                    child: const Text('다시 시도',
-                        style: TextStyle(color: AppColors.navy)),
+                ),
+                TextButton(
+                  onPressed: () => ref.invalidate(dividendEventsProvider),
+                  child: const Text(
+                    '다시 시도',
+                    style: TextStyle(color: AppColors.navy),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          data: (result) {
+            final candidates = _candidatesFrom(result.events);
+            if (candidates.isEmpty) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Text(
+                  '표시할 배당 종목이 없습니다.',
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.gray500,
+                  ),
+                ),
+              );
+            }
+            final filtered = _filtered(candidates);
+            return ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 240),
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: filtered.length,
+                itemBuilder: (_, i) {
+                  final e = filtered[i];
+                  final selected = _selected?.corpCode == e.corpCode;
+                  return ListTile(
+                    dense: true,
+                    title: Text(e.corpName, style: AppTextStyles.body),
+                    trailing: selected
+                        ? const Icon(Icons.check_circle, color: AppColors.green)
+                        : null,
+                    onTap: () => setState(() => _selected = e),
+                  );
+                },
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _sharesController,
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          decoration: InputDecoration(
+            labelText: '보유 수량',
+            suffixText: '주',
+            filled: true,
+            fillColor: AppColors.gray50,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.gray200),
+            ),
+          ),
+          onChanged: (_) => setState(() {}),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed:
+                (_selected != null &&
+                    (int.tryParse(_sharesController.text.trim()) ?? 0) > 0)
+                ? _submit
+                : null,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.green,
+              disabledBackgroundColor: AppColors.gray300,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 0,
+            ),
+            child: const Text('추가', style: AppTextStyles.button),
+          ),
+        ),
+        const SizedBox(height: 4),
+        // 배당 API 미커버 종목 폴백 — 직접 입력 폼으로 전환.
+        Center(
+          child: TextButton(
+            key: const ValueKey('manualEntryButton'),
+            onPressed: () => setState(() => _manualMode = true),
+            child: Text.rich(
+              TextSpan(
+                text: '찾는 종목이 없나요? ',
+                style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
+                children: [
+                  TextSpan(
+                    text: '직접 입력',
+                    style: AppTextStyles.captionBold.copyWith(
+                      color: AppColors.navy,
+                      decoration: TextDecoration.underline,
+                    ),
                   ),
                 ],
               ),
             ),
-            data: (result) {
-              final candidates = _candidatesFrom(result.events);
-              if (candidates.isEmpty) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: Text(
-                    '표시할 배당 종목이 없습니다.',
-                    style: AppTextStyles.caption
-                        .copyWith(color: AppColors.gray500),
-                  ),
-                );
-              }
-              final filtered = _filtered(candidates);
-              return ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 240),
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: filtered.length,
-                  itemBuilder: (_, i) {
-                    final e = filtered[i];
-                    final selected = _selected?.corpCode == e.corpCode;
-                    return ListTile(
-                      dense: true,
-                      title: Text(e.corpName, style: AppTextStyles.body),
-                      trailing: selected
-                          ? const Icon(Icons.check_circle,
-                              color: AppColors.green)
-                          : null,
-                      onTap: () => setState(() => _selected = e),
-                    );
-                  },
-                ),
-              );
-            },
           ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _sharesController,
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            decoration: InputDecoration(
-              labelText: '보유 수량',
-              suffixText: '주',
-              filled: true,
-              fillColor: AppColors.gray50,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.gray200),
-              ),
-            ),
-            onChanged: (_) => setState(() {}),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: (_selected != null &&
-                      (int.tryParse(_sharesController.text.trim()) ?? 0) > 0)
-                  ? _submit
-                  : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.green,
-                disabledBackgroundColor: AppColors.gray300,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                elevation: 0,
-              ),
-              child: const Text('추가', style: AppTextStyles.button),
-            ),
-          ),
-          const SizedBox(height: 4),
-          // 배당 API 미커버 종목 폴백 — 직접 입력 폼으로 전환.
-          Center(
-            child: TextButton(
-              key: const ValueKey('manualEntryButton'),
-              onPressed: () => setState(() => _manualMode = true),
-              child: Text.rich(
-                TextSpan(
-                  text: '찾는 종목이 없나요? ',
-                  style: AppTextStyles.caption
-                      .copyWith(color: AppColors.gray500),
-                  children: [
-                    TextSpan(
-                      text: '직접 입력',
-                      style: AppTextStyles.captionBold.copyWith(
-                        color: AppColors.navy,
-                        decoration: TextDecoration.underline,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
+        ),
+      ],
     );
   }
 }
@@ -939,12 +958,14 @@ class _AddAccountDialogState extends State<_AddAccountDialog> {
   }
 }
 
-/// 공통 설정 카드 — 인출 시작 시점 + 연금나침반 CTA + 현재 나이.
+/// 공통 설정 카드 — 인출 시작 시점 + 계획 탭 안내 + 현재 나이.
 ///
 /// v4: 전역 "연금 인출 중" 토글은 제거됐다. 인출 개시는 각 계좌 카드의
 /// 계좌별 스위치로 갱신되며(스펙 §4), 여기선 인출 시작 시점·나이·CTA 만 남는다.
 class _CommonSettingsCard extends ConsumerWidget {
-  const _CommonSettingsCard();
+  const _CommonSettingsCard({this.onGoToPlan});
+
+  final VoidCallback? onGoToPlan;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -955,16 +976,20 @@ class _CommonSettingsCard extends ConsumerWidget {
       children: [
         _WithdrawalStartMonthField(start: input.withdrawalStartMonth),
         const SizedBox(height: 16),
-        InkWell(
-          onTap: _openPensionCompass,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Text(
-              '어떤 순서로 빼야 세금을 아낄까? → 연금나침반',
-              style: AppTextStyles.captionBold.copyWith(color: AppColors.navy),
+        if (onGoToPlan != null)
+          InkWell(
+            key: const Key('go_to_plan'),
+            onTap: onGoToPlan,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Text(
+                '어떤 순서로 빼야 세금을 아낄까? → 계획 탭에서 비교',
+                style: AppTextStyles.captionBold.copyWith(
+                  color: AppColors.navy,
+                ),
+              ),
             ),
           ),
-        ),
         const SizedBox(height: 16),
         NumberInputField(
           label: '현재 나이',
@@ -1010,12 +1035,13 @@ class _WithdrawalStartMonthField extends ConsumerWidget {
             ),
             child: Row(
               children: [
-                const Icon(Icons.event_outlined,
-                    size: 18, color: AppColors.navy),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(label, style: AppTextStyles.bodyLarge),
+                const Icon(
+                  Icons.event_outlined,
+                  size: 18,
+                  color: AppColors.navy,
                 ),
+                const SizedBox(width: 10),
+                Expanded(child: Text(label, style: AppTextStyles.bodyLarge)),
                 const Icon(Icons.expand_more, color: AppColors.gray400),
               ],
             ),
@@ -1129,8 +1155,10 @@ class _WithdrawalStartMonthDialogState
             widget.onConfirm(null);
             Navigator.of(context).pop();
           },
-          child: const Text('설정 안 함 (지금부터)',
-              style: TextStyle(color: AppColors.gray600)),
+          child: const Text(
+            '설정 안 함 (지금부터)',
+            style: TextStyle(color: AppColors.gray600),
+          ),
         ),
         TextButton(
           key: const ValueKey('confirmWithdrawalStart'),
@@ -1145,16 +1173,15 @@ class _WithdrawalStartMonthDialogState
   }
 
   InputDecoration _dropdownDecoration(String label) => InputDecoration(
-        labelText: label,
-        filled: true,
-        fillColor: AppColors.gray50,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.gray200),
-        ),
-      );
+    labelText: label,
+    filled: true,
+    fillColor: AppColors.gray50,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: AppColors.gray200),
+    ),
+  );
 }
 
 /// (선택) 연 이자소득 카드 — InterestItem 리스트 + 항목 추가 시트.
@@ -1173,8 +1200,7 @@ class _InterestItemsSection extends ConsumerWidget {
             padding: const EdgeInsets.only(bottom: 12),
             child: Text(
               '등록한 이자소득 항목이 없습니다.\n예금 이자 등을 추가하면 금융소득종합과세 게이지에 합산됩니다.',
-              style:
-                  AppTextStyles.caption.copyWith(color: AppColors.gray500),
+              style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
             ),
           )
         else
@@ -1187,8 +1213,7 @@ class _InterestItemsSection extends ConsumerWidget {
           key: const ValueKey('addInterestItemButton'),
           onPressed: () => _openAddItemSheet(context, ref),
           icon: const Icon(Icons.add, color: AppColors.navy),
-          label:
-              const Text('항목 추가', style: TextStyle(color: AppColors.navy)),
+          label: const Text('항목 추가', style: TextStyle(color: AppColors.navy)),
           style: OutlinedButton.styleFrom(
             minimumSize: const Size(double.infinity, 48),
             side: const BorderSide(color: AppColors.navy),
@@ -1246,16 +1271,20 @@ class _InterestItemRow extends ConsumerWidget {
                 const SizedBox(height: 2),
                 Text(
                   '연 ${NumberFormat('#,###').format(item.annualAmount)}원 · $_scheduleLabel',
-                  style: AppTextStyles.caption
-                      .copyWith(color: AppColors.gray500),
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.gray500,
+                  ),
                 ),
               ],
             ),
           ),
           IconButton(
             key: ValueKey('deleteInterestItem_$index'),
-            icon: const Icon(Icons.delete_outline,
-                color: AppColors.error, size: 20),
+            icon: const Icon(
+              Icons.delete_outline,
+              color: AppColors.error,
+              size: 20,
+            ),
             onPressed: () =>
                 ref.read(interestItemsProvider.notifier).removeAt(index),
           ),
@@ -1297,12 +1326,14 @@ class _AddInterestItemSheetState extends State<_AddInterestItemSheet> {
 
   void _submit() {
     if (!_valid) return;
-    widget.onAdd(InterestItem(
-      id: 'interest_${DateTime.now().microsecondsSinceEpoch}',
-      name: _nameController.text.trim(),
-      annualAmount: _annualAmountWon,
-      months: _isSpecificMonths ? (_months.toList()..sort()) : const [],
-    ));
+    widget.onAdd(
+      InterestItem(
+        id: 'interest_${DateTime.now().microsecondsSinceEpoch}',
+        name: _nameController.text.trim(),
+        annualAmount: _annualAmountWon,
+        months: _isSpecificMonths ? (_months.toList()..sort()) : const [],
+      ),
+    );
     Navigator.of(context).pop();
   }
 

@@ -49,6 +49,20 @@ void main() {
       // 잔액이 없으면 내 자산 입력 안내
       expect(find.text('내 자산 입력하기'), findsOneWidget);
     });
+
+    testWidgets('내 자산 → "어떤 순서로 빼야…" 안내는 계획 탭으로 이동 (연금나침반 외부 링크 없음)',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(const ProviderScope(child: RetirePaycheckApp()));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.account_balance_wallet_outlined));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('연금나침반'), findsNothing);
+      await tester.scrollUntilVisible(find.byKey(const Key('go_to_plan')), 300,
+          scrollable: find.byType(Scrollable).first);
+      await tester.tap(find.byKey(const Key('go_to_plan')));
+      await tester.pumpAndSettle();
+      expect(find.text('인출 계획'), findsOneWidget);
+    });
   });
 
   group('첫 실행 세 칸 입력 (v2)', () {
