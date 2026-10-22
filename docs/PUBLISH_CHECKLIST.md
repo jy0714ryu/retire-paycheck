@@ -35,16 +35,13 @@
   - **전면(retire_interstitial)**: `ca-app-pub-XXXX/XXXX`
   - **배너(retire_banner)**: `ca-app-pub-XXXX/XXXX`
 
-### 2. 릴리스 빌드 (실 광고 ID 주입)
+### 2. 릴리스 빌드 (실 광고 ID 주입 — 스크립트 전용)
 ```bash
-cd ~/Workspace/retire-paycheck/app
-export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
-flutter build appbundle --release \
-  --dart-define=RETIRE_INTERSTITIAL_AD_UNIT_ID=ca-app-pub-XXXX/XXXX \
-  --dart-define=RETIRE_BANNER_AD_UNIT_ID=ca-app-pub-XXXX/XXXX
+cd ~/"Workspace/앱개발/03. 은퇴월급/retire-paycheck/app"
+./build_release.sh   # release_ads.local(미추적)의 운영 ID 주입 + AAB 안 ID 검사, 없으면 실패
 # 산출물: build/app/outputs/bundle/release/app-release.aab (Play 업로드용)
-# 실기기 테스트용 apk도 동일 --dart-define으로 build apk --release
 ```
+> ⚠️ v1.4.1·v1.4.7 은 `flutter build` 를 직접 쳐서 테스트 광고 ID 로 출시됐다(수익 0). 직접 빌드 금지.
 
 ### 3. 실기기 E2E 스모크 테스트 (⚠️ 이번 Task에서 미수행 — 실기기 R3CY40EQV2X USB 미연결, 에뮬레이터 없음)
 아래 항목은 **대장님이 실기기 연결 후 직접 확인** 필요 (단위·위젯 테스트로는 커버되나 실기기 미검증):

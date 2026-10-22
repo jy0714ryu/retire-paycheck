@@ -31,4 +31,16 @@ class CurrencyFormat {
     }
     return '$sign$intStr.$decimalDigit';
   }
+
+  /// 원 → "2억 4,000만" / "3,000만" (만원 미만 반올림, 접미사 포함).
+  /// 큰 잔액을 한눈에 읽게 하는 표시용 — 1억 미만은 man() 과 같은 숫자 + "만".
+  static String eokMan(int won) {
+    final sign = won < 0 ? '-' : '';
+    final manTotal = (won.abs() / 10000).round();
+    final eok = manTotal ~/ 10000;
+    final rest = manTotal % 10000;
+    if (eok == 0) return '$sign${man(rest * 10000).replaceFirst('-', '')}만';
+    if (rest == 0) return '$sign$eok억';
+    return '$sign$eok억 ${_intFmt.format(rest)}만';
+  }
 }

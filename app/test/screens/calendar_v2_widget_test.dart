@@ -16,6 +16,16 @@ import 'package:retire_paycheck/providers/app_providers.dart';
 import 'package:retire_paycheck/screens/calendar_screen.dart';
 import 'package:retire_paycheck/services/dividend_api.dart';
 
+/// 금액 문구 찾기 — 일반 텍스트 "186.8만원" 과 v2 메인 카드의 분리 표기 "186.8 만원"(RichText) 모두 인식.
+Finder findWon(String man) => find.byWidgetPredicate((w) {
+      if (w is Text) {
+        if (w.data == '$man만원') return true;
+        final span = w.textSpan?.toPlainText();
+        return span == '$man 만원' || span == '$man만원';
+      }
+      return false;
+    });
+
 final _eventGeneral = DividendEvent(
   corpCode: 'A',
   corpName: '일반주',
@@ -145,7 +155,7 @@ void main() {
     );
 
     // 전체(all) 상단 합산 카드 = 92.3만원(일반 42.3만 + ISA 50만).
-    expect(find.text('92.3만원'), findsOneWidget);
+    expect(findWon('92.3'), findsOneWidget);
     // 상세: 전체 모드에선 일반주·ISA주 둘 다 노출(스크롤로 뷰포트에 올림).
     final general = find.text('일반주');
     await tester.scrollUntilVisible(general, 200);
@@ -159,7 +169,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // 상단 합산 카드 불변(92.3만원 그대로 — 필터와 무관).
-    expect(find.text('92.3만원'), findsOneWidget);
+    expect(findWon('92.3'), findsOneWidget);
 
     // 상세로 스크롤 → ISA주만 남고 일반주는 사라짐.
     final isaLine = find.text('ISA주');
@@ -189,13 +199,13 @@ void main() {
     // 일반계좌 라인: gross 500,000 × (1-0.154) = 423,000 → 세후 "42.3만원".
     final generalLine = find.text('일반주');
     await tester.scrollUntilVisible(generalLine, 200);
-    expect(find.text('42.3만원'), findsOneWidget);
+    expect(findWon('42.3'), findsOneWidget);
 
     // ISA 라인: 비과세 — line.amountNet(=gross 그대로) 을 재계산 없이 표시 →
     // "50만원"(라인이 gross×0.846 으로 재계산하면 "42.3만원"이 되어 실패한다).
     final isaLine = find.text('ISA주');
     await tester.scrollUntilVisible(isaLine, 200);
-    expect(find.text('50만원'), findsOneWidget);
+    expect(findWon('50'), findsOneWidget);
   });
 
   testWidgets('연금계좌 배당 → 재투자 아코디언(기본 접힘) + 펼치면 과세이연 캡션',

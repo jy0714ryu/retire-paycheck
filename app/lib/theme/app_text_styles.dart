@@ -1,13 +1,21 @@
-// pension-compass에서 이식 (2026-07-09)
 import 'package:flutter/material.dart';
 import 'app_colors.dart';
 
-/// 은퇴월급 타이포그래피 (연금나침반 스타일 재사용)
+/// 은퇴월급 타이포그래피 — v2 프라이빗 뱅킹 (2026-10-22)
+///
+/// 본문 글꼴(IBM Plex Sans KR)은 ThemeData.fontFamily 로 전역 적용.
+/// 큰 제목·큰 금액 = 명조(Noto Serif KR), 표·목록 숫자 = 고정폭 숫자(tabular figures).
 class AppTextStyles {
   AppTextStyles._();
 
+  static const String serif = 'NotoSerifKR';
+  static const String sans = 'PlexSansKR';
+  static const String mono = 'PlexMono';
+  static const List<FontFeature> tabular = [FontFeature.tabularFigures()];
+
   // Headings
   static const TextStyle h1 = TextStyle(
+    fontFamily: serif,
     fontSize: 28,
     fontWeight: FontWeight.w700,
     color: AppColors.gray900,
@@ -15,6 +23,7 @@ class AppTextStyles {
   );
 
   static const TextStyle h2 = TextStyle(
+    fontFamily: serif,
     fontSize: 24,
     fontWeight: FontWeight.w600,
     color: AppColors.gray900,
@@ -74,6 +83,8 @@ class AppTextStyles {
 
   // Numbers (금액 표시용)
   static const TextStyle numberLarge = TextStyle(
+    fontFamily: serif,
+    fontFeatures: tabular,
     fontSize: 36,
     fontWeight: FontWeight.w700,
     color: AppColors.navy,
@@ -81,6 +92,8 @@ class AppTextStyles {
   );
 
   static const TextStyle number = TextStyle(
+    fontFamily: serif,
+    fontFeatures: tabular,
     fontSize: 28,
     fontWeight: FontWeight.w700,
     color: AppColors.navy,
@@ -88,6 +101,8 @@ class AppTextStyles {
   );
 
   static const TextStyle numberSmall = TextStyle(
+    fontFamily: serif,
+    fontFeatures: tabular,
     fontSize: 20,
     fontWeight: FontWeight.w600,
     color: AppColors.gray800,
@@ -122,5 +137,15 @@ class AppTextStyles {
     fontWeight: FontWeight.w600,
     color: Colors.white,
     height: 1.4,
+  );
+
+  /// 목록·표 금액 — 고정폭 숫자(자릿수 정렬). 한글이 섞이면 본문 글꼴로 대체.
+  static const TextStyle amount = TextStyle(
+    fontFamily: mono,
+    fontFamilyFallback: [sans],
+    fontFeatures: tabular,
+    fontSize: 15,
+    fontWeight: FontWeight.w500,
+    color: AppColors.navy,
   );
 }

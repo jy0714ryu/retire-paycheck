@@ -16,6 +16,16 @@ import 'package:retire_paycheck/screens/calendar_screen.dart';
 import 'package:retire_paycheck/services/dividend_api.dart';
 import 'package:retire_paycheck/theme/app_colors.dart';
 
+/// 금액 문구 찾기 — 일반 텍스트 "186.8만원" 과 v2 메인 카드의 분리 표기 "186.8 만원"(RichText) 모두 인식.
+Finder findWon(String man) => find.byWidgetPredicate((w) {
+      if (w is Text) {
+        if (w.data == '$man만원') return true;
+        final span = w.textSpan?.toPlainText();
+        return span == '$man 만원' || span == '$man만원';
+      }
+      return false;
+    });
+
 final _eventA = DividendEvent(
   corpCode: 'A',
   corpName: 'A사',
@@ -101,7 +111,7 @@ void main() {
     expect(find.text('2026년 4월'), findsOneWidget);
 
     // 메인 카드: 실수령(net) 1,868,000 → 186.8만원.
-    expect(find.text('186.8만원'), findsOneWidget);
+    expect(findWon('186.8'), findsOneWidget);
     // 서브: 세전 200만원 = 세전 배당 50만 + 세전 연금 150만 (세전끼리 합 일치).
     expect(
       find.textContaining('세전 200만원 = 배당 50만 + 연금 150만'),
@@ -126,7 +136,7 @@ void main() {
     await tester.scrollUntilVisible(empty, 200);
     expect(empty, findsOneWidget);
     // 배당 없는 달 실수령 = 연금 net 945,000(과세)+500,000(ISA비과세) = 1,445,000 → 144.5만원.
-    expect(find.text('144.5만원'), findsWidgets);
+    expect(findWon('144.5'), findsWidgets);
   });
 
   testWidgets('하단 고지 텍스트 노출(단정 표기 금지)', (WidgetTester tester) async {
