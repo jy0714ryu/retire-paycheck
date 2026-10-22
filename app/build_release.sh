@@ -22,7 +22,7 @@ flutter build appbundle --release \
 
 # 빌드 산출물 안에 운영 ID 가 실제로 박혔는지 검사 (명령 누락·캐시 오염 방어).
 AAB=build/app/outputs/bundle/release/app-release.aab
-ids=$(unzip -p "$AAB" base/lib/arm64-v8a/libapp.so | strings | grep -oE "ca-app-pub-[0-9]+/[0-9]+" | sort -u)
+ids=$(unzip -p "$AAB" base/lib/arm64-v8a/libapp.so | LC_ALL=C strings | grep -oE "ca-app-pub-[0-9]+/[0-9]+" | sort -u) || { echo "AAB 에서 광고 ID 를 찾지 못함" >&2; exit 1; }
 echo "$ids"
 for v in "$RETIRE_BANNER_AD_UNIT_ID" "$RETIRE_INTERSTITIAL_AD_UNIT_ID"; do
   grep -qx "$v" <<<"$ids" || { echo "AAB 에 운영 광고 ID 없음: $v" >&2; exit 1; }
