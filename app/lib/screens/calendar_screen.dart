@@ -291,6 +291,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             _YearlyBarChart(
               selectedMonth: _month.month,
               netByMonth: netByMonth,
+              basisLabel: allDividends ? '(배당 세전)' : '(세후 기준)',
               onSelectMonth: _goToMonth,
             ),
           ],
@@ -801,12 +802,16 @@ class _YearlyBarChart extends StatelessWidget {
   /// 1~12월 순서의 월별 세후 실수령(필터 반영). 막대 높이 ∝ 이 값.
   final List<int> netByMonth;
 
+  /// 막대 기준 표시 — 배당 전체 보기는 배당 세전, 통장 입금 보기는 세후.
+  final String basisLabel;
+
   /// 막대 탭 콜백(1~12).
   final void Function(int month) onSelectMonth;
 
   const _YearlyBarChart({
     required this.selectedMonth,
     required this.netByMonth,
+    this.basisLabel = '(세후 기준)',
     required this.onSelectMonth,
   });
 
@@ -838,7 +843,7 @@ class _YearlyBarChart extends StatelessWidget {
                 Text('올해 월별 흐름', style: AppTextStyles.h4),
                 const SizedBox(width: 6),
                 Text(
-                  '(세후 기준)',
+                  basisLabel,
                   style: AppTextStyles.caption.copyWith(
                     color: AppColors.gray500,
                   ),
