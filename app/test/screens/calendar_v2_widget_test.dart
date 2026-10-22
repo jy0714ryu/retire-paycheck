@@ -79,6 +79,12 @@ const _input = RetirementInput(
   isWithdrawing: false,
 );
 
+/// 이번 달 탭을 '배당 전체' 보기로 전환 (setUp 은 '통장 입금' 고정).
+Future<void> _showAllDividends(WidgetTester tester) async {
+  await tester.tap(find.text('배당 전체'));
+  await tester.pumpAndSettle();
+}
+
 Future<void> _pump(
   WidgetTester tester, {
   List<Holding> holdings = const [],
@@ -134,10 +140,11 @@ Future<void> _pump(
 
 void main() {
   setUp(() {
-    SharedPreferences.setMockInitialValues({});
+    // 기존 회귀는 '통장 입금' 보기 기준 (v2.1 기본은 '배당 전체').
+    SharedPreferences.setMockInitialValues({'calendar_view': false});
   });
 
-  testWidgets('필터를 ISA 로 바꿔도 상단 합산 카드는 불변 + 상세에서 일반주 사라짐',
+  testWidgets('배당 전체 보기: 필터를 ISA 로 바꿔도 상단 합산 카드는 불변 + 상세에서 일반주 사라짐',
       (WidgetTester tester) async {
     await _pump(
       tester,
@@ -154,12 +161,14 @@ void main() {
       initialMonth: DateTime(2026, 4),
     );
 
-    // 전체(all) 상단 합산 카드 = 92.3만원(일반 42.3만 + ISA 50만).
-    expect(findWon('92.3'), findsOneWidget);
+    // v2.1: ISA 배당은 계좌 안 — '배당 전체' 보기에서 카드 = 세전 100만원(일반 50 + ISA 50).
+    await _showAllDividends(tester);
+    expect(findWon('100'), findsOneWidget);
     // 상세: 전체 모드에선 일반주·ISA주 둘 다 노출(스크롤로 뷰포트에 올림).
     final general = find.text('일반주');
     await tester.scrollUntilVisible(general, 200);
     expect(general, findsOneWidget);
+    await tester.scrollUntilVisible(find.text('ISA주'), 200);
     expect(find.text('ISA주'), findsOneWidget);
 
     // 상단으로 복귀(월 네비게이션) → 카드·칩 모두 뷰포트에(offset≈0).
@@ -168,8 +177,8 @@ void main() {
     await tester.tap(find.widgetWithText(ChoiceChip, 'ISA'));
     await tester.pumpAndSettle();
 
-    // 상단 합산 카드 불변(92.3만원 그대로 — 필터와 무관).
-    expect(findWon('92.3'), findsOneWidget);
+    // 상단 합산 카드 불변(100만원 그대로 — 필터와 무관).
+    expect(findWon('100'), findsOneWidget);
 
     // 상세로 스크롤 → ISA주만 남고 일반주는 사라짐.
     final isaLine = find.text('ISA주');
@@ -196,6 +205,8 @@ void main() {
       initialMonth: DateTime(2026, 4),
     );
 
+    // v2.1: ISA 라인은 '배당 전체' 보기에서 "계좌 안" 배지와 함께 보인다.
+    await _showAllDividends(tester);
     // 일반계좌 라인: gross 500,000 × (1-0.154) = 423,000 → 세후 "42.3만원".
     final generalLine = find.text('일반주');
     await tester.scrollUntilVisible(generalLine, 200);
@@ -206,6 +217,7 @@ void main() {
     final isaLine = find.text('ISA주');
     await tester.scrollUntilVisible(isaLine, 200);
     expect(findWon('50'), findsOneWidget);
+    expect(find.text('계좌 안'), findsOneWidget);
   });
 
   testWidgets('연금계좌 배당 → 재투자 아코디언(기본 접힘) + 펼치면 과세이연 캡션',
@@ -225,12 +237,12 @@ void main() {
     );
 
     // 재투자 세전 = 500 × 1,000 = 500,000원. 접힌 제목 노출.
-    final title = find.text('연금계좌 안 배당 (재투자) +500,000원');
+    final title = find.text('계좌 안 배당 (연금·ISA) +500,000원');
     await tester.scrollUntilVisible(title, 200);
     expect(title, findsOneWidget);
     // 기본 접힘 → 캡션 미노출.
     expect(
-      find.textContaining('인출 전까지 계좌 안에서 재투자'),
+      find.textContaining('인출 전까지 계좌 안에 남습니다'),
       findsNothing,
     );
 
@@ -238,7 +250,7 @@ void main() {
     await tester.tap(title);
     await tester.pumpAndSettle();
     expect(
-      find.textContaining('인출 전까지 계좌 안에서 재투자'),
+      find.textContaining('인출 전까지 계좌 안에 남습니다'),
       findsOneWidget,
     );
   });
@@ -354,6 +366,8 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    // v2.1: ISA 몫은 계좌 안 — 두 라인을 함께 보려면 '배당 전체' 보기.
+    await _showAllDividends(tester);
 
     // 두 라인 모두 이름이 "분할보유주"로 동일해 scrollUntilVisible 에 그대로 쓰면
     // 다중 매치로 실패한다 — 고유한 수량 상세 텍스트로 스크롤한다.
@@ -363,7 +377,25 @@ void main() {
     // (버그 시 sharesByName 이 corpName 단일 키라 마지막 holding 값으로 덮어써져
     // 두 라인이 동일 수량을 표시한다).
     expect(generalDetail, findsOneWidget);
+    await tester.scrollUntilVisible(find.textContaining('주당 1,000원 × 300주'), 200);
     expect(find.textContaining('주당 1,000원 × 300주'), findsOneWidget);
     expect(find.text('분할보유주'), findsNWidgets(2));
+  });
+
+  testWidgets('v2.1 기본 보기 = 배당 전체, 통장 입금으로 바꾸면 카드 제목이 바뀌고 선택이 저장된다',
+      (WidgetTester tester) async {
+    SharedPreferences.setMockInitialValues({});
+    await _pump(
+      tester,
+      holdings: const [Holding(corpCode: 'A', corpName: '일반주', shares: 1000)],
+      events: [_eventGeneral],
+      initialMonth: DateTime(2026, 4),
+    );
+    expect(find.text('이번 달 배당 총액 (세전)'), findsOneWidget);
+    await tester.tap(find.text('통장 입금'));
+    await tester.pumpAndSettle();
+    expect(find.text('이번 달 세후 은퇴 월급'), findsOneWidget);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getBool('calendar_view'), isFalse);
   });
 }

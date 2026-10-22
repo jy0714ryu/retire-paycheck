@@ -46,7 +46,7 @@ void main() {
         accountId: 'default_pension_savings'),
   ];
 
-  test('유형 분기 — 일반 15.4%·ISA 0%·연금은 재투자 분리', () {
+  test('유형 분기 — 일반 15.4%만 통장 입금, ISA·연금 배당은 계좌 안(v2.1 이중 계산 방지)', () {
     final months = CashflowEngine.buildMonths(
         holdings: holdings,
         events: events,
@@ -54,15 +54,27 @@ void main() {
         from: apr,
         monthCount: 1);
     final m = months.first;
-    // 실수령 배당 = 일반(8460) + ISA(10000). 연금주는 미포함.
-    expect(m.dividendGross, 20000);
-    expect(m.dividendNet, 8460 + 10000);
-    expect(m.reinvestGross, 10000);
-    expect(m.reinvestLines.single.corpName, '연금주');
-    expect(m.lines.length, 2);
-    expect(m.lines.firstWhere((l) => l.corpName == '일반주').amountNet, 8460);
-    expect(m.lines.firstWhere((l) => l.corpName == 'ISA주').accountType,
+    // 통장 입금 배당 = 일반(10000 세전 → 8460). ISA·연금 배당은 계좌 안.
+    expect(m.dividendGross, 10000);
+    expect(m.dividendNet, 8460);
+    expect(m.reinvestGross, 20000);
+    expect(m.reinvestLines.map((l) => l.corpName).toSet(), {'ISA주', '연금주'});
+    expect(m.lines.single.corpName, '일반주');
+    expect(m.lines.single.amountNet, 8460);
+    expect(m.reinvestLines.firstWhere((l) => l.corpName == 'ISA주').accountType,
         AccountType.isa);
+  });
+
+  test('연간 배당 요약 — 기본은 일반계좌만, includeInAccount 면 계좌 안 포함', () {
+    final cash = CashflowEngine.yearlyDividendSummary(
+        holdings: holdings, events: events, year: apr.year);
+    final all = CashflowEngine.yearlyDividendSummary(
+        holdings: holdings,
+        events: events,
+        year: apr.year,
+        includeInAccount: true);
+    expect(cash.gross, 10000);
+    expect(all.gross, 30000);
   });
 
   test('이자소득 — 특정월·월 균등 반영, totalNet 합산', () {

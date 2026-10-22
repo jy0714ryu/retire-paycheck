@@ -53,13 +53,13 @@ class MonthlyCashflow {
   /// 이자소득 세후 합 = interestGross × (1 − 0.154).
   final int interestNet;
 
-  /// 연금계좌 배당(재투자·과세이연) 세전 합 — 실수령 아님(totalNet 미포함).
+  /// 계좌 안 배당(연금·ISA — 인출 전까지 계좌에 남음) 세전 합 — 실수령 아님(totalNet 미포함).
   final int reinvestGross;
 
-  /// 실수령 배당 라인(일반·ISA). 연금계좌 배당은 [reinvestLines] 로 분리.
+  /// 실수령 배당 라인(일반계좌). 연금·ISA 계좌 배당은 [reinvestLines] 로 분리.
   final List<DividendLine> lines;
 
-  /// 연금계좌 배당 라인 — 과세이연 재투자분. 달력엔 "재투자"로 별도 표기.
+  /// 계좌 안 배당 라인(연금·ISA). 달력엔 "계좌 안"으로 별도 표기.
   final List<DividendLine> reinvestLines;
 
   const MonthlyCashflow({
@@ -75,7 +75,7 @@ class MonthlyCashflow {
     this.reinvestLines = const [],
   });
 
-  /// 실수령 합 — 배당(일반+ISA) + 연금 + 이자. 재투자(reinvest)는 미포함(스펙 §2).
+  /// 실수령 합 — 일반계좌 배당 + 계좌 인출(연금·ISA) + 이자. 계좌 안 배당은 미포함(v2.1).
   int get totalNet => dividendNet + pensionNet + interestNet;
   int get totalGross => dividendGross + pensionGross + interestGross;
 }
@@ -207,7 +207,9 @@ class CashflowEngine {
             accountId: h.accountId,
             accountType: type,
           );
-          if (type == AccountType.pension) {
+          // ISA 배당도 만기·인출 전까지 계좌 안에 남는다 — 통장 입금은 ISA 월 인출로만 센다
+          // (배당까지 넣으면 이중 계산, v2.1).
+          if (type == AccountType.pension || type == AccountType.isa) {
             reinvestGross += amount;
             reinvestLines.add(line);
           } else {
@@ -327,13 +329,15 @@ class CashflowEngine {
   }
 
   /// [year] 에 지급되는 배당(보유 종목 한정)의 세전·세후 합계와 확정/예측 건수 집계.
-  /// 실수령 대상(일반+ISA)만 집계 — 연금계좌 배당(재투자·과세이연)은 제외한다.
+  /// 기본은 통장으로 나오는 일반계좌 배당만. [includeInAccount] 면 연금·ISA 계좌 안 배당까지
+  /// ('배당 전체' 보기).
   /// net 은 라인별 세후(일반 원천징수·ISA 그대로)의 합.
   static YearlyDividendSummary yearlyDividendSummary({
     required List<Holding> holdings,
     required List<DividendEvent> events,
     required int year,
     List<Account> accounts = const [],
+    bool includeInAccount = false,
   }) {
     final eventsByCorp = _indexEvents(events);
 
@@ -345,7 +349,7 @@ class CashflowEngine {
       final evs = eventsByCorp[h.corpCode];
       if (evs == null) continue; // 보유하지 않은 종목 이벤트 무시.
       final type = _typeOf(h, accounts);
-      if (type == AccountType.pension) continue; // 재투자 — 실수령 아님.
+      if (!includeInAccount && type != AccountType.general) continue; // 계좌 안.
       for (final e in evs) {
         final pay = e.expectedPaymentMonth;
         if (pay == null || pay.year != year) continue;

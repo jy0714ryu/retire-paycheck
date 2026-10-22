@@ -18,6 +18,7 @@ const String _kAccountsKey = 'accounts';
 const String _kInterestItemsKey = 'interest_items';
 const String _kDefaultAccountOverridesKey = 'default_account_overrides';
 const String _kFavoriteCorpsKey = 'favorite_corps';
+const String _kCalendarViewKey = 'calendar_view';
 
 /// 보유 종목 목록 상태 — SharedPreferences('holdings')에 jsonEncode 로 영속.
 ///
@@ -151,6 +152,28 @@ class RetirementInputNotifier extends StateNotifier<RetirementInput> {
         : s.copyWith(withdrawalStartMonth: month),
   );
 }
+
+/// 이번 달 탭 보기 — true=배당 전체(기본, 계좌 안 포함), false=통장 입금. 마지막 선택 기억.
+class CalendarViewNotifier extends StateNotifier<bool> {
+  CalendarViewNotifier() : super(true) {
+    SharedPreferences.getInstance().then((p) {
+      final v = p.getBool(_kCalendarViewKey);
+      if (v != null && mounted) state = v;
+    });
+  }
+
+  void set(bool allDividends) {
+    state = allDividends;
+    SharedPreferences.getInstance().then(
+      (p) => p.setBool(_kCalendarViewKey, allDividends),
+    );
+  }
+}
+
+final calendarAllDividendsProvider =
+    StateNotifierProvider<CalendarViewNotifier, bool>(
+      (ref) => CalendarViewNotifier(),
+    );
 
 /// 종목 즐겨찾기(corpCode 집합) — 종목 추가 검색에서 맨 위에 보여 준다.
 /// 보유 여부와 무관(팔았다 다시 사는 종목·관심 ETF 도 바로 찾게).
