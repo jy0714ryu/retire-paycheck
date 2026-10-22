@@ -11,13 +11,17 @@ void main() {
     });
 
     test('절감액 ≥ 0 (우승 전략 세금 ≤ baseline 세금)', () {
-      expect(result.totalTaxBaseline, greaterThanOrEqualTo(result.totalTaxOptimal));
+      expect(
+        result.totalTaxBaseline,
+        greaterThanOrEqualTo(result.totalTaxOptimal),
+      );
       expect(result.savings, greaterThanOrEqualTo(0));
     });
 
     test('우승 전략은 taxBurden 최소', () {
-      final winner = result.outcomes
-          .firstWhere((o) => o.strategyId == result.optimalStrategyId);
+      final winner = result.outcomes.firstWhere(
+        (o) => o.strategyId == result.optimalStrategyId,
+      );
       for (final o in result.outcomes) {
         expect(winner.taxBurden, lessThanOrEqualTo(o.taxBurden));
       }
@@ -28,11 +32,17 @@ void main() {
       expect(result.optimalSequence, isNotEmpty);
       expect(result.baselineSchedule, isNotEmpty);
       expect(result.optimalStrategyName, isNotEmpty);
-      expect(result.cumulativeTaxBaseline.length, result.baselineSchedule.length);
+      expect(
+        result.cumulativeTaxBaseline.length,
+        result.baselineSchedule.length,
+      );
     });
 
     test('optimalSequence는 실제 인출 발생 순서 (중복 없음)', () {
-      expect(result.optimalSequence.toSet().length, result.optimalSequence.length);
+      expect(
+        result.optimalSequence.toSet().length,
+        result.optimalSequence.length,
+      );
     });
   });
 }

@@ -10,49 +10,57 @@ import 'package:retire_paycheck/services/cashflow_engine.dart';
 // (합성/수동 이벤트와 동일 경로). record/exDate 는 불필요하므로 null.
 DividendEvent ev(String code, String name, int perShare, DateTime pay) =>
     DividendEvent(
-        corpCode: code,
-        corpName: name,
-        exDate: null,
-        recordDate: null,
-        perShare: perShare,
-        isConfirmed: true,
-        explicitPaymentMonth: pay,
-        source: 'api');
+      corpCode: code,
+      corpName: name,
+      exDate: null,
+      recordDate: null,
+      perShare: perShare,
+      isConfirmed: true,
+      explicitPaymentMonth: pay,
+      source: 'api',
+    );
 
 const input0 = RetirementInput(
-    pensionSavings: 0,
-    irpBalance: 0,
-    isaBalance: 0,
-    currentAge: 60,
-    monthlyPensionWithdrawal: 0,
-    monthlyOtherWithdrawal: 0,
-    isWithdrawing: false);
+  pensionSavings: 0,
+  irpBalance: 0,
+  isaBalance: 0,
+  currentAge: 60,
+  monthlyPensionWithdrawal: 0,
+  monthlyOtherWithdrawal: 0,
+  isWithdrawing: false,
+);
 
 void main() {
   final apr = DateTime(2026, 4, 1);
   final events = [
     ev('c1', '일반주', 10000, apr),
     ev('c2', 'ISA주', 10000, apr),
-    ev('c3', '연금주', 10000, apr)
+    ev('c3', '연금주', 10000, apr),
   ];
   final holdings = [
     const Holding(corpCode: 'c1', corpName: '일반주', shares: 1),
     const Holding(
-        corpCode: 'c2', corpName: 'ISA주', shares: 1, accountId: 'default_isa'),
+      corpCode: 'c2',
+      corpName: 'ISA주',
+      shares: 1,
+      accountId: 'default_isa',
+    ),
     const Holding(
-        corpCode: 'c3',
-        corpName: '연금주',
-        shares: 1,
-        accountId: 'default_pension_savings'),
+      corpCode: 'c3',
+      corpName: '연금주',
+      shares: 1,
+      accountId: 'default_pension_savings',
+    ),
   ];
 
   test('유형 분기 — 일반 15.4%만 통장 입금, ISA·연금 배당은 계좌 안(v2.1 이중 계산 방지)', () {
     final months = CashflowEngine.buildMonths(
-        holdings: holdings,
-        events: events,
-        input: input0,
-        from: apr,
-        monthCount: 1);
+      holdings: holdings,
+      events: events,
+      input: input0,
+      from: apr,
+      monthCount: 1,
+    );
     final m = months.first;
     // 통장 입금 배당 = 일반(10000 세전 → 8460). ISA·연금 배당은 계좌 안.
     expect(m.dividendGross, 10000);
@@ -61,58 +69,68 @@ void main() {
     expect(m.reinvestLines.map((l) => l.corpName).toSet(), {'ISA주', '연금주'});
     expect(m.lines.single.corpName, '일반주');
     expect(m.lines.single.amountNet, 8460);
-    expect(m.reinvestLines.firstWhere((l) => l.corpName == 'ISA주').accountType,
-        AccountType.isa);
+    expect(
+      m.reinvestLines.firstWhere((l) => l.corpName == 'ISA주').accountType,
+      AccountType.isa,
+    );
   });
 
   test('연간 배당 요약 — 기본은 일반계좌만, includeInAccount 면 계좌 안 포함', () {
     final cash = CashflowEngine.yearlyDividendSummary(
-        holdings: holdings, events: events, year: apr.year);
+      holdings: holdings,
+      events: events,
+      year: apr.year,
+    );
     final all = CashflowEngine.yearlyDividendSummary(
-        holdings: holdings,
-        events: events,
-        year: apr.year,
-        includeInAccount: true);
+      holdings: holdings,
+      events: events,
+      year: apr.year,
+      includeInAccount: true,
+    );
     expect(cash.gross, 10000);
     expect(all.gross, 30000);
   });
 
   test('이자소득 — 특정월·월 균등 반영, totalNet 합산', () {
     final months = CashflowEngine.buildMonths(
-        holdings: const [],
-        events: const [],
-        input: input0,
-        from: DateTime(2026, 1, 1),
-        monthCount: 12,
-        interestItems: const [
-          InterestItem(
-              id: 'i1', name: '예금', annualAmount: 1200000, months: [6]),
-          InterestItem(id: 'i2', name: '파킹', annualAmount: 120000),
-        ]);
+      holdings: const [],
+      events: const [],
+      input: input0,
+      from: DateTime(2026, 1, 1),
+      monthCount: 12,
+      interestItems: const [
+        InterestItem(id: 'i1', name: '예금', annualAmount: 1200000, months: [6]),
+        InterestItem(id: 'i2', name: '파킹', annualAmount: 120000),
+      ],
+    );
     // 6월 = 예금 전액 + 파킹 1/12. net = gross × (1-0.154).
     final june = months[5];
     expect(june.interestGross, 1200000 + 10000);
     expect(june.interestNet, ((1200000 + 10000) * 0.846).round());
     expect(months[0].interestGross, 10000);
-    expect(june.totalNet, june.dividendNet + june.pensionNet + june.interestNet);
+    expect(
+      june.totalNet,
+      june.dividendNet + june.pensionNet + june.interestNet,
+    );
   });
 
   test('연금 모드 OFF — 인출 입력이 있어도 연금 0', () {
     final off = RetirementInput(
-        pensionSavings: 0,
-        irpBalance: 0,
-        isaBalance: 0,
-        currentAge: 60,
-        monthlyPensionWithdrawal: 1000000,
-        monthlyOtherWithdrawal: 0,
-        isWithdrawing: false);
+      pensionSavings: 0,
+      irpBalance: 0,
+      isaBalance: 0,
+      currentAge: 60,
+      monthlyPensionWithdrawal: 1000000,
+      monthlyOtherWithdrawal: 0,
+      isWithdrawing: false,
+    );
     final m = CashflowEngine.buildMonths(
-            holdings: const [],
-            events: const [],
-            input: off,
-            from: apr,
-            monthCount: 1)
-        .first;
+      holdings: const [],
+      events: const [],
+      input: off,
+      from: apr,
+      monthCount: 1,
+    ).first;
     expect(m.pensionGross, 0);
     expect(m.pensionNet, 0);
   });
@@ -122,19 +140,21 @@ void main() {
     final bigHoldings = [
       const Holding(corpCode: 'c1', corpName: '일반주', shares: 1500),
       const Holding(
-          corpCode: 'c2',
-          corpName: 'ISA주',
-          shares: 900,
-          accountId: 'default_isa'),
+        corpCode: 'c2',
+        corpName: 'ISA주',
+        shares: 900,
+        accountId: 'default_isa',
+      ),
     ];
     final g = CashflowEngine.buildGauges(
-        holdings: bigHoldings,
-        events: events,
-        input: input0,
-        year: 2026,
-        interestItems: const [
-          InterestItem(id: 'i', name: '예', annualAmount: 6000000)
-        ]);
+      holdings: bigHoldings,
+      events: events,
+      input: input0,
+      year: 2026,
+      interestItems: const [
+        InterestItem(id: 'i', name: '예', annualAmount: 6000000),
+      ],
+    );
     expect(g.financialIncome.current, 15000000 + 6000000);
     // 1,000만 초과 → 건보도 전액 산입, ISA 는 여기도 미산입.
     expect(g.healthInsurance.current, 21000000);
@@ -142,21 +162,30 @@ void main() {
 
   test('연금 모드 OFF — 절벽 게이지 0', () {
     final off = RetirementInput(
-        pensionSavings: 0,
-        irpBalance: 0,
-        isaBalance: 0,
-        currentAge: 60,
-        monthlyPensionWithdrawal: 2000000,
-        monthlyOtherWithdrawal: 0,
-        isWithdrawing: false);
+      pensionSavings: 0,
+      irpBalance: 0,
+      isaBalance: 0,
+      currentAge: 60,
+      monthlyPensionWithdrawal: 2000000,
+      monthlyOtherWithdrawal: 0,
+      isWithdrawing: false,
+    );
     final g = CashflowEngine.buildGauges(
-        holdings: const [], events: const [], input: off, year: 2026);
+      holdings: const [],
+      events: const [],
+      input: off,
+      year: 2026,
+    );
     expect(g.pensionLowRate.current, 0);
   });
 
   test('ISA 절세효과 = ISA 배당 gross × 15.4%', () {
     final saved = CashflowEngine.isaAnnualSavings(
-        holdings: holdings, events: events, accounts: const [], year: 2026);
+      holdings: holdings,
+      events: events,
+      accounts: const [],
+      year: 2026,
+    );
     expect(saved, (10000 * 0.154).round());
   });
 }

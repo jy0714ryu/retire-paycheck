@@ -18,26 +18,30 @@ void main() {
     addTearDown(container.dispose);
 
     final notifier = container.read(holdingsProvider.notifier);
-    notifier.add(const Holding(
+    notifier.add(
+      const Holding(
         corpCode: '005930',
         corpName: '삼성전자',
         shares: 10,
-        accountId: 'default_general'));
-    notifier.add(const Holding(
+        accountId: 'default_general',
+      ),
+    );
+    notifier.add(
+      const Holding(
         corpCode: '005930',
         corpName: '삼성전자',
         shares: 5,
-        accountId: 'default_isa'));
+        accountId: 'default_isa',
+      ),
+    );
 
     final holdings = container.read(holdingsProvider);
     expect(holdings.length, 2);
     expect(
-        holdings
-            .firstWhere((h) => h.accountId == 'default_general')
-            .shares,
-        10);
-    expect(
-        holdings.firstWhere((h) => h.accountId == 'default_isa').shares, 5);
+      holdings.firstWhere((h) => h.accountId == 'default_general').shares,
+      10,
+    );
+    expect(holdings.firstWhere((h) => h.accountId == 'default_isa').shares, 5);
   });
 
   test('같은 계좌 내 같은 종목 재추가 → 수량 갱신(중복 행 없음)', () async {
@@ -46,16 +50,22 @@ void main() {
     addTearDown(container.dispose);
 
     final notifier = container.read(holdingsProvider.notifier);
-    notifier.add(const Holding(
+    notifier.add(
+      const Holding(
         corpCode: '005930',
         corpName: '삼성전자',
         shares: 10,
-        accountId: 'default_general'));
-    notifier.add(const Holding(
+        accountId: 'default_general',
+      ),
+    );
+    notifier.add(
+      const Holding(
         corpCode: '005930',
         corpName: '삼성전자',
         shares: 30,
-        accountId: 'default_general'));
+        accountId: 'default_general',
+      ),
+    );
 
     final holdings = container.read(holdingsProvider);
     expect(holdings.length, 1);
@@ -68,21 +78,28 @@ void main() {
     addTearDown(container.dispose);
 
     final notifier = container.read(holdingsProvider.notifier);
-    notifier.add(const Holding(
+    notifier.add(
+      const Holding(
         corpCode: '005930',
         corpName: '삼성전자',
         shares: 10,
-        accountId: 'default_general'));
-    notifier.add(const Holding(
+        accountId: 'default_general',
+      ),
+    );
+    notifier.add(
+      const Holding(
         corpCode: '005930',
         corpName: '삼성전자',
         shares: 5,
-        accountId: 'default_isa'));
+        accountId: 'default_isa',
+      ),
+    );
 
     // 일반계좌 보유분(index 0) 삭제.
     final before = container.read(holdingsProvider);
-    final generalIdx =
-        before.indexWhere((h) => h.accountId == 'default_general');
+    final generalIdx = before.indexWhere(
+      (h) => h.accountId == 'default_general',
+    );
     notifier.removeAt(generalIdx);
 
     final holdings = container.read(holdingsProvider);
@@ -91,28 +108,36 @@ void main() {
     expect(holdings.single.shares, 5);
   });
 
-  test(
-      'reassignAccount — 유저 연금계좌 삭제 후 default_pension 에 동일 corpCode 가 '
+  test('reassignAccount — 유저 연금계좌 삭제 후 default_pension 에 동일 corpCode 가 '
       '이미 있으면 병합(키 충돌 방지 — (corpCode,accountId) 유일성 유지)', () async {
     SharedPreferences.setMockInitialValues({});
     final container = ProviderContainer();
     addTearDown(container.dispose);
 
-    container.read(accountsProvider.notifier).add(
-        const Account(id: 'u1', name: '미래에셋 IRP', type: AccountType.pension));
+    container
+        .read(accountsProvider.notifier)
+        .add(
+          const Account(id: 'u1', name: '미래에셋 IRP', type: AccountType.pension),
+        );
     await Future<void>.delayed(Duration.zero);
 
     final notifier = container.read(holdingsProvider.notifier);
-    notifier.add(const Holding(
+    notifier.add(
+      const Holding(
         corpCode: '005930',
         corpName: '삼성전자',
         shares: 10,
-        accountId: 'default_pension_savings'));
-    notifier.add(const Holding(
+        accountId: 'default_pension_savings',
+      ),
+    );
+    notifier.add(
+      const Holding(
         corpCode: '005930',
         corpName: '삼성전자',
         shares: 7,
-        accountId: 'u1'));
+        accountId: 'u1',
+      ),
+    );
 
     // 유저 계좌 삭제 → u1 소속이 default_pension_savings 로 재배정.
     container.read(accountsProvider.notifier).remove('u1');
@@ -132,12 +157,23 @@ void main() {
     final container = ProviderContainer();
     addTearDown(container.dispose);
 
-    container.read(accountsProvider.notifier).add(
-        const Account(id: 'u1', name: '미래에셋 IRP', type: AccountType.pension));
+    container
+        .read(accountsProvider.notifier)
+        .add(
+          const Account(id: 'u1', name: '미래에셋 IRP', type: AccountType.pension),
+        );
     await Future<void>.delayed(Duration.zero);
 
-    container.read(holdingsProvider.notifier).add(const Holding(
-        corpCode: '005930', corpName: '삼성전자', shares: 7, accountId: 'u1'));
+    container
+        .read(holdingsProvider.notifier)
+        .add(
+          const Holding(
+            corpCode: '005930',
+            corpName: '삼성전자',
+            shares: 7,
+            accountId: 'u1',
+          ),
+        );
     await Future<void>.delayed(Duration.zero);
 
     container.read(accountsProvider.notifier).remove('u1');

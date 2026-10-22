@@ -13,10 +13,19 @@ void main() {
     final container = ProviderContainer();
     addTearDown(container.dispose);
 
-    container.read(accountsProvider.notifier).add(
-        const Account(id: 'u1', name: '미래에셋 ISA', type: AccountType.isa));
-    container.read(holdingsProvider.notifier).add(const Holding(
-        corpCode: 'c1', corpName: 'ISA주', shares: 1, accountId: 'u1'));
+    container
+        .read(accountsProvider.notifier)
+        .add(const Account(id: 'u1', name: '미래에셋 ISA', type: AccountType.isa));
+    container
+        .read(holdingsProvider.notifier)
+        .add(
+          const Holding(
+            corpCode: 'c1',
+            corpName: 'ISA주',
+            shares: 1,
+            accountId: 'u1',
+          ),
+        );
     await Future<void>.delayed(Duration.zero); // persist flush
 
     container.read(accountsProvider.notifier).remove('u1');

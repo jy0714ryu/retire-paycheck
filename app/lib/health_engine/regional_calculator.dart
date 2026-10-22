@@ -63,7 +63,8 @@ class RegionalCalculator {
     required num propertyTaxBase,
   }) {
     final r = params.incomeReflect;
-    final reflectedDouble = income.pension * r.pension +
+    final reflectedDouble =
+        income.pension * r.pension +
         income.labor * r.labor +
         income.business * r.business +
         income.financial * r.financial +

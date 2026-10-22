@@ -66,10 +66,7 @@ void main() {
 
   test('R4 하한 도달 (소득·재산 0)', () {
     // 건보료 0 → 하한 20,160 클램프 → 장기요양 floor(20,160×0.1314)=2,649 → 22,809
-    final r = calc.calculate(
-      income: const IncomeInput(),
-      propertyTaxBase: 0,
-    );
+    final r = calc.calculate(income: const IncomeInput(), propertyTaxBase: 0);
     expect(r.healthPremiumRaw, 0);
     expect(r.healthPremium, 20160);
     expect(r.clampedToMin, isTrue);

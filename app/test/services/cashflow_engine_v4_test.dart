@@ -13,62 +13,75 @@ import 'package:retire_paycheck/services/cashflow_engine.dart';
 // flat 인출 필드 0 · input.isWithdrawing 미지정(기본 false) — 엔진이 전역
 // 게이트를 더 이상 읽지 않음을 증명.
 const _input60 = RetirementInput(
-    pensionSavings: 0,
-    irpBalance: 0,
-    isaBalance: 0,
-    currentAge: 60,
-    monthlyPensionWithdrawal: 0,
-    monthlyOtherWithdrawal: 0);
+  pensionSavings: 0,
+  irpBalance: 0,
+  isaBalance: 0,
+  currentAge: 60,
+  monthlyPensionWithdrawal: 0,
+  monthlyOtherWithdrawal: 0,
+);
 
 void main() {
   test('계좌별 게이트 — 인출 ON 계좌만 산입', () {
     final accounts = [
-      kDefaultAccounts[2]
-          .copyWith(monthlyWithdrawal: 800000, isWithdrawing: true), // 연금저축 ON
-      kDefaultAccounts[3]
-          .copyWith(monthlyWithdrawal: 400000, isWithdrawing: false), // IRP OFF
+      kDefaultAccounts[2].copyWith(
+        monthlyWithdrawal: 800000,
+        isWithdrawing: true,
+      ), // 연금저축 ON
+      kDefaultAccounts[3].copyWith(
+        monthlyWithdrawal: 400000,
+        isWithdrawing: false,
+      ), // IRP OFF
     ];
     final m = CashflowEngine.buildMonths(
-            holdings: const [],
-            events: const [],
-            input: _input60,
-            from: DateTime(2026, 1, 1),
-            monthCount: 1,
-            accounts: accounts)
-        .first;
+      holdings: const [],
+      events: const [],
+      input: _input60,
+      from: DateTime(2026, 1, 1),
+      monthCount: 1,
+      accounts: accounts,
+    ).first;
     expect(m.pensionGross, 800000); // IRP OFF 라 제외
   });
 
   test('절벽 = 인출 켠 pension 계좌 합산 × 12 (사람 단위)', () {
     final accounts = [
-      kDefaultAccounts[2].copyWith(monthlyWithdrawal: 700000, isWithdrawing: true),
-      kDefaultAccounts[3].copyWith(monthlyWithdrawal: 600000, isWithdrawing: true),
+      kDefaultAccounts[2].copyWith(
+        monthlyWithdrawal: 700000,
+        isWithdrawing: true,
+      ),
+      kDefaultAccounts[3].copyWith(
+        monthlyWithdrawal: 600000,
+        isWithdrawing: true,
+      ),
     ];
     // 합 130만 × 12 = 1,560만 > 1,500만 → 전액 16.5%.
     final m = CashflowEngine.buildMonths(
-            holdings: const [],
-            events: const [],
-            input: _input60,
-            from: DateTime(2026, 1, 1),
-            monthCount: 1,
-            accounts: accounts)
-        .first;
+      holdings: const [],
+      events: const [],
+      input: _input60,
+      from: DateTime(2026, 1, 1),
+      monthCount: 1,
+      accounts: accounts,
+    ).first;
     expect(m.pensionNet, (1300000 * (1 - 0.165)).round());
   });
 
   test('ISA 인출도 계좌별 게이트', () {
     final accounts = [
-      kDefaultAccounts[1]
-          .copyWith(monthlyWithdrawal: 300000, isWithdrawing: false),
+      kDefaultAccounts[1].copyWith(
+        monthlyWithdrawal: 300000,
+        isWithdrawing: false,
+      ),
     ];
     final m = CashflowEngine.buildMonths(
-            holdings: const [],
-            events: const [],
-            input: _input60,
-            from: DateTime(2026, 1, 1),
-            monthCount: 1,
-            accounts: accounts)
-        .first;
+      holdings: const [],
+      events: const [],
+      input: _input60,
+      from: DateTime(2026, 1, 1),
+      monthCount: 1,
+      accounts: accounts,
+    ).first;
     expect(m.pensionGross, 0); // ISA OFF
   });
 }

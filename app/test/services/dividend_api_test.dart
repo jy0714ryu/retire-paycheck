@@ -22,8 +22,11 @@ void main() {
     var callCount = 0;
     final mockClient = MockClient((request) async {
       callCount++;
-      return http.Response(_sampleJson, 200,
-          headers: {'content-type': 'application/json; charset=utf-8'});
+      return http.Response(
+        _sampleJson,
+        200,
+        headers: {'content-type': 'application/json; charset=utf-8'},
+      );
     });
     final prefs = await SharedPreferences.getInstance();
 
@@ -75,8 +78,11 @@ void main() {
     var callCount = 0;
     final mockClient = MockClient((request) async {
       callCount++;
-      return http.Response(_sampleJson, 200,
-          headers: {'content-type': 'application/json; charset=utf-8'});
+      return http.Response(
+        _sampleJson,
+        200,
+        headers: {'content-type': 'application/json; charset=utf-8'},
+      );
     });
 
     final api = DividendApi(client: mockClient, prefs: prefs);
@@ -87,8 +93,7 @@ void main() {
     expect(result.events.length, 1);
   });
 
-  test('캐시 만료(>TTL, 4h) + force 없음 → 네트워크 호출(TTL 3h 축소 검증)',
-      () async {
+  test('캐시 만료(>TTL, 4h) + force 없음 → 네트워크 호출(TTL 3h 축소 검증)', () async {
     // 과거 24h TTL 에선 4h 캐시가 신선으로 취급돼 서버 갱신이 안 왔다.
     // 3h 로 축소했으므로 4h 캐시는 만료 → 네트워크 재조회해야 한다.
     SharedPreferences.setMockInitialValues({
@@ -102,8 +107,11 @@ void main() {
     var callCount = 0;
     final mockClient = MockClient((request) async {
       callCount++;
-      return http.Response(_sampleJson, 200,
-          headers: {'content-type': 'application/json; charset=utf-8'});
+      return http.Response(
+        _sampleJson,
+        200,
+        headers: {'content-type': 'application/json; charset=utf-8'},
+      );
     });
 
     final api = DividendApi(client: mockClient, prefs: prefs);
@@ -127,8 +135,11 @@ void main() {
     var callCount = 0;
     final mockClient = MockClient((request) async {
       callCount++;
-      return http.Response(_sampleJson, 200,
-          headers: {'content-type': 'application/json; charset=utf-8'});
+      return http.Response(
+        _sampleJson,
+        200,
+        headers: {'content-type': 'application/json; charset=utf-8'},
+      );
     });
 
     final api = DividendApi(client: mockClient, prefs: prefs);
@@ -139,8 +150,7 @@ void main() {
     expect(result.events.first.corpName, '폴레드');
   });
 
-  test('손상된 신선 캐시(24h 이내) + 정상 네트워크 → 네트워크 결과 반환(24h 마비 방지)',
-      () async {
+  test('손상된 신선 캐시(24h 이내) + 정상 네트워크 → 네트워크 결과 반환(24h 마비 방지)', () async {
     SharedPreferences.setMockInitialValues({
       // 파싱 불가능한 body(JSON 객체) 가 신선(<24h) 캐시에 들어있는 상황.
       'dividends_cache_body': '{"error":"x"}',
@@ -153,8 +163,11 @@ void main() {
     var callCount = 0;
     final mockClient = MockClient((request) async {
       callCount++;
-      return http.Response(_sampleJson, 200,
-          headers: {'content-type': 'application/json; charset=utf-8'});
+      return http.Response(
+        _sampleJson,
+        200,
+        headers: {'content-type': 'application/json; charset=utf-8'},
+      );
     });
 
     final api = DividendApi(client: mockClient, prefs: prefs);
@@ -167,8 +180,7 @@ void main() {
     expect(result.events.first.corpName, '폴레드');
   });
 
-  test('200 + JSON 객체(파싱 불가) 응답 → 캐시 오염 없음(기존 유효 캐시 유지)',
-      () async {
+  test('200 + JSON 객체(파싱 불가) 응답 → 캐시 오염 없음(기존 유효 캐시 유지)', () async {
     final staleAtMs = DateTime.now()
         .subtract(const Duration(hours: 48))
         .millisecondsSinceEpoch;
@@ -181,8 +193,11 @@ void main() {
 
     final mockClient = MockClient((request) async {
       // 200 이지만 배열이 아닌 JSON 객체 → 파싱 실패해야 함.
-      return http.Response('{"error":"maintenance"}', 200,
-          headers: {'content-type': 'application/json; charset=utf-8'});
+      return http.Response(
+        '{"error":"maintenance"}',
+        200,
+        headers: {'content-type': 'application/json; charset=utf-8'},
+      );
     });
 
     final api = DividendApi(client: mockClient, prefs: prefs);

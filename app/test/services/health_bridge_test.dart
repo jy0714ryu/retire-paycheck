@@ -29,20 +29,16 @@ void main() {
     );
   });
 
-  test('그 밖의 소득: 사업자등록 있으면 사업소득, 없으면 기타소득', () {
-    final reg = householdFrom(
-      _base.copyWith(otherAnnualIncome: 3000000, businessRegistered: true),
-      financialIncomeAnnual: 0,
-    );
-    expect(reg.income.business, 3000000);
-    expect(reg.income.other, 0);
-    expect(reg.income.businessRegistered, isTrue);
-    final unreg = householdFrom(
-      _base.copyWith(otherAnnualIncome: 3000000),
-      financialIncomeAnnual: 0,
-    );
-    expect(unreg.income.business, 0);
-    expect(unreg.income.other, 3000000);
+  test('그 밖의 소득(사업·임대)은 사업소득 — 등록 여부는 판정 규칙에 넘김', () {
+    for (final reg in [true, false]) {
+      final h = householdFrom(
+        _base.copyWith(otherAnnualIncome: 3000000, businessRegistered: reg),
+        financialIncomeAnnual: 0,
+      );
+      expect(h.income.business, 3000000);
+      expect(h.income.other, 0);
+      expect(h.income.businessRegistered, reg);
+    }
   });
 
   test('가입 형태·재산·퇴직 전 월급 전달', () {

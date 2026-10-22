@@ -62,15 +62,14 @@ class IncomeInput {
     num? labor,
     num? other,
     bool? businessRegistered,
-  }) =>
-      IncomeInput(
-        pension: pension ?? this.pension,
-        financial: financial ?? this.financial,
-        business: business ?? this.business,
-        labor: labor ?? this.labor,
-        other: other ?? this.other,
-        businessRegistered: businessRegistered ?? this.businessRegistered,
-      );
+  }) => IncomeInput(
+    pension: pension ?? this.pension,
+    financial: financial ?? this.financial,
+    business: business ?? this.business,
+    labor: labor ?? this.labor,
+    other: other ?? this.other,
+    businessRegistered: businessRegistered ?? this.businessRegistered,
+  );
 }
 
 /// 한 사람(본인/배우자)의 소득·재산 스냅샷 (피부양자 동반탈락 판정용).

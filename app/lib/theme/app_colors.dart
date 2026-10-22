@@ -19,7 +19,9 @@ class AppColors {
   static const Color green = Color(0xFF8C6D3F);
   static const Color greenLight = Color(0xFFC9AE7E);
   static const Color greenDark = Color(0xFF6E552F);
-  static const Color gold = Color(0xFFA8854F); // 장식용(가는 선·작은 강조 텍스트) — 버튼 바탕엔 green 사용
+  static const Color gold = Color(
+    0xFFA8854F,
+  ); // 장식용(가는 선·작은 강조 텍스트) — 버튼 바탕엔 green 사용
   static const Color goldSoft = Color(0xFFEFE5D2);
 
   // Neutral — 아이보리 쪽으로 살짝 데운 회색

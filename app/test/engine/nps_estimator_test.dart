@@ -45,12 +45,14 @@ void main() {
       //      = 1.290 × 6,193,511 = 7,989,629.19 (원/년)
       // 월액 = 7,989,629.19 / 12 = 665,802.4325 → round 665,802
       // (상식 대조: 20년 가입 평균 수령액 60~70만원대 현실 통계와 부합)
-      final result = NpsEstimator.estimate(const NpsEstimateInput(
-        monthlyIncome: 3000000,
-        enrollmentMonths: 240,
-        birthYear: 1970,
-        receiptType: NpsReceiptType.normal,
-      ));
+      final result = NpsEstimator.estimate(
+        const NpsEstimateInput(
+          monthlyIncome: 3000000,
+          enrollmentMonths: 240,
+          birthYear: 1970,
+          receiptType: NpsReceiptType.normal,
+        ),
+      );
 
       expect(result.eligibility, NpsEligibility.eligible);
       expect(result.monthlyPensionAmount, 665802);
@@ -66,12 +68,14 @@ void main() {
       // 연액 = 1.290 × (3,193,511 + 5,000,000) × 1.5
       //      = 1.290 × 8,193,511 × 1.5 = 15,854,443.785 (원/년)
       // 월액 = 15,854,443.785 / 12 = 1,321,203.64875 → round 1,321,204
-      final result = NpsEstimator.estimate(const NpsEstimateInput(
-        monthlyIncome: 5000000,
-        enrollmentMonths: 360,
-        birthYear: 1958,
-        receiptType: NpsReceiptType.normal,
-      ));
+      final result = NpsEstimator.estimate(
+        const NpsEstimateInput(
+          monthlyIncome: 5000000,
+          enrollmentMonths: 360,
+          birthYear: 1958,
+          receiptType: NpsReceiptType.normal,
+        ),
+      );
 
       expect(result.monthlyPensionAmount, 1321204);
       expect(result.normalStartAge, 62);
@@ -82,12 +86,14 @@ void main() {
       // 연액 = 1.290 × (3,193,511 + 2,000,000) × 0.75
       //      = 1.290 × 5,193,511 × 0.75 = 5,024,721.8925 (원/년)
       // 월액 = 5,024,721.8925 / 12 = 418,726.824... → round 418,727
-      final result = NpsEstimator.estimate(const NpsEstimateInput(
-        monthlyIncome: 2000000,
-        enrollmentMonths: 180,
-        birthYear: 1975,
-        receiptType: NpsReceiptType.normal,
-      ));
+      final result = NpsEstimator.estimate(
+        const NpsEstimateInput(
+          monthlyIncome: 2000000,
+          enrollmentMonths: 180,
+          birthYear: 1975,
+          receiptType: NpsReceiptType.normal,
+        ),
+      );
 
       expect(result.eligibility, NpsEligibility.eligible);
       expect(result.monthlyPensionAmount, 418727);
@@ -98,12 +104,14 @@ void main() {
       // 계수(480개월) = 1 + 0.05×(480-240)/12 = 2.0
       // 연액 = 1.290 × 2A × 2.0 = 5.16A → 월액 = 5.16A/12 = 0.43A (정확히 43%)
       // 이 semantic 검증이 연액↔월액 혼동(12배 과대 추정) 회귀를 차단한다.
-      final result = NpsEstimator.estimate(const NpsEstimateInput(
-        monthlyIncome: npsAValue, // B = A (평균소득자)
-        enrollmentMonths: 480,
-        birthYear: 1970,
-        receiptType: NpsReceiptType.normal,
-      ));
+      final result = NpsEstimator.estimate(
+        const NpsEstimateInput(
+          monthlyIncome: npsAValue, // B = A (평균소득자)
+          enrollmentMonths: 480,
+          birthYear: 1970,
+          receiptType: NpsReceiptType.normal,
+        ),
+      );
 
       final replacementRatio = result.monthlyPensionAmount / npsAValue;
       expect(replacementRatio, closeTo(0.43, 0.0043)); // 43% ±1%
@@ -112,12 +120,14 @@ void main() {
 
   group('estimate — 경계 처리', () {
     test('가입 10년 미만(119개월) → 수급 불가', () {
-      final result = NpsEstimator.estimate(const NpsEstimateInput(
-        monthlyIncome: 3000000,
-        enrollmentMonths: 119,
-        birthYear: 1970,
-        receiptType: NpsReceiptType.normal,
-      ));
+      final result = NpsEstimator.estimate(
+        const NpsEstimateInput(
+          monthlyIncome: 3000000,
+          enrollmentMonths: 119,
+          birthYear: 1970,
+          receiptType: NpsReceiptType.normal,
+        ),
+      );
 
       expect(result.eligibility, NpsEligibility.ineligibleShortEnrollment);
       expect(result.isEligible, false);
@@ -125,12 +135,14 @@ void main() {
     });
 
     test('가입 정확히 10년(120개월) → 수급 가능 (경계값 포함)', () {
-      final result = NpsEstimator.estimate(const NpsEstimateInput(
-        monthlyIncome: 3000000,
-        enrollmentMonths: 120,
-        birthYear: 1970,
-        receiptType: NpsReceiptType.normal,
-      ));
+      final result = NpsEstimator.estimate(
+        const NpsEstimateInput(
+          monthlyIncome: 3000000,
+          enrollmentMonths: 120,
+          birthYear: 1970,
+          receiptType: NpsReceiptType.normal,
+        ),
+      );
 
       // 계수 = 1 + 0.05×(120-240)/12 = 1 - 0.5 = 0.5
       // 연액 = 1.290 × 6,193,511 × 0.5 = 3,994,814.595 (원/년)
@@ -140,12 +152,14 @@ void main() {
     });
 
     test('월소득이 상한(6,590,000원) 초과 시 상한으로 클램프', () {
-      final result = NpsEstimator.estimate(const NpsEstimateInput(
-        monthlyIncome: 10000000,
-        enrollmentMonths: 240,
-        birthYear: 1970,
-        receiptType: NpsReceiptType.normal,
-      ));
+      final result = NpsEstimator.estimate(
+        const NpsEstimateInput(
+          monthlyIncome: 10000000,
+          enrollmentMonths: 240,
+          birthYear: 1970,
+          receiptType: NpsReceiptType.normal,
+        ),
+      );
 
       // 연액 = 1.290 × (3,193,511 + 6,590,000) × 1.0 = 12,620,729.19 (원/년)
       // 월액 = 12,620,729.19 / 12 = 1,051,727.4325 → round 1,051,727
@@ -154,12 +168,14 @@ void main() {
     });
 
     test('월소득이 하한(410,000원) 미만 시 하한으로 클램프', () {
-      final result = NpsEstimator.estimate(const NpsEstimateInput(
-        monthlyIncome: 100000,
-        enrollmentMonths: 240,
-        birthYear: 1970,
-        receiptType: NpsReceiptType.normal,
-      ));
+      final result = NpsEstimator.estimate(
+        const NpsEstimateInput(
+          monthlyIncome: 100000,
+          enrollmentMonths: 240,
+          birthYear: 1970,
+          receiptType: NpsReceiptType.normal,
+        ),
+      );
 
       // 연액 = 1.290 × (3,193,511 + 410,000) × 1.0 = 4,648,529.19 (원/년)
       // 월액 = 4,648,529.19 / 12 = 387,377.4325 → round 387,377
@@ -173,13 +189,15 @@ void main() {
       //      = 1.290 × 7,193,511 × 1.25 = 11,599,536.4875 (원/년)
       // 월액 = 11,599,536.4875 / 12 = 966,628.04... → round 966,628
       // 감액 -30% → round(966,628 × 0.7) = round(676,639.6) = 676,640
-      final result = NpsEstimator.estimate(const NpsEstimateInput(
-        monthlyIncome: 4000000,
-        enrollmentMonths: 300,
-        birthYear: 1958, // 정상 62세
-        receiptType: NpsReceiptType.early,
-        offsetYears: 5,
-      ));
+      final result = NpsEstimator.estimate(
+        const NpsEstimateInput(
+          monthlyIncome: 4000000,
+          enrollmentMonths: 300,
+          birthYear: 1958, // 정상 62세
+          receiptType: NpsReceiptType.early,
+          offsetYears: 5,
+        ),
+      );
 
       expect(result.appliedOffsetYears, 5);
       expect(result.adjustmentRate, closeTo(-0.30, 1e-9));
@@ -188,13 +206,15 @@ void main() {
     });
 
     test('조기 입력 7년 → 최대 5년으로 클램프 (최대 30% 감액 초과 불가)', () {
-      final result = NpsEstimator.estimate(const NpsEstimateInput(
-        monthlyIncome: 4000000,
-        enrollmentMonths: 300,
-        birthYear: 1958,
-        receiptType: NpsReceiptType.early,
-        offsetYears: 7,
-      ));
+      final result = NpsEstimator.estimate(
+        const NpsEstimateInput(
+          monthlyIncome: 4000000,
+          enrollmentMonths: 300,
+          birthYear: 1958,
+          receiptType: NpsReceiptType.early,
+          offsetYears: 7,
+        ),
+      );
 
       expect(result.appliedOffsetYears, 5);
       expect(result.adjustmentRate, closeTo(-0.30, 1e-9));
@@ -206,13 +226,15 @@ void main() {
       //      = 1.290 × 6,693,511 × 1.05 = 9,066,360.6495 (원/년)
       // 월액 = 9,066,360.6495 / 12 = 755,530.054... → round 755,530
       // 증액 +36% → round(755,530 × 1.36) = round(1,027,520.8) = 1,027,521
-      final result = NpsEstimator.estimate(const NpsEstimateInput(
-        monthlyIncome: 3500000,
-        enrollmentMonths: 252,
-        birthYear: 1963, // 정상 63세
-        receiptType: NpsReceiptType.deferred,
-        offsetYears: 5,
-      ));
+      final result = NpsEstimator.estimate(
+        const NpsEstimateInput(
+          monthlyIncome: 3500000,
+          enrollmentMonths: 252,
+          birthYear: 1963, // 정상 63세
+          receiptType: NpsReceiptType.deferred,
+          offsetYears: 5,
+        ),
+      );
 
       expect(result.appliedOffsetYears, 5);
       expect(result.adjustmentRate, closeTo(0.36, 1e-9));
@@ -221,26 +243,30 @@ void main() {
     });
 
     test('연기 입력 9년 → 최대 5년으로 클램프 (최대 36% 증액 초과 불가)', () {
-      final result = NpsEstimator.estimate(const NpsEstimateInput(
-        monthlyIncome: 3500000,
-        enrollmentMonths: 252,
-        birthYear: 1963,
-        receiptType: NpsReceiptType.deferred,
-        offsetYears: 9,
-      ));
+      final result = NpsEstimator.estimate(
+        const NpsEstimateInput(
+          monthlyIncome: 3500000,
+          enrollmentMonths: 252,
+          birthYear: 1963,
+          receiptType: NpsReceiptType.deferred,
+          offsetYears: 9,
+        ),
+      );
 
       expect(result.appliedOffsetYears, 5);
       expect(result.adjustmentRate, closeTo(0.36, 1e-9));
     });
 
     test('정상수령은 offsetYears 입력값과 무관하게 0으로 처리', () {
-      final result = NpsEstimator.estimate(const NpsEstimateInput(
-        monthlyIncome: 3000000,
-        enrollmentMonths: 240,
-        birthYear: 1970,
-        receiptType: NpsReceiptType.normal,
-        offsetYears: 5, // 무시되어야 함
-      ));
+      final result = NpsEstimator.estimate(
+        const NpsEstimateInput(
+          monthlyIncome: 3000000,
+          enrollmentMonths: 240,
+          birthYear: 1970,
+          receiptType: NpsReceiptType.normal,
+          offsetYears: 5, // 무시되어야 함
+        ),
+      );
 
       expect(result.appliedOffsetYears, 0);
       expect(result.adjustmentRate, 0);
@@ -250,18 +276,22 @@ void main() {
 
   group('isEstimate 플래그 (간이 추정 구분용)', () {
     test('수급 가능·불가 케이스 모두 isEstimate = true', () {
-      final eligible = NpsEstimator.estimate(const NpsEstimateInput(
-        monthlyIncome: 3000000,
-        enrollmentMonths: 240,
-        birthYear: 1970,
-        receiptType: NpsReceiptType.normal,
-      ));
-      final ineligible = NpsEstimator.estimate(const NpsEstimateInput(
-        monthlyIncome: 3000000,
-        enrollmentMonths: 60,
-        birthYear: 1970,
-        receiptType: NpsReceiptType.normal,
-      ));
+      final eligible = NpsEstimator.estimate(
+        const NpsEstimateInput(
+          monthlyIncome: 3000000,
+          enrollmentMonths: 240,
+          birthYear: 1970,
+          receiptType: NpsReceiptType.normal,
+        ),
+      );
+      final ineligible = NpsEstimator.estimate(
+        const NpsEstimateInput(
+          monthlyIncome: 3000000,
+          enrollmentMonths: 60,
+          birthYear: 1970,
+          receiptType: NpsReceiptType.normal,
+        ),
+      );
 
       expect(eligible.isEstimate, true);
       expect(ineligible.isEstimate, true);

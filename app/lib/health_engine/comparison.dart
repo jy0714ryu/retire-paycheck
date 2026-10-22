@@ -51,9 +51,9 @@ class ComparisonResult {
 /// 3-way 비교 엔진.
 class RetirementComparison {
   RetirementComparison(this.params)
-      : _regional = RegionalCalculator(params),
-        _voluntary = VoluntaryCalculator(params),
-        _judge = DependentJudge(params);
+    : _regional = RegionalCalculator(params),
+      _voluntary = VoluntaryCalculator(params),
+      _judge = DependentJudge(params);
 
   final HealthParams params;
   final RegionalCalculator _regional;
@@ -65,8 +65,9 @@ class RetirementComparison {
       income: input.income,
       propertyTaxBase: input.propertyTaxBase,
     );
-    final voluntary =
-        _voluntary.calculate(avgMonthlySalary: input.avgMonthlySalary);
+    final voluntary = _voluntary.calculate(
+      avgMonthlySalary: input.avgMonthlySalary,
+    );
     final dependent = _judge.judge(input);
 
     final dependentMonthly = dependent.isEligible ? 0 : -1;

@@ -72,8 +72,10 @@ WithdrawalNarrative computeWithdrawalNarrative(
     // 55세 전 적립기 행은 인출 0이 정상 — 고갈·충족 판정 대상에서 제외
     if (yearRow.age < kPensionWithdrawalMinAge) continue;
     final targetForYear =
-        (input.targetAnnualWithdrawal - yearRow.npsAnnualAmount)
-            .clamp(0, 1 << 60);
+        (input.targetAnnualWithdrawal - yearRow.npsAnnualAmount).clamp(
+          0,
+          1 << 60,
+        );
     if (yearRow.totalAmount < targetForYear) {
       depletionAge = yearRow.age;
       break;
@@ -115,8 +117,9 @@ CrevasseSummary computeCrevasseSummary(
   final preNpsAnnualWithdrawal = gapYears > 0 && firstActiveIndex != null
       ? schedule[firstActiveIndex].totalAmount
       : 0;
-  final postNpsAnnualWithdrawal =
-      startYearIndex != null ? schedule[startYearIndex].totalAmount : null;
+  final postNpsAnnualWithdrawal = startYearIndex != null
+      ? schedule[startYearIndex].totalAmount
+      : null;
 
   return CrevasseSummary(
     gapYears: gapYears,

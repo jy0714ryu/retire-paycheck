@@ -14,8 +14,9 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  testWidgets('입력 화면 렌더 + ISA 잔액 입력 → 계좌 잔액 오버라이드 반영',
-      (WidgetTester tester) async {
+  testWidgets('입력 화면 렌더 + ISA 잔액 입력 → 계좌 잔액 오버라이드 반영', (
+    WidgetTester tester,
+  ) async {
     final container = ProviderContainer();
     addTearDown(container.dispose);
 
@@ -53,8 +54,9 @@ void main() {
   // 회귀: 배당 provider 가 비동기로 뒤늦게 resolve 되어도, 종목추가 시트가
   // 이를 watch 하여 목록을 렌더해야 한다. (버그: ref.read 스냅샷을 잡아
   // AsyncLoading 상태의 빈 목록으로 굳어 "불러오지 못했습니다" 가 항상 떴다.)
-  testWidgets('종목 추가 시트 — 배당 provider 지연 resolve 후 목록 렌더',
-      (WidgetTester tester) async {
+  testWidgets('종목 추가 시트 — 배당 provider 지연 resolve 후 목록 렌더', (
+    WidgetTester tester,
+  ) async {
     final result = DividendFetchResult(
       events: [
         const DividendEvent(
@@ -92,29 +94,30 @@ void main() {
     await tester.tap(addBtn);
     await tester.pump(); // 시트 등장
     // 로딩 스피너가 먼저 뜨고 에러 문구는 없어야 한다.
-    expect(find.text('배당 종목 목록을 아직 불러오지 못했습니다.\n잠시 후 다시 시도하세요.'),
-        findsNothing);
+    expect(find.text('배당 종목 목록을 아직 불러오지 못했습니다.\n잠시 후 다시 시도하세요.'), findsNothing);
 
     // provider resolve 후 시트가 rebuild 되어 종목이 나타나야 한다.
     await tester.pumpAndSettle();
     expect(find.text('삼성전자'), findsOneWidget);
-    expect(find.text('배당 종목 목록을 아직 불러오지 못했습니다.\n잠시 후 다시 시도하세요.'),
-        findsNothing);
+    expect(find.text('배당 종목 목록을 아직 불러오지 못했습니다.\n잠시 후 다시 시도하세요.'), findsNothing);
   });
 
   // 직접 입력(배당 API 미커버 종목 폴백): 시트 하단 "직접 입력" → 폼 전환 →
   // 종목명·수량·연간 배당금 입력 + 지급월 선택 → 추가 → 리스트 노출 + 배지 + provider 반영.
-  testWidgets('종목 추가 시트 — 직접 입력 폼으로 종목 추가 → 리스트 노출',
-      (WidgetTester tester) async {
-    final container = ProviderContainer(overrides: [
-      dividendEventsProvider.overrideWith(
-        (ref) async => DividendFetchResult(
-          events: const [],
-          fetchedAt: DateTime(2026, 1, 1),
-          fromCache: false,
+  testWidgets('종목 추가 시트 — 직접 입력 폼으로 종목 추가 → 리스트 노출', (
+    WidgetTester tester,
+  ) async {
+    final container = ProviderContainer(
+      overrides: [
+        dividendEventsProvider.overrideWith(
+          (ref) async => DividendFetchResult(
+            events: const [],
+            fetchedAt: DateTime(2026, 1, 1),
+            fromCache: false,
+          ),
         ),
-      ),
-    ]);
+      ],
+    );
     addTearDown(container.dispose);
 
     await tester.pumpWidget(
@@ -137,10 +140,11 @@ void main() {
 
     // 폼 입력: 종목명 / 수량 / 주당 연간 배당금. 지급월 기본 4월 + 10월 추가 선택.
     await tester.enterText(
-        find.byKey(const ValueKey('manualName')), '커버리지밖ETF');
+      find.byKey(const ValueKey('manualName')),
+      '커버리지밖ETF',
+    );
     await tester.enterText(find.byKey(const ValueKey('manualShares')), '100');
-    await tester.enterText(
-        find.byKey(const ValueKey('manualAnnual')), '12000');
+    await tester.enterText(find.byKey(const ValueKey('manualAnnual')), '12000');
     await tester.ensureVisible(find.byKey(const ValueKey('manualMonth_10')));
     await tester.tap(find.byKey(const ValueKey('manualMonth_10')));
     await tester.pumpAndSettle();
@@ -167,8 +171,9 @@ void main() {
 
   // Task ②: 인출 시작 시점 필드 — 기본 "지금부터" → 다이얼로그 확인 시 개시월 설정,
   // 재개시 후 "설정 안 함" → null 복원.
-  testWidgets('인출 시작 시점 — 다이얼로그 확인/해제 → provider 반영',
-      (WidgetTester tester) async {
+  testWidgets('인출 시작 시점 — 다이얼로그 확인/해제 → provider 반영', (
+    WidgetTester tester,
+  ) async {
     final container = ProviderContainer();
     addTearDown(container.dispose);
 
@@ -181,7 +186,10 @@ void main() {
     await tester.pumpAndSettle();
 
     // 기본값 null → 필드는 "지금부터 (설정 안 함)".
-    expect(container.read(retirementInputProvider).withdrawalStartMonth, isNull);
+    expect(
+      container.read(retirementInputProvider).withdrawalStartMonth,
+      isNull,
+    );
     final field = find.byKey(const ValueKey('withdrawalStartMonthField'));
     await tester.ensureVisible(field);
     expect(find.text('지금부터 (설정 안 함)'), findsOneWidget);
@@ -193,8 +201,10 @@ void main() {
     await tester.pumpAndSettle();
 
     final now = DateTime.now();
-    expect(container.read(retirementInputProvider).withdrawalStartMonth,
-        DateTime(now.year, now.month));
+    expect(
+      container.read(retirementInputProvider).withdrawalStartMonth,
+      DateTime(now.year, now.month),
+    );
 
     // 다시 열어 "설정 안 함 (지금부터)" → null 복원.
     await tester.ensureVisible(field);
@@ -203,7 +213,10 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('clearWithdrawalStart')));
     await tester.pumpAndSettle();
 
-    expect(container.read(retirementInputProvider).withdrawalStartMonth, isNull);
+    expect(
+      container.read(retirementInputProvider).withdrawalStartMonth,
+      isNull,
+    );
     expect(find.text('지금부터 (설정 안 함)'), findsOneWidget);
   });
 }

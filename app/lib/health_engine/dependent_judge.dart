@@ -125,9 +125,11 @@ class DependentJudge {
 
     // 2) 소득 요건(재산 구간별 한도).
     if (band != PropertyBand.over && totalIncome > limit) {
-      reasons.add(band == PropertyBand.mid
-          ? DependentReason.incomeOverMidLimit
-          : DependentReason.incomeOverLimit);
+      reasons.add(
+        band == PropertyBand.mid
+            ? DependentReason.incomeOverMidLimit
+            : DependentReason.incomeOverLimit,
+      );
     }
 
     // 3) 사업소득 요건.

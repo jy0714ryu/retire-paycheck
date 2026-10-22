@@ -41,8 +41,9 @@ class DividendEvent {
       recordDate: _parseDate(json['record_date']),
       perShare: (json['per_share'] as num?)?.toInt() ?? 0,
       isConfirmed: json['is_confirmed'] as bool? ?? false,
-      explicitPaymentMonth:
-          payment == null ? null : DateTime(payment.year, payment.month),
+      explicitPaymentMonth: payment == null
+          ? null
+          : DateTime(payment.year, payment.month),
       source: json['source'] as String? ?? 'api',
     );
   }
@@ -54,13 +55,13 @@ class DividendEvent {
   }
 
   Map<String, dynamic> toJson() => {
-        'corp_code': corpCode,
-        'corp_name': corpName,
-        'ex_date': exDate?.toIso8601String().split('T').first,
-        'record_date': recordDate?.toIso8601String().split('T').first,
-        'per_share': perShare,
-        'is_confirmed': isConfirmed,
-      };
+    'corp_code': corpCode,
+    'corp_name': corpName,
+    'ex_date': exDate?.toIso8601String().split('T').first,
+    'record_date': recordDate?.toIso8601String().split('T').first,
+    'per_share': perShare,
+    'is_confirmed': isConfirmed,
+  };
 
   /// 예상 지급월: [explicitPaymentMonth] 가 있으면 그것을 우선 반환(합성 이벤트).
   /// 없으면 12월 기준일(결산배당) → 익년 4월 / 그 외(분기·중간) → 기준일 익월.
@@ -91,13 +92,13 @@ class DividendEvent {
 
   @override
   int get hashCode => Object.hash(
-        corpCode,
-        corpName,
-        exDate,
-        recordDate,
-        perShare,
-        isConfirmed,
-        explicitPaymentMonth,
-        source,
-      );
+    corpCode,
+    corpName,
+    exDate,
+    recordDate,
+    perShare,
+    isConfirmed,
+    explicitPaymentMonth,
+    source,
+  );
 }

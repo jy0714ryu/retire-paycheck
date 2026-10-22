@@ -33,8 +33,7 @@ void main() {
     expect(find.byType(AmountInputField), findsNWidgets(3));
   });
 
-  testWidgets('계좌별 인출 스위치 ON 시 해당 계좌 카드에 월 인출 필드 노출',
-      (tester) async {
+  testWidgets('계좌별 인출 스위치 ON 시 해당 계좌 카드에 월 인출 필드 노출', (tester) async {
     await tester.pumpWidget(
       const ProviderScope(child: MaterialApp(home: InputScreen())),
     );
@@ -57,8 +56,9 @@ void main() {
     expect(find.text('월 인출'), findsNothing);
   });
 
-  testWidgets('ISA 카드에서 종목 추가 → 시트에 계좌 선택 없음 → accountId=default_isa',
-      (tester) async {
+  testWidgets('ISA 카드에서 종목 추가 → 시트에 계좌 선택 없음 → accountId=default_isa', (
+    tester,
+  ) async {
     final result = DividendFetchResult(
       events: [
         const DividendEvent(
@@ -73,9 +73,9 @@ void main() {
       fetchedAt: DateTime(2026, 1, 1),
       fromCache: false,
     );
-    final container = ProviderContainer(overrides: [
-      dividendEventsProvider.overrideWith((ref) async => result),
-    ]);
+    final container = ProviderContainer(
+      overrides: [dividendEventsProvider.overrideWith((ref) async => result)],
+    );
     addTearDown(container.dispose);
 
     await tester.pumpWidget(
@@ -113,26 +113,28 @@ void main() {
 
   testWidgets('종목 즐겨찾기 — 별 누르면 검색 목록 맨 위로, 다시 열어도 유지', (tester) async {
     DividendEvent ev(String code, String name) => DividendEvent(
-          corpCode: code,
-          corpName: name,
-          exDate: null,
-          recordDate: null,
-          perShare: 100,
-          isConfirmed: true,
-        );
+      corpCode: code,
+      corpName: name,
+      exDate: null,
+      recordDate: null,
+      perShare: 100,
+      isConfirmed: true,
+    );
     final result = DividendFetchResult(
       events: [ev('A', '가나다'), ev('B', '라마바'), ev('458730', 'TIGER 미국배당다우존스')],
       fetchedAt: DateTime(2026, 1, 1),
       fromCache: false,
     );
-    final container = ProviderContainer(overrides: [
-      dividendEventsProvider.overrideWith((ref) async => result),
-    ]);
+    final container = ProviderContainer(
+      overrides: [dividendEventsProvider.overrideWith((ref) async => result)],
+    );
     addTearDown(container.dispose);
-    await tester.pumpWidget(UncontrolledProviderScope(
-      container: container,
-      child: const MaterialApp(home: InputScreen()),
-    ));
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(home: InputScreen()),
+      ),
+    );
     await tester.pumpAndSettle();
 
     Future<void> openSheet() async {
@@ -160,9 +162,15 @@ void main() {
     await openSheet();
     expect(order().first, '라마바');
     expect(
-        tester.widget<Icon>(find.descendant(
-            of: find.byKey(const ValueKey('fav_B')),
-            matching: find.byType(Icon))).icon,
-        Icons.star_rounded);
+      tester
+          .widget<Icon>(
+            find.descendant(
+              of: find.byKey(const ValueKey('fav_B')),
+              matching: find.byType(Icon),
+            ),
+          )
+          .icon,
+      Icons.star_rounded,
+    );
   });
 }

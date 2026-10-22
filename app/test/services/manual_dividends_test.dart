@@ -56,7 +56,7 @@ void main() {
       final events = synthesizeManualEvents(holdings: [holding], year: 2026);
       expect(events.length, 3);
       final byMonth = {
-        for (final e in events) e.expectedPaymentMonth!.month: e.perShare
+        for (final e in events) e.expectedPaymentMonth!.month: e.perShare,
       };
       // 10000 ÷ 3 = 3333, 잔여 1 → 첫 달(4월) 3334.
       expect(byMonth[4], 3334);
@@ -65,7 +65,11 @@ void main() {
     });
 
     test('API 종목(manual 필드 없음)은 무시', () {
-      final api = const Holding(corpCode: '005930', corpName: '삼성전자', shares: 10);
+      final api = const Holding(
+        corpCode: '005930',
+        corpName: '삼성전자',
+        shares: 10,
+      );
       final events = synthesizeManualEvents(holdings: [api], year: 2026);
       expect(events, isEmpty);
     });

@@ -48,12 +48,12 @@ class IncomeReflect {
   final double other;
 
   factory IncomeReflect.fromMap(Map<String, dynamic> m) => IncomeReflect(
-        pension: (m['pension'] as num).toDouble(),
-        labor: (m['labor'] as num).toDouble(),
-        business: (m['business'] as num).toDouble(),
-        financial: (m['financial'] as num).toDouble(),
-        other: (m['other'] as num).toDouble(),
-      );
+    pension: (m['pension'] as num).toDouble(),
+    labor: (m['labor'] as num).toDouble(),
+    business: (m['business'] as num).toDouble(),
+    financial: (m['financial'] as num).toDouble(),
+    other: (m['other'] as num).toDouble(),
+  );
 }
 
 /// 피부양자 판정 임계값 묶음.
@@ -86,13 +86,13 @@ class DependentParams {
   final int bizUnregisteredLimit;
 
   factory DependentParams.fromMap(Map<String, dynamic> m) => DependentParams(
-        incomeLimit: (m['income_limit'] as num).toInt(),
-        propertyLimitLow: (m['property_limit_low'] as num).toInt(),
-        propertyLimitHigh: (m['property_limit_high'] as num).toInt(),
-        midIncomeLimit: (m['mid_income_limit'] as num).toInt(),
-        bizRegisteredLimit: (m['biz_registered_limit'] as num).toInt(),
-        bizUnregisteredLimit: (m['biz_unregistered_limit'] as num).toInt(),
-      );
+    incomeLimit: (m['income_limit'] as num).toInt(),
+    propertyLimitLow: (m['property_limit_low'] as num).toInt(),
+    propertyLimitHigh: (m['property_limit_high'] as num).toInt(),
+    midIncomeLimit: (m['mid_income_limit'] as num).toInt(),
+    bizRegisteredLimit: (m['biz_registered_limit'] as num).toInt(),
+    bizUnregisteredLimit: (m['biz_unregistered_limit'] as num).toInt(),
+  );
 }
 
 /// 1세대 1주택 특례 공정시장가액비율 구간.
@@ -130,13 +130,12 @@ class SimpleModeParams {
   final List<SingleHomeRatioBand> singleHomeBands;
 
   factory SimpleModeParams.fromMap(Map<String, dynamic> m) => SimpleModeParams(
-        marketToOfficialRatio:
-            (m['market_to_official_ratio'] as num).toDouble(),
-        fairMarketRatio: (m['fair_market_ratio'] as num).toDouble(),
-        singleHomeBands: (m['fair_market_ratio_single_home'] as List)
-            .map((e) => SingleHomeRatioBand.fromMap(e as Map<String, dynamic>))
-            .toList(growable: false),
-      );
+    marketToOfficialRatio: (m['market_to_official_ratio'] as num).toDouble(),
+    fairMarketRatio: (m['fair_market_ratio'] as num).toDouble(),
+    singleHomeBands: (m['fair_market_ratio_single_home'] as List)
+        .map((e) => SingleHomeRatioBand.fromMap(e as Map<String, dynamic>))
+        .toList(growable: false),
+  );
 }
 
 /// 재산보험료부과점수 등급표의 한 등급.
@@ -160,11 +159,11 @@ class PropertyGrade {
   final int points;
 
   factory PropertyGrade.fromMap(Map<String, dynamic> m) => PropertyGrade(
-        grade: (m['grade'] as num).toInt(),
-        min: (m['min'] as num).toInt(),
-        max: m['max'] == null ? null : (m['max'] as num).toInt(),
-        points: (m['points'] as num).toInt(),
-      );
+    grade: (m['grade'] as num).toInt(),
+    min: (m['min'] as num).toInt(),
+    max: m['max'] == null ? null : (m['max'] as num).toInt(),
+    points: (m['points'] as num).toInt(),
+  );
 }
 
 /// 연도별 건강보험 제도 파라미터 (계산 엔진 SSOT).
@@ -221,26 +220,27 @@ class HealthParams {
   final List<PropertyGrade> propertyGradeTable;
 
   factory HealthParams.fromMap(Map<String, dynamic> m) => HealthParams(
-        year: (m['year'] as num).toInt(),
-        version: m['version'] as String,
-        employeeRate: (m['employee_rate'] as num).toDouble(),
-        ltcRateOfIncome: (m['ltc_rate_of_income'] as num).toDouble(),
-        ltcRateOfHealth: (m['ltc_rate_of_health'] as num).toDouble(),
-        regionalIncomeRate: (m['regional_income_rate'] as num).toDouble(),
-        propertyDeduction: (m['property_deduction'] as num).toInt(),
-        propertyPointPrice: (m['property_point_price'] as num).toDouble(),
-        minPremium: (m['min_premium'] as num).toInt(),
-        maxPremium: (m['max_premium'] as num).toInt(),
-        incomeReflect:
-            IncomeReflect.fromMap(m['income_reflect'] as Map<String, dynamic>),
-        dependent:
-            DependentParams.fromMap(m['dependent'] as Map<String, dynamic>),
-        simpleMode:
-            SimpleModeParams.fromMap(m['simple_mode'] as Map<String, dynamic>),
-        propertyGradeTable: (m['property_grade_table'] as List)
-            .map((e) => PropertyGrade.fromMap(e as Map<String, dynamic>))
-            .toList(growable: false),
-      );
+    year: (m['year'] as num).toInt(),
+    version: m['version'] as String,
+    employeeRate: (m['employee_rate'] as num).toDouble(),
+    ltcRateOfIncome: (m['ltc_rate_of_income'] as num).toDouble(),
+    ltcRateOfHealth: (m['ltc_rate_of_health'] as num).toDouble(),
+    regionalIncomeRate: (m['regional_income_rate'] as num).toDouble(),
+    propertyDeduction: (m['property_deduction'] as num).toInt(),
+    propertyPointPrice: (m['property_point_price'] as num).toDouble(),
+    minPremium: (m['min_premium'] as num).toInt(),
+    maxPremium: (m['max_premium'] as num).toInt(),
+    incomeReflect: IncomeReflect.fromMap(
+      m['income_reflect'] as Map<String, dynamic>,
+    ),
+    dependent: DependentParams.fromMap(m['dependent'] as Map<String, dynamic>),
+    simpleMode: SimpleModeParams.fromMap(
+      m['simple_mode'] as Map<String, dynamic>,
+    ),
+    propertyGradeTable: (m['property_grade_table'] as List)
+        .map((e) => PropertyGrade.fromMap(e as Map<String, dynamic>))
+        .toList(growable: false),
+  );
 
   factory HealthParams.fromJsonString(String raw) =>
       HealthParams.fromMap(json.decode(raw) as Map<String, dynamic>);

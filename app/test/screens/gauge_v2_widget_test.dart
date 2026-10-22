@@ -125,8 +125,9 @@ void main() {
     expect(find.text('(일반계좌 대비 · 비과세 한도 내 기준)'), findsOneWidget);
   });
 
-  testWidgets('ISA 절세액 1만원 미만이면 카드 미노출 ("0만원" 방지)',
-      (WidgetTester tester) async {
+  testWidgets('ISA 절세액 1만원 미만이면 카드 미노출 ("0만원" 방지)', (
+    WidgetTester tester,
+  ) async {
     // 10주 × 500원 = gross 5,000원 → 절세 770원 (만원 표시 0) → 미노출.
     await _pump(
       tester,
@@ -147,25 +148,25 @@ void main() {
   testWidgets('ISA 계좌 없으면 절세효과 카드 미노출', (WidgetTester tester) async {
     await _pump(
       tester,
-      holdings: const [
-        Holding(corpCode: 'A', corpName: '일반주', shares: 1000),
-      ],
+      holdings: const [Holding(corpCode: 'A', corpName: '일반주', shares: 1000)],
       events: [_eventGeneral],
     );
 
     expect(find.textContaining('절세 중'), findsNothing);
   });
 
-  testWidgets('인출 켠 pension 계좌 없으면 저율과세 게이지에 인출 전 참고용 캡션',
-      (WidgetTester tester) async {
+  testWidgets('인출 켠 pension 계좌 없으면 저율과세 게이지에 인출 전 참고용 캡션', (
+    WidgetTester tester,
+  ) async {
     // 기본 4계좌(연금저축·IRP 포함)는 전부 isWithdrawing=false — 오버라이드 불필요.
     await _pump(tester, input: _inputNotWithdrawing);
 
     expect(find.text('연금 인출 전 (참고용)'), findsOneWidget);
   });
 
-  testWidgets('인출 켠 pension 계좌 있으면 인출 전 참고용 캡션 미노출',
-      (WidgetTester tester) async {
+  testWidgets('인출 켠 pension 계좌 있으면 인출 전 참고용 캡션 미노출', (
+    WidgetTester tester,
+  ) async {
     await _pump(
       tester,
       input: _inputWithdrawing,
@@ -183,8 +184,7 @@ void main() {
     expect(find.text('연금 인출 전 (참고용)'), findsNothing);
   });
 
-  testWidgets('연금 계좌 있어도 인출 OFF 면 참고용 캡션 노출 유지',
-      (WidgetTester tester) async {
+  testWidgets('연금 계좌 있어도 인출 OFF 면 참고용 캡션 노출 유지', (WidgetTester tester) async {
     // 계좌가 존재해도 isWithdrawing=false 면 여전히 참고용 — 계좌 존재 자체가
     // 아니라 인출 개시 여부가 판정 기준임을 검증.
     await _pump(

@@ -34,34 +34,32 @@ class Account {
     int? balance,
     int? monthlyWithdrawal,
     bool? isWithdrawing,
-  }) =>
-      Account(
-        id: id,
-        name: name ?? this.name,
-        type: type,
-        balance: balance ?? this.balance,
-        monthlyWithdrawal: monthlyWithdrawal ?? this.monthlyWithdrawal,
-        isWithdrawing: isWithdrawing ?? this.isWithdrawing,
-      );
+  }) => Account(
+    id: id,
+    name: name ?? this.name,
+    type: type,
+    balance: balance ?? this.balance,
+    monthlyWithdrawal: monthlyWithdrawal ?? this.monthlyWithdrawal,
+    isWithdrawing: isWithdrawing ?? this.isWithdrawing,
+  );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'type': type.name,
-        'balance': balance,
-        'monthly_withdrawal': monthlyWithdrawal,
-        'is_withdrawing': isWithdrawing,
-      };
+    'id': id,
+    'name': name,
+    'type': type.name,
+    'balance': balance,
+    'monthly_withdrawal': monthlyWithdrawal,
+    'is_withdrawing': isWithdrawing,
+  };
 
   factory Account.fromJson(Map<String, dynamic> json) => Account(
-        id: json['id'] as String? ?? '',
-        name: json['name'] as String? ?? '',
-        type: AccountType.values.asNameMap()[json['type']] ??
-            AccountType.general,
-        balance: (json['balance'] as num?)?.toInt() ?? 0,
-        monthlyWithdrawal: (json['monthly_withdrawal'] as num?)?.toInt() ?? 0,
-        isWithdrawing: json['is_withdrawing'] as bool? ?? false,
-      );
+    id: json['id'] as String? ?? '',
+    name: json['name'] as String? ?? '',
+    type: AccountType.values.asNameMap()[json['type']] ?? AccountType.general,
+    balance: (json['balance'] as num?)?.toInt() ?? 0,
+    monthlyWithdrawal: (json['monthly_withdrawal'] as num?)?.toInt() ?? 0,
+    isWithdrawing: json['is_withdrawing'] as bool? ?? false,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -75,8 +73,8 @@ class Account {
           isWithdrawing == other.isWithdrawing;
 
   @override
-  int get hashCode => Object.hash(
-      id, name, type, balance, monthlyWithdrawal, isWithdrawing);
+  int get hashCode =>
+      Object.hash(id, name, type, balance, monthlyWithdrawal, isWithdrawing);
 }
 
 /// 기본 계좌 4개 — 삭제·이름변경 불가. 연금은 연금저축·IRP 로 분리(구 단일
@@ -85,9 +83,10 @@ const List<Account> kDefaultAccounts = [
   Account(id: 'default_general', name: '일반계좌', type: AccountType.general),
   Account(id: 'default_isa', name: 'ISA', type: AccountType.isa),
   Account(
-      id: 'default_pension_savings',
-      name: '연금저축',
-      type: AccountType.pension),
+    id: 'default_pension_savings',
+    name: '연금저축',
+    type: AccountType.pension,
+  ),
   Account(id: 'default_irp', name: 'IRP', type: AccountType.pension),
 ];
 
@@ -97,10 +96,10 @@ const List<Account> kDefaultAccounts = [
 /// 1:1 대응이 아니므로(연금 유형은 `default_pension` 이 존재하지 않는다) 이
 /// 명시 매핑이 유일한 SSOT 다 — 마이그레이션의 연금 인출 라우팅과도 일관.
 String defaultAccountIdFor(AccountType type) => switch (type) {
-      AccountType.general => 'default_general',
-      AccountType.isa => 'default_isa',
-      AccountType.pension => 'default_pension_savings',
-    };
+  AccountType.general => 'default_general',
+  AccountType.isa => 'default_isa',
+  AccountType.pension => 'default_pension_savings',
+};
 
 /// id → 계좌 해석. 기본 계좌 우선, 유저 계좌 순회, 없으면 null
 /// (호출부가 default_general 폴백 — 삭제된 계좌 참조 안전망).

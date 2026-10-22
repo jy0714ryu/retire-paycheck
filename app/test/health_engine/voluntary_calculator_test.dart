@@ -39,8 +39,10 @@ void main() {
     expect(r.timeline.last.cumulative, 4392756);
     // 누계가 단조 증가.
     for (var i = 1; i < r.timeline.length; i++) {
-      expect(r.timeline[i].cumulative,
-          r.timeline[i - 1].cumulative + r.monthlyTotal);
+      expect(
+        r.timeline[i].cumulative,
+        r.timeline[i - 1].cumulative + r.monthlyTotal,
+      );
     }
   });
 }

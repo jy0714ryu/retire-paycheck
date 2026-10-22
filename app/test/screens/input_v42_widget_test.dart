@@ -31,8 +31,9 @@ void main() {
 
     expect(find.text('삼성전자'), findsOneWidget);
 
-    final deleteBtn =
-        find.byKey(const ValueKey('deleteHolding_default_general_005930'));
+    final deleteBtn = find.byKey(
+      const ValueKey('deleteHolding_default_general_005930'),
+    );
     expect(deleteBtn, findsOneWidget);
 
     await tester.ensureVisible(deleteBtn);
@@ -43,8 +44,9 @@ void main() {
     expect(find.text('삼성전자'), findsNothing);
   });
 
-  testWidgets('② 같은 종목을 일반+ISA 두 계좌에 보유해도 Duplicate keys 크래시 없음',
-      (tester) async {
+  testWidgets('② 같은 종목을 일반+ISA 두 계좌에 보유해도 Duplicate keys 크래시 없음', (
+    tester,
+  ) async {
     SharedPreferences.setMockInitialValues({
       'holdings': _holdingsJson([
         {
@@ -70,14 +72,16 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('삼성전자'), findsNWidgets(2));
     expect(
-        find.byKey(const ValueKey('deleteHolding_default_general_005930')),
-        findsOneWidget);
-    expect(find.byKey(const ValueKey('deleteHolding_default_isa_005930')),
-        findsOneWidget);
+      find.byKey(const ValueKey('deleteHolding_default_general_005930')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('deleteHolding_default_isa_005930')),
+      findsOneWidget,
+    );
   });
 
-  testWidgets('④ 잔액 0(미입력) + 인출 ON + 월 인출>0 이면 소진 캡션 숨김',
-      (tester) async {
+  testWidgets('④ 잔액 0(미입력) + 인출 ON + 월 인출>0 이면 소진 캡션 숨김', (tester) async {
     SharedPreferences.setMockInitialValues({});
     await tester.pumpWidget(
       const ProviderScope(child: MaterialApp(home: InputScreen())),
@@ -85,15 +89,15 @@ void main() {
     await tester.pumpAndSettle();
 
     // 잔액은 입력하지 않고(0) ISA 인출 스위치만 ON.
-    final isaSwitch =
-        find.byKey(const ValueKey('withdrawSwitch_default_isa'));
+    final isaSwitch = find.byKey(const ValueKey('withdrawSwitch_default_isa'));
     await tester.ensureVisible(isaSwitch);
     await tester.tap(isaSwitch);
     await tester.pumpAndSettle();
 
     // 월 인출 100만원 입력(만원 단위 100).
-    final withdrawalField =
-        find.byKey(const ValueKey('withdrawal_default_isa'));
+    final withdrawalField = find.byKey(
+      const ValueKey('withdrawal_default_isa'),
+    );
     await tester.ensureVisible(withdrawalField);
     await tester.enterText(withdrawalField, '100');
     await tester.pumpAndSettle();

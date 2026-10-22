@@ -14,11 +14,13 @@ void main() {
     // 보수월액 200만 → 임의계속 월 81,347
     // 재산 8억(공제 후 7억, 36등급 921점) + 금융 1,500만 → 지역 월 322,071
     // 금융 1,500만 → 재산 MID 구간 소득한도(1,000만) 초과 → 피부양자 불가
-    final r = cmp.compare(const HouseholdInput(
-      income: IncomeInput(financial: 15000000),
-      propertyTaxBase: 800000000,
-      avgMonthlySalary: 2000000,
-    ));
+    final r = cmp.compare(
+      const HouseholdInput(
+        income: IncomeInput(financial: 15000000),
+        propertyTaxBase: 800000000,
+        avgMonthlySalary: 2000000,
+      ),
+    );
     expect(r.voluntaryMonthly, 81347);
     expect(r.regionalMonthly, 322071);
     expect(r.dependentEligible, isFalse);
@@ -31,11 +33,13 @@ void main() {
     // 보수월액 600만 → 임의계속 월 244,042
     // 금융 2,500만, 재산 0 → 지역 월 169,473
     // 금융 2,500만 → LOW 구간 소득한도(2,000만) 초과 → 피부양자 불가
-    final r = cmp.compare(const HouseholdInput(
-      income: IncomeInput(financial: 25000000),
-      propertyTaxBase: 0,
-      avgMonthlySalary: 6000000,
-    ));
+    final r = cmp.compare(
+      const HouseholdInput(
+        income: IncomeInput(financial: 25000000),
+        propertyTaxBase: 0,
+        avgMonthlySalary: 6000000,
+      ),
+    );
     expect(r.voluntaryMonthly, 244042);
     expect(r.regionalMonthly, 169473);
     expect(r.dependentEligible, isFalse);
@@ -43,11 +47,13 @@ void main() {
   });
 
   test('C3 소득·재산 없음 → 피부양자 편입(0원) 최우선', () {
-    final r = cmp.compare(const HouseholdInput(
-      income: IncomeInput(),
-      propertyTaxBase: 0,
-      avgMonthlySalary: 3000000,
-    ));
+    final r = cmp.compare(
+      const HouseholdInput(
+        income: IncomeInput(),
+        propertyTaxBase: 0,
+        avgMonthlySalary: 3000000,
+      ),
+    );
     expect(r.dependentEligible, isTrue);
     expect(r.dependentMonthly, 0);
     expect(r.dependent36Total, 0);

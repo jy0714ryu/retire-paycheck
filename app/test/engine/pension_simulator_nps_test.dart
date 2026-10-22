@@ -75,8 +75,11 @@ void main() {
       for (final strategy in kStrategies) {
         final outcome = PensionSimulator.run(input, strategy);
         for (final year in outcome.schedule) {
-          expect(year.npsAnnualAmount, 0,
-              reason: '${strategy.id} ${year.age}세: 미입력인데 국민연금 차감됨');
+          expect(
+            year.npsAnnualAmount,
+            0,
+            reason: '${strategy.id} ${year.age}세: 미입력인데 국민연금 차감됨',
+          );
         }
       }
     });
@@ -142,8 +145,9 @@ void main() {
 
     test('58~64세(개시 전): 전액 연금계좌 인출, 국민연금 0', () {
       final outcome = PensionSimulator.run(crevasseInput, taxFreeFirst);
-      final crevasseYears =
-          outcome.schedule.where((y) => y.age >= 58 && y.age <= 64);
+      final crevasseYears = outcome.schedule.where(
+        (y) => y.age >= 58 && y.age <= 64,
+      );
       expect(crevasseYears.length, 7);
       for (final year in crevasseYears) {
         expect(year.npsAnnualAmount, 0, reason: '${year.age}세');
@@ -153,8 +157,9 @@ void main() {
 
     test('65세부터: 연 720만 국민연금 차감, 계좌 인출은 차액만', () {
       final outcome = PensionSimulator.run(crevasseInput, taxFreeFirst);
-      final activeYears =
-          outcome.schedule.where((y) => y.age >= 65 && y.age <= 67);
+      final activeYears = outcome.schedule.where(
+        (y) => y.age >= 65 && y.age <= 67,
+      );
       expect(activeYears.length, 3);
       for (final year in activeYears) {
         expect(year.npsAnnualAmount, 7200000, reason: '${year.age}세');
@@ -167,8 +172,11 @@ void main() {
         final outcome = PensionSimulator.run(crevasseInput, strategy);
         for (final year in outcome.schedule) {
           final expected = year.age >= 65 ? 7200000 : 0;
-          expect(year.npsAnnualAmount, expected,
-              reason: '${strategy.id} ${year.age}세');
+          expect(
+            year.npsAnnualAmount,
+            expected,
+            reason: '${strategy.id} ${year.age}세',
+          );
         }
       }
     });
@@ -277,10 +285,14 @@ void main() {
       final base = PensionSimulator.run(baseline, taxFreeFirst);
       final withCrevasse = PensionSimulator.run(withNps, taxFreeFirst);
 
-      final baseTotalWithdrawn =
-          base.schedule.fold<int>(0, (s, y) => s + y.totalAmount);
-      final crevasseTotalWithdrawn =
-          withCrevasse.schedule.fold<int>(0, (s, y) => s + y.totalAmount);
+      final baseTotalWithdrawn = base.schedule.fold<int>(
+        0,
+        (s, y) => s + y.totalAmount,
+      );
+      final crevasseTotalWithdrawn = withCrevasse.schedule.fold<int>(
+        0,
+        (s, y) => s + y.totalAmount,
+      );
 
       const activeYears = 3; // 65,66,67세
       const npsAnnualAmount = 600000 * 12; // 7,200,000
@@ -290,8 +302,10 @@ void main() {
 
       // npsAnnualAmount 필드 합계도 동일 불변식을 만족해야 한다
       // (월액 그대로 노출되는 회귀 — 12배 작은 값 — 도 이 assert가 잡는다).
-      final totalNpsExposed = withCrevasse.schedule
-          .fold<int>(0, (s, y) => s + y.npsAnnualAmount);
+      final totalNpsExposed = withCrevasse.schedule.fold<int>(
+        0,
+        (s, y) => s + y.npsAnnualAmount,
+      );
       expect(totalNpsExposed, expectedDiff);
     });
 

@@ -25,7 +25,8 @@ final healthParamsProvider = FutureProvider<HealthParams>(
 ///
 /// - 공적연금: 월액 × 12
 /// - 금융소득: 일반계좌 배당 + 이자 합계. 1,000만원 이하는 건보 소득에서 빠진다(0).
-/// - 그 밖의 연 소득: 사업자등록이 있으면 사업소득, 없으면 기타소득으로 본다.
+/// - 그 밖의 연 소득(사업·임대, 근로 제외): 사업소득으로 본다 — 사업자등록이 있으면 1원만 있어도,
+///   없으면 500만원을 넘으면 피부양자에서 빠진다(엔진 규칙).
 /// 배우자는 입력받지 않는다(v2.3 후보) — 화면에서 동반 탈락 주의 문구로 안내.
 HouseholdInput householdFrom(
   RetirementInput input, {
@@ -38,8 +39,7 @@ HouseholdInput householdFrom(
     income: IncomeInput(
       pension: input.publicPensionMonthly * 12,
       financial: financial,
-      business: input.businessRegistered ? input.otherAnnualIncome : 0,
-      other: input.businessRegistered ? 0 : input.otherAnnualIncome,
+      business: input.otherAnnualIncome,
       businessRegistered: input.businessRegistered,
     ),
     propertyTaxBase: input.propertyTaxBase,

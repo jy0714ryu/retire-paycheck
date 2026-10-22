@@ -72,11 +72,13 @@ class VoluntaryCalculator {
     var cumulative = 0;
     for (var m = 1; m <= maxMonths; m++) {
       cumulative += monthly;
-      timeline.add(VoluntaryTimelineEntry(
-        month: m,
-        monthlyTotal: monthly,
-        cumulative: cumulative,
-      ));
+      timeline.add(
+        VoluntaryTimelineEntry(
+          month: m,
+          monthlyTotal: monthly,
+          cumulative: cumulative,
+        ),
+      );
     }
 
     return VoluntaryResult(

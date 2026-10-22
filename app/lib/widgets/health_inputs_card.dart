@@ -34,10 +34,12 @@ class HealthInputsCard extends ConsumerWidget {
     final input = ref.watch(retirementInputProvider);
     final notifier = ref.read(retirementInputProvider.notifier);
     final employee = input.healthInsType == HealthInsType.employee;
+    // 직장인도 퇴직 전 월급을 넣으면 퇴직 후 비교에 재산·사업자가 필요하다.
+    final showProperty = !employee || input.lastMonthlySalary > 0;
     final summary = [
       _typeLabel(input.healthInsType),
       '공적연금 월 ${CurrencyFormat.man(input.publicPensionMonthly)}만원',
-      if (!employee)
+      if (showProperty)
         input.propertyTaxBase > 0
             ? '재산 ${CurrencyFormat.eokMan(input.propertyTaxBase)}'
             : '재산 미입력',
@@ -107,15 +109,13 @@ class HealthInputsCard extends ConsumerWidget {
             const SizedBox(height: 12),
             AmountInputField(
               key: const ValueKey('other_annual_income'),
-              label: '그 밖의 연 소득 (사업·임대 등)',
+              label: '그 밖의 연 소득 (사업·임대)',
               value: input.otherAnnualIncome,
-              helperText: employee
-                  ? '지금 다니는 직장 월급은 넣지 않아요'
-                  : '근로·사업·임대 소득을 합쳐서',
+              helperText: '사업·임대 소득 합계 (근로소득·직장 월급은 넣지 않아요)',
               onChanged: (v) =>
                   notifier.update((s) => s.copyWith(otherAnnualIncome: v)),
             ),
-            if (!employee) ...[
+            if (showProperty) ...[
               SwitchListTile(
                 key: const Key('business_registered'),
                 contentPadding: EdgeInsets.zero,

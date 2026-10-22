@@ -20,14 +20,16 @@ void main() {
     judge = DependentJudge(await loadParams2026());
   });
 
-  DependentResult run(_Row r) => judge.judge(HouseholdInput(
-        income: IncomeInput(
-          pension: r.income,
-          business: r.biz,
-          businessRegistered: r.reg,
-        ),
-        propertyTaxBase: r.property,
-      ));
+  DependentResult run(_Row r) => judge.judge(
+    HouseholdInput(
+      income: IncomeInput(
+        pension: r.income,
+        business: r.biz,
+        businessRegistered: r.reg,
+      ),
+      propertyTaxBase: r.property,
+    ),
+  );
 
   group('피부양자 3중 요건 경계값 매트릭스 (소득×재산×사업소득)', () {
     // 손으로 작성한 진리표.
@@ -39,45 +41,297 @@ void main() {
 
     final matrix = <_Row>[
       // ===== 재산 5.39억 (LOW) =====
-      (income: 19990000, property: 539000000, biz: 0, reg: false, eligible: true, reasons: []),
-      (income: 19990000, property: 539000000, biz: 5000000, reg: false, eligible: false, reasons: [c1]),
-      (income: 19990000, property: 539000000, biz: 5000000, reg: true, eligible: false, reasons: [c1, cb]),
-      (income: 20000000, property: 539000000, biz: 0, reg: false, eligible: true, reasons: []),
-      (income: 20000000, property: 539000000, biz: 5000000, reg: false, eligible: false, reasons: [c1]),
-      (income: 20000000, property: 539000000, biz: 5000000, reg: true, eligible: false, reasons: [c1, cb]),
-      (income: 20010000, property: 539000000, biz: 0, reg: false, eligible: false, reasons: [c1]),
-      (income: 20010000, property: 539000000, biz: 5000000, reg: false, eligible: false, reasons: [c1]),
-      (income: 20010000, property: 539000000, biz: 5000000, reg: true, eligible: false, reasons: [c1, cb]),
+      (
+        income: 19990000,
+        property: 539000000,
+        biz: 0,
+        reg: false,
+        eligible: true,
+        reasons: [],
+      ),
+      (
+        income: 19990000,
+        property: 539000000,
+        biz: 5000000,
+        reg: false,
+        eligible: false,
+        reasons: [c1],
+      ),
+      (
+        income: 19990000,
+        property: 539000000,
+        biz: 5000000,
+        reg: true,
+        eligible: false,
+        reasons: [c1, cb],
+      ),
+      (
+        income: 20000000,
+        property: 539000000,
+        biz: 0,
+        reg: false,
+        eligible: true,
+        reasons: [],
+      ),
+      (
+        income: 20000000,
+        property: 539000000,
+        biz: 5000000,
+        reg: false,
+        eligible: false,
+        reasons: [c1],
+      ),
+      (
+        income: 20000000,
+        property: 539000000,
+        biz: 5000000,
+        reg: true,
+        eligible: false,
+        reasons: [c1, cb],
+      ),
+      (
+        income: 20010000,
+        property: 539000000,
+        biz: 0,
+        reg: false,
+        eligible: false,
+        reasons: [c1],
+      ),
+      (
+        income: 20010000,
+        property: 539000000,
+        biz: 5000000,
+        reg: false,
+        eligible: false,
+        reasons: [c1],
+      ),
+      (
+        income: 20010000,
+        property: 539000000,
+        biz: 5000000,
+        reg: true,
+        eligible: false,
+        reasons: [c1, cb],
+      ),
       // ===== 재산 5.4억 경계 (LOW, 이하 포함) =====
-      (income: 19990000, property: 540000000, biz: 0, reg: false, eligible: true, reasons: []),
-      (income: 19990000, property: 540000000, biz: 5000000, reg: false, eligible: false, reasons: [c1]),
-      (income: 19990000, property: 540000000, biz: 5000000, reg: true, eligible: false, reasons: [c1, cb]),
-      (income: 20000000, property: 540000000, biz: 0, reg: false, eligible: true, reasons: []),
-      (income: 20000000, property: 540000000, biz: 5000000, reg: false, eligible: false, reasons: [c1]),
-      (income: 20000000, property: 540000000, biz: 5000000, reg: true, eligible: false, reasons: [c1, cb]),
-      (income: 20010000, property: 540000000, biz: 0, reg: false, eligible: false, reasons: [c1]),
-      (income: 20010000, property: 540000000, biz: 5000000, reg: false, eligible: false, reasons: [c1]),
-      (income: 20010000, property: 540000000, biz: 5000000, reg: true, eligible: false, reasons: [c1, cb]),
+      (
+        income: 19990000,
+        property: 540000000,
+        biz: 0,
+        reg: false,
+        eligible: true,
+        reasons: [],
+      ),
+      (
+        income: 19990000,
+        property: 540000000,
+        biz: 5000000,
+        reg: false,
+        eligible: false,
+        reasons: [c1],
+      ),
+      (
+        income: 19990000,
+        property: 540000000,
+        biz: 5000000,
+        reg: true,
+        eligible: false,
+        reasons: [c1, cb],
+      ),
+      (
+        income: 20000000,
+        property: 540000000,
+        biz: 0,
+        reg: false,
+        eligible: true,
+        reasons: [],
+      ),
+      (
+        income: 20000000,
+        property: 540000000,
+        biz: 5000000,
+        reg: false,
+        eligible: false,
+        reasons: [c1],
+      ),
+      (
+        income: 20000000,
+        property: 540000000,
+        biz: 5000000,
+        reg: true,
+        eligible: false,
+        reasons: [c1, cb],
+      ),
+      (
+        income: 20010000,
+        property: 540000000,
+        biz: 0,
+        reg: false,
+        eligible: false,
+        reasons: [c1],
+      ),
+      (
+        income: 20010000,
+        property: 540000000,
+        biz: 5000000,
+        reg: false,
+        eligible: false,
+        reasons: [c1],
+      ),
+      (
+        income: 20010000,
+        property: 540000000,
+        biz: 5000000,
+        reg: true,
+        eligible: false,
+        reasons: [c1, cb],
+      ),
       // ===== 재산 8.99억 (MID, 한도 1,000만) — 모든 소득 초과 =====
-      (income: 19990000, property: 899000000, biz: 0, reg: false, eligible: false, reasons: [c1m]),
-      (income: 19990000, property: 899000000, biz: 5000000, reg: false, eligible: false, reasons: [c1m]),
-      (income: 19990000, property: 899000000, biz: 5000000, reg: true, eligible: false, reasons: [c1m, cb]),
-      (income: 20000000, property: 899000000, biz: 0, reg: false, eligible: false, reasons: [c1m]),
-      (income: 20000000, property: 899000000, biz: 5000000, reg: false, eligible: false, reasons: [c1m]),
-      (income: 20000000, property: 899000000, biz: 5000000, reg: true, eligible: false, reasons: [c1m, cb]),
-      (income: 20010000, property: 899000000, biz: 0, reg: false, eligible: false, reasons: [c1m]),
-      (income: 20010000, property: 899000000, biz: 5000000, reg: false, eligible: false, reasons: [c1m]),
-      (income: 20010000, property: 899000000, biz: 5000000, reg: true, eligible: false, reasons: [c1m, cb]),
+      (
+        income: 19990000,
+        property: 899000000,
+        biz: 0,
+        reg: false,
+        eligible: false,
+        reasons: [c1m],
+      ),
+      (
+        income: 19990000,
+        property: 899000000,
+        biz: 5000000,
+        reg: false,
+        eligible: false,
+        reasons: [c1m],
+      ),
+      (
+        income: 19990000,
+        property: 899000000,
+        biz: 5000000,
+        reg: true,
+        eligible: false,
+        reasons: [c1m, cb],
+      ),
+      (
+        income: 20000000,
+        property: 899000000,
+        biz: 0,
+        reg: false,
+        eligible: false,
+        reasons: [c1m],
+      ),
+      (
+        income: 20000000,
+        property: 899000000,
+        biz: 5000000,
+        reg: false,
+        eligible: false,
+        reasons: [c1m],
+      ),
+      (
+        income: 20000000,
+        property: 899000000,
+        biz: 5000000,
+        reg: true,
+        eligible: false,
+        reasons: [c1m, cb],
+      ),
+      (
+        income: 20010000,
+        property: 899000000,
+        biz: 0,
+        reg: false,
+        eligible: false,
+        reasons: [c1m],
+      ),
+      (
+        income: 20010000,
+        property: 899000000,
+        biz: 5000000,
+        reg: false,
+        eligible: false,
+        reasons: [c1m],
+      ),
+      (
+        income: 20010000,
+        property: 899000000,
+        biz: 5000000,
+        reg: true,
+        eligible: false,
+        reasons: [c1m, cb],
+      ),
       // ===== 재산 9.0억 경계 (MID, 이하 포함) =====
-      (income: 19990000, property: 900000000, biz: 0, reg: false, eligible: false, reasons: [c1m]),
-      (income: 19990000, property: 900000000, biz: 5000000, reg: false, eligible: false, reasons: [c1m]),
-      (income: 19990000, property: 900000000, biz: 5000000, reg: true, eligible: false, reasons: [c1m, cb]),
-      (income: 20000000, property: 900000000, biz: 0, reg: false, eligible: false, reasons: [c1m]),
-      (income: 20000000, property: 900000000, biz: 5000000, reg: false, eligible: false, reasons: [c1m]),
-      (income: 20000000, property: 900000000, biz: 5000000, reg: true, eligible: false, reasons: [c1m, cb]),
-      (income: 20010000, property: 900000000, biz: 0, reg: false, eligible: false, reasons: [c1m]),
-      (income: 20010000, property: 900000000, biz: 5000000, reg: false, eligible: false, reasons: [c1m]),
-      (income: 20010000, property: 900000000, biz: 5000000, reg: true, eligible: false, reasons: [c1m, cb]),
+      (
+        income: 19990000,
+        property: 900000000,
+        biz: 0,
+        reg: false,
+        eligible: false,
+        reasons: [c1m],
+      ),
+      (
+        income: 19990000,
+        property: 900000000,
+        biz: 5000000,
+        reg: false,
+        eligible: false,
+        reasons: [c1m],
+      ),
+      (
+        income: 19990000,
+        property: 900000000,
+        biz: 5000000,
+        reg: true,
+        eligible: false,
+        reasons: [c1m, cb],
+      ),
+      (
+        income: 20000000,
+        property: 900000000,
+        biz: 0,
+        reg: false,
+        eligible: false,
+        reasons: [c1m],
+      ),
+      (
+        income: 20000000,
+        property: 900000000,
+        biz: 5000000,
+        reg: false,
+        eligible: false,
+        reasons: [c1m],
+      ),
+      (
+        income: 20000000,
+        property: 900000000,
+        biz: 5000000,
+        reg: true,
+        eligible: false,
+        reasons: [c1m, cb],
+      ),
+      (
+        income: 20010000,
+        property: 900000000,
+        biz: 0,
+        reg: false,
+        eligible: false,
+        reasons: [c1m],
+      ),
+      (
+        income: 20010000,
+        property: 900000000,
+        biz: 5000000,
+        reg: false,
+        eligible: false,
+        reasons: [c1m],
+      ),
+      (
+        income: 20010000,
+        property: 900000000,
+        biz: 5000000,
+        reg: true,
+        eligible: false,
+        reasons: [c1m, cb],
+      ),
     ];
 
     test('매트릭스 36개 조합 전수 검증', () {
@@ -87,21 +341,24 @@ void main() {
         final label =
             'income=${row.income} property=${row.property} biz=${row.biz} reg=${row.reg}';
         expect(res.isEligible, row.eligible, reason: '[$label] eligible');
-        expect(res.failReasons, unorderedEquals(row.reasons),
-            reason: '[$label] reasons');
+        expect(
+          res.failReasons,
+          unorderedEquals(row.reasons),
+          reason: '[$label] reasons',
+        );
       }
     });
   });
 
   group('재산 중구간(5.4~9억) 소득 1,000만 룰 경계', () {
     _Row mid(int income) => (
-          income: income,
-          property: 700000000,
-          biz: 0,
-          reg: false,
-          eligible: income <= 10000000,
-          reasons: income <= 10000000 ? [] : ['INCOME_OVER_MID_LIMIT'],
-        );
+      income: income,
+      property: 700000000,
+      biz: 0,
+      reg: false,
+      eligible: income <= 10000000,
+      reasons: income <= 10000000 ? [] : ['INCOME_OVER_MID_LIMIT'],
+    );
 
     test('999만 → 유지, 여유 10,000원', () {
       final r = run(mid(9990000));
@@ -128,10 +385,9 @@ void main() {
 
   group('재산 9억 초과 → 무조건 탈락', () {
     test('9억 + 1원 → PROPERTY_OVER_LIMIT, 소득 사유 없음', () {
-      final r = judge.judge(const HouseholdInput(
-        income: IncomeInput(),
-        propertyTaxBase: 900000001,
-      ));
+      final r = judge.judge(
+        const HouseholdInput(income: IncomeInput(), propertyTaxBase: 900000001),
+      );
       expect(r.isEligible, isFalse);
       expect(r.band, PropertyBand.over);
       expect(r.failReasons, ['PROPERTY_OVER_LIMIT']);
@@ -160,14 +416,16 @@ void main() {
 
   group('배우자 동반탈락', () {
     test('본인 통과 + 배우자 연금 2,001만 → 동반탈락', () {
-      final r = judge.judge(const HouseholdInput(
-        income: IncomeInput(pension: 10000000), // 본인 소득 요건 통과
-        propertyTaxBase: 100000000,
-        spouse: PersonInput(
-          income: IncomeInput(pension: 20010000), // 배우자 소득 한도 초과
+      final r = judge.judge(
+        const HouseholdInput(
+          income: IncomeInput(pension: 10000000), // 본인 소득 요건 통과
           propertyTaxBase: 100000000,
+          spouse: PersonInput(
+            income: IncomeInput(pension: 20010000), // 배우자 소득 한도 초과
+            propertyTaxBase: 100000000,
+          ),
         ),
-      ));
+      );
       expect(r.isEligible, isFalse);
       expect(r.spouseJointFail, isTrue);
       expect(r.failReasons, contains('SPOUSE_JOINT_FAIL'));
@@ -176,14 +434,16 @@ void main() {
     });
 
     test('본인·배우자 모두 통과 → 동반탈락 없음', () {
-      final r = judge.judge(const HouseholdInput(
-        income: IncomeInput(pension: 10000000),
-        propertyTaxBase: 100000000,
-        spouse: PersonInput(
-          income: IncomeInput(pension: 20000000), // 한도 이하
+      final r = judge.judge(
+        const HouseholdInput(
+          income: IncomeInput(pension: 10000000),
           propertyTaxBase: 100000000,
+          spouse: PersonInput(
+            income: IncomeInput(pension: 20000000), // 한도 이하
+            propertyTaxBase: 100000000,
+          ),
         ),
-      ));
+      );
       expect(r.isEligible, isTrue);
       expect(r.spouseJointFail, isFalse);
     });

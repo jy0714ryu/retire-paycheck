@@ -211,7 +211,10 @@ void main() {
     testWidgets('퇴직 전 월급을 넣으면 퇴직 후 36개월 비교 카드', (tester) async {
       await _pumpGauge(
         tester,
-        input: _input.copyWith(lastMonthlySalary: 5000000),
+        input: _input.copyWith(
+          healthInsType: HealthInsType.employee,
+          lastMonthlySalary: 5000000,
+        ),
       );
       await tester.pumpAndSettle();
       final card = find.text('퇴직 후 건보료 비교 (36개월)');
@@ -219,6 +222,26 @@ void main() {
       expect(card, findsOneWidget);
       expect(find.byKey(const Key('retire_compare_cheapest')), findsOneWidget);
       expect(find.textContaining('추천'), findsNothing);
+      expect(find.textContaining('재산 미입력 — 지역가입 재산분은 0'), findsOneWidget);
+    });
+
+    testWidgets('피부양자 — 사업자등록 없어도 사업·임대 소득 500만원 넘으면 탈락 가능', (tester) async {
+      await _pumpGauge(
+        tester,
+        input: _input.copyWith(otherAnnualIncome: 7000000),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('계산상 탈락 가능'), findsOneWidget);
+      expect(find.textContaining('500만원을 넘어요'), findsOneWidget);
+    });
+
+    testWidgets('지금 피부양자면 퇴직 전 월급이 있어도 퇴직 후 비교는 숨김', (tester) async {
+      await _pumpGauge(
+        tester,
+        input: _input.copyWith(lastMonthlySalary: 5000000),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('퇴직 후 건보료 비교 (36개월)'), findsNothing);
     });
   });
 }

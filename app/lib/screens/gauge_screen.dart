@@ -172,6 +172,9 @@ List<Widget> _healthCard(
             title: '건강보험 피부양자 소득',
             status: status,
             overWarning: '2,000만원을 넘으면 피부양자 자격을 잃고 지역가입자로 바뀔 수 있어요',
+            referenceNote:
+                '합산: 금융소득(1,000만원 넘으면 전액) + 공적연금 + 그 밖의 소득. '
+                '연금저축·IRP 인출은 들어가지 않아요.',
           ),
         );
       } else {
@@ -194,7 +197,14 @@ List<Widget> _healthCard(
         ),
       );
     case HealthInsType.regional:
-      if (params != null) {
+      if (params == null) {
+        cards.add(
+          const _HealthShell(
+            title: '건강보험 (지역가입자)',
+            children: [Text('지역가입자는 소득·재산으로 건보료가 정해져요. 계산 기준을 불러오는 중이에요.')],
+          ),
+        );
+      } else {
         cards.add(
           _RegionalCard(
             result: RegionalCalculator(params).calculate(
@@ -207,12 +217,16 @@ List<Widget> _healthCard(
       }
   }
   // 퇴직 전 월급을 넣었으면 퇴직 후 36개월 선택지 비교 (임의계속·지역·피부양자).
-  if (params != null && input.lastMonthlySalary > 0) {
+  // 지금 피부양자면 퇴직 후 비교는 해당 없음 — 직장·지역가입자만.
+  if (params != null &&
+      input.lastMonthlySalary > 0 &&
+      input.healthInsType != HealthInsType.dependent) {
     cards
       ..add(const SizedBox(height: 14))
       ..add(
         _RetireCompareCard(
           result: RetirementComparison(params).compare(household),
+          propertyEntered: input.propertyTaxBase > 0,
         ),
       );
   }
@@ -414,9 +428,13 @@ class _RegionalCard extends StatelessWidget {
 
 /// 퇴직 후 36개월 — 임의계속가입·지역가입·피부양자 비교. "추천" 대신 계산상 비교만.
 class _RetireCompareCard extends StatelessWidget {
-  const _RetireCompareCard({required this.result});
+  const _RetireCompareCard({
+    required this.result,
+    required this.propertyEntered,
+  });
 
   final ComparisonResult result;
+  final bool propertyEntered;
 
   @override
   Widget build(BuildContext context) {
@@ -459,6 +477,7 @@ class _RetireCompareCard extends StatelessWidget {
           style: AppTextStyles.body.copyWith(color: AppColors.navy),
         ),
         _note(
+          '${propertyEntered ? '' : '재산 미입력 — 지역가입 재산분은 0으로 계산했어요. '}'
           '임의계속가입은 퇴직 후 지역가입 첫 고지서를 받은 날부터 2개월 안에 신청해요. '
           '퇴직 전 월급으로 계산한 2026년 기준 추정이며, 실제 선택 전 공단에 확인하세요.',
         ),

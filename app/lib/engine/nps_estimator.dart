@@ -161,8 +161,9 @@ class NpsEstimator {
   /// 월액 = 5.16A/12 = 0.43A → 소득대체율 43% 정의와 정확히 일치.
   static NpsEstimateResult estimate(NpsEstimateInput input) {
     final normalStartAge = normalStartAgeFor(input.birthYear);
-    final clampedIncome =
-        input.monthlyIncome.clamp(npsIncomeFloor, npsIncomeCeiling).toInt();
+    final clampedIncome = input.monthlyIncome
+        .clamp(npsIncomeFloor, npsIncomeCeiling)
+        .toInt();
 
     if (input.enrollmentMonths < npsMinEnrollmentMonths) {
       return NpsEstimateResult(
@@ -177,7 +178,8 @@ class NpsEstimator {
     }
 
     // 가입기간 20년(240개월) 기준 ±5%/년 계수
-    final coefficient = 1 +
+    final coefficient =
+        1 +
         npsYearBonusRate *
             (input.enrollmentMonths - npsFullCreditYears * 12) /
             12;
@@ -191,20 +193,20 @@ class NpsEstimator {
     var actualStartAge = normalStartAge;
 
     if (input.receiptType == NpsReceiptType.early) {
-      appliedOffsetYears =
-          input.offsetYears.clamp(0, earlyPensionMaxYears).toInt();
-      adjustmentRate =
-          -(earlyPensionReductionRatePerYear * appliedOffsetYears);
+      appliedOffsetYears = input.offsetYears
+          .clamp(0, earlyPensionMaxYears)
+          .toInt();
+      adjustmentRate = -(earlyPensionReductionRatePerYear * appliedOffsetYears);
       actualStartAge = normalStartAge - appliedOffsetYears;
     } else if (input.receiptType == NpsReceiptType.deferred) {
-      appliedOffsetYears =
-          input.offsetYears.clamp(0, deferredPensionMaxYears).toInt();
+      appliedOffsetYears = input.offsetYears
+          .clamp(0, deferredPensionMaxYears)
+          .toInt();
       adjustmentRate = deferredPensionIncreaseRatePerYear * appliedOffsetYears;
       actualStartAge = normalStartAge + appliedOffsetYears;
     }
 
-    final monthlyPensionAmount =
-        (basicMonthly * (1 + adjustmentRate)).round();
+    final monthlyPensionAmount = (basicMonthly * (1 + adjustmentRate)).round();
 
     return NpsEstimateResult(
       eligibility: NpsEligibility.eligible,
