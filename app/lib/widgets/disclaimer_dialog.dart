@@ -69,6 +69,13 @@ class DisclaimerDialog extends StatelessWidget {
                     icon: Icons.account_balance,
                     text: '정확한 세금·건강보험료는 세무사 및 금융기관과 상담하시기 바랍니다.',
                   ),
+                  SizedBox(height: 12),
+                  _DisclaimerItem(
+                    icon: Icons.verified_user_outlined,
+                    text: '국민연금공단·국민건강보험공단과 무관한 민간 계산기입니다. '
+                        '입력한 자산 정보는 서버로 보내지 않으며, 광고 제공 과정에서 '
+                        '광고 SDK가 기기·이용 정보를 처리할 수 있습니다.',
+                  ),
                 ],
               ),
             ),

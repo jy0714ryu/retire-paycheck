@@ -102,7 +102,7 @@ class GaugeScreen extends ConsumerWidget {
         Text('$targetYear년 세금 임계치', style: AppTextStyles.h3),
         const SizedBox(height: 4),
         Text(
-          '연간 누계가 기준선에 얼마나 가까운지 보여줍니다',
+          '연간 누계가 기준선에 얼마나 가까운지 보여줍니다 · 2026년 세법·건보 기준',
           style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
         ),
         const SizedBox(height: 20),
@@ -123,7 +123,14 @@ class GaugeScreen extends ConsumerWidget {
           status: gauges.pensionLowRate,
           overWarning: '1,500만원을 넘으면 초과분이 아니라 전액이 16.5% 과세로 전환될 수 있습니다',
           isReference: pensionIsReference,
-          referenceNote: pensionIsReference ? '연금 인출 전 (참고용)' : null,
+          referenceNote: pensionIsReference
+              ? '연금 인출 전 (참고용)'
+              : ((input.pensionNonDeducted ?? 0) > 0 ||
+                    (input.irpRetirement ?? 0) > 0)
+              // 게이지는 월 인출 합계로 센다 — 어느 재원에서 꺼낼지는 계획 탭이 정한다.
+              ? '세액공제 안 받은 원금·퇴직금에서 꺼낸 돈은 이 한도에 들어가지 않아요. '
+                    '실제 여유는 더 클 수 있어요 (계획 탭에서 순서 확인).'
+              : null,
         ),
         const SizedBox(height: 14),
         ..._healthCard(input, gauges.healthInsurance),
