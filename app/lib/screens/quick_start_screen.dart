@@ -48,14 +48,17 @@ class _QuickStartScreenState extends ConsumerState<QuickStartScreen> {
   int _int(TextEditingController c) =>
       int.tryParse(c.text.replaceAll(',', '').trim()) ?? 0;
 
-  bool get _ready => _int(_age) >= 20 && _int(_age) <= 100 && _int(_balance) > 0;
+  bool get _ready =>
+      _int(_age) >= 20 && _int(_age) <= 100 && _int(_balance) > 0;
 
   void _submit() {
     final age = _int(_age);
     final balance = _int(_balance) * 10000;
     final monthly = _int(_monthly) * 10000;
     ref.read(retirementInputProvider.notifier).updateCurrentAge(age);
-    ref.read(accountsProvider.notifier).updateDefaults(
+    ref
+        .read(accountsProvider.notifier)
+        .updateDefaults(
           'default_pension_savings',
           balance: balance,
           monthlyWithdrawal: monthly,
@@ -64,19 +67,27 @@ class _QuickStartScreenState extends ConsumerState<QuickStartScreen> {
     widget.onDone();
   }
 
-  Widget _field(String label, String suffix, TextEditingController c, Key key) =>
-      TextField(
-        key: key,
-        controller: c,
-        keyboardType: TextInputType.number,
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        style: const TextStyle(
-            fontFamily: AppTextStyles.mono,
-            fontFamilyFallback: [AppTextStyles.sans],
-            fontSize: 17),
-        decoration: InputDecoration(labelText: label, suffixText: suffix),
-        onChanged: (_) => setState(() {}),
-      );
+  Widget _field(
+    String label,
+    String suffix,
+    TextEditingController c,
+    Key key,
+  ) => TextField(
+    key: key,
+    controller: c,
+    keyboardType: TextInputType.number,
+    inputFormatters: [
+      FilteringTextInputFormatter.digitsOnly,
+      LengthLimitingTextInputFormatter(7),
+    ],
+    style: const TextStyle(
+      fontFamily: AppTextStyles.mono,
+      fontFamilyFallback: [AppTextStyles.sans],
+      fontSize: 17,
+    ),
+    decoration: InputDecoration(labelText: label, suffixText: suffix),
+    onChanged: (_) => setState(() {}),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -94,24 +105,32 @@ class _QuickStartScreenState extends ConsumerState<QuickStartScreen> {
           children: [
             Container(width: 28, height: 2, color: AppColors.gold),
             const SizedBox(height: 14),
-            Text('세 가지만 알려 주시면\n은퇴 월급을 바로 계산해요',
-                style: AppTextStyles.h2.copyWith(color: AppColors.navy, fontSize: 24)),
+            Text(
+              '세 가지만 알려 주시면\n은퇴 월급을 바로 계산해요',
+              style: AppTextStyles.h2.copyWith(
+                color: AppColors.navy,
+                fontSize: 24,
+              ),
+            ),
             const SizedBox(height: 22),
             _field('나이', '세', _age, const Key('qs_age')),
             const SizedBox(height: 14),
-            _field('연금저축·IRP 잔액', '만원', _balance, const Key('qs_balance')),
+            _field('연금저축 잔액', '만원', _balance, const Key('qs_balance')),
             const SizedBox(height: 14),
             _field('매달 꺼내 쓸 금액 (선택)', '만원', _monthly, const Key('qs_monthly')),
             const SizedBox(height: 14),
-            Text('종목·계좌별 세부 입력은 결과를 본 뒤 내 자산 탭에서 해도 돼요. '
-                '입력값은 이 폰에만 저장됩니다.',
-                style: AppTextStyles.caption.copyWith(color: AppColors.gray500)),
+            Text(
+              'IRP·ISA·보유 종목은 결과를 본 뒤 내 자산 탭에서 더할 수 있어요. '
+              '입력값은 이 폰에만 저장됩니다.',
+              style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
+            ),
             const SizedBox(height: 28),
             FilledButton(
               key: const Key('qs_submit'),
               onPressed: _ready ? _submit : null,
               style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(52)),
+                minimumSize: const Size.fromHeight(52),
+              ),
               child: const Text('은퇴 월급 계산하기'),
             ),
           ],

@@ -85,6 +85,18 @@ void main() {
       expect(prefs.getBool(kQuickStartDoneKey), isTrue);
     });
 
+    testWidgets('뒤로 가기로 닫아도 다시 뜨지 않는다', (WidgetTester tester) async {
+      SharedPreferences.setMockInitialValues({kDisclaimerAcceptedKey: true});
+      await tester.pumpWidget(const ProviderScope(child: RetirePaycheckApp()));
+      await tester.pumpAndSettle();
+      expect(find.byType(QuickStartScreen), findsOneWidget);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.byType(QuickStartScreen), findsNothing);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getBool(kQuickStartDoneKey), isTrue);
+    });
+
     test('기존 사용자 데이터가 있으면 첫 실행 화면을 건너뛴다', () {
       expect(needsQuickStart(storedKeys: {}, done: false), isTrue);
       expect(needsQuickStart(storedKeys: {'retirement_input'}, done: false), isTrue);

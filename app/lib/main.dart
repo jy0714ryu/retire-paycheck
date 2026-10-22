@@ -83,23 +83,29 @@ class _HomeShellState extends State<HomeShell> {
 
   void _maybeShowQuickStart(SharedPreferences prefs) {
     if (!needsQuickStart(
-        storedKeys: prefs.getKeys(),
-        done: prefs.getBool(kQuickStartDoneKey) ?? false)) {
+      storedKeys: prefs.getKeys(),
+      done: prefs.getBool(kQuickStartDoneKey) ?? false,
+    )) {
       return;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      Navigator.of(context).push(MaterialPageRoute<void>(
-        fullscreenDialog: true,
-        builder: (routeContext) => QuickStartScreen(
-          onDone: () async {
-            await prefs.setBool(kQuickStartDoneKey, true);
-            if (!routeContext.mounted) return;
-            Navigator.of(routeContext).pop();
-            if (mounted) setState(() => _index = 0);
-          },
-        ),
-      ));
+      // 뒤로 가기로 닫아도 건너뛰기와 같게 본다 — 매 실행마다 다시 뜨지 않도록.
+      Navigator.of(context)
+          .push(
+            MaterialPageRoute<void>(
+              fullscreenDialog: true,
+              builder: (routeContext) => QuickStartScreen(
+                onDone: () async {
+                  await prefs.setBool(kQuickStartDoneKey, true);
+                  if (!routeContext.mounted) return;
+                  Navigator.of(routeContext).pop();
+                  if (mounted) setState(() => _index = 0);
+                },
+              ),
+            ),
+          )
+          .then((_) => prefs.setBool(kQuickStartDoneKey, true));
     });
   }
 

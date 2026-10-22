@@ -2,8 +2,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:retire_paycheck/models/account.dart';
 import 'package:retire_paycheck/services/plan_mapper.dart';
 
-Account acc(String id, AccountType t, {int bal = 0, int monthly = 0}) =>
-    Account(id: id, name: id, type: t, balance: bal, monthlyWithdrawal: monthly);
+Account acc(String id, AccountType t,
+        {int bal = 0, int monthly = 0, bool? withdrawing}) =>
+    Account(
+        id: id,
+        name: id,
+        type: t,
+        balance: bal,
+        monthlyWithdrawal: monthly,
+        isWithdrawing: withdrawing ?? monthly > 0);
 
 void main() {
   final accounts = [
@@ -21,6 +28,16 @@ void main() {
     expect(b.isa, 30000000);
     expect(b.monthlyWithdrawal, 1700000);
     expect(b.total, 390000000);
+  });
+
+  test('인출 개시하지 않은 계좌의 월 인출액은 합산하지 않는다 (이번 달 탭과 같은 기준)', () {
+    final b = planBalancesFrom([
+      acc('default_pension_savings', AccountType.pension, bal: 100000000, monthly: 1000000),
+      acc('default_irp', AccountType.pension,
+          bal: 50000000, monthly: 500000, withdrawing: false),
+    ]);
+    expect(b.monthlyWithdrawal, 1000000);
+    expect(b.irp, 50000000);
   });
 
   test('계획 입력 — 기본 인출 목표 = 월 인출 합 × 12, 보수적 가정', () {
