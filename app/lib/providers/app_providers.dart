@@ -17,6 +17,7 @@ const String _kRetirementInputKey = 'retirement_input';
 const String _kAccountsKey = 'accounts';
 const String _kInterestItemsKey = 'interest_items';
 const String _kDefaultAccountOverridesKey = 'default_account_overrides';
+const String _kFavoriteCorpsKey = 'favorite_corps';
 
 /// 보유 종목 목록 상태 — SharedPreferences('holdings')에 jsonEncode 로 영속.
 ///
@@ -52,8 +53,9 @@ class HoldingsNotifier extends StateNotifier<List<Holding>> {
   /// 다른 계좌면 별도 추가. corpCode 단독 판정은 같은 종목을 두 계좌에 나눠
   /// 담을 때 한쪽을 덮어써 보유분이 사라지고 배당 과세 집계가 왜곡된다.
   void add(Holding holding) {
-    final idx = state.indexWhere((h) =>
-        h.corpCode == holding.corpCode && h.accountId == holding.accountId);
+    final idx = state.indexWhere(
+      (h) => h.corpCode == holding.corpCode && h.accountId == holding.accountId,
+    );
     if (idx >= 0) {
       final next = [...state];
       next[idx] = holding;
@@ -95,8 +97,7 @@ class HoldingsNotifier extends StateNotifier<List<Holding>> {
   }
 }
 
-final holdingsProvider =
-    StateNotifierProvider<HoldingsNotifier, List<Holding>>(
+final holdingsProvider = StateNotifierProvider<HoldingsNotifier, List<Holding>>(
   (ref) => HoldingsNotifier(),
 );
 
@@ -123,9 +124,7 @@ class RetirementInputNotifier extends StateNotifier<RetirementInput> {
     final raw = prefs.getString(_kRetirementInputKey);
     if (raw == null || raw.isEmpty) return;
     try {
-      state = RetirementInput.fromJson(
-        jsonDecode(raw) as Map<String, dynamic>,
-      );
+      state = RetirementInput.fromJson(jsonDecode(raw) as Map<String, dynamic>);
     } catch (_) {
       // 손상된 캐시는 무시하고 기본값 유지.
     }
@@ -147,16 +146,44 @@ class RetirementInputNotifier extends StateNotifier<RetirementInput> {
 
   /// 전역 인출 개시 연-월 설정. null 이면 "설정 안 함(지금부터)" — 즉시 인출.
   void updateWithdrawalStartMonth(DateTime? month) => update(
-        (s) => month == null
-            ? s.copyWith(clearWithdrawalStartMonth: true)
-            : s.copyWith(withdrawalStartMonth: month),
-      );
+    (s) => month == null
+        ? s.copyWith(clearWithdrawalStartMonth: true)
+        : s.copyWith(withdrawalStartMonth: month),
+  );
 }
+
+/// 종목 즐겨찾기(corpCode 집합) — 종목 추가 검색에서 맨 위에 보여 준다.
+/// 보유 여부와 무관(팔았다 다시 사는 종목·관심 ETF 도 바로 찾게).
+class FavoriteCorpsNotifier extends StateNotifier<Set<String>> {
+  FavoriteCorpsNotifier() : super(const {}) {
+    _load();
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getStringList(_kFavoriteCorpsKey);
+    if (saved != null) state = saved.toSet();
+  }
+
+  void toggle(String corpCode) {
+    final next = {...state};
+    if (!next.remove(corpCode)) next.add(corpCode);
+    state = next;
+    SharedPreferences.getInstance().then(
+      (p) => p.setStringList(_kFavoriteCorpsKey, next.toList()),
+    );
+  }
+}
+
+final favoriteCorpsProvider =
+    StateNotifierProvider<FavoriteCorpsNotifier, Set<String>>(
+      (ref) => FavoriteCorpsNotifier(),
+    );
 
 final retirementInputProvider =
     StateNotifierProvider<RetirementInputNotifier, RetirementInput>(
-  (ref) => RetirementInputNotifier(),
-);
+      (ref) => RetirementInputNotifier(),
+    );
 
 /// 배당 API 클라이언트 provider — 단일 인스턴스를 공유하고, 위젯/유닛 테스트에서
 /// MockClient·시드 캐시를 주입할 오버라이드 지점을 제공한다. (기존에는
@@ -167,8 +194,7 @@ final dividendApiProvider = Provider<DividendApi>((ref) => DividendApi());
 /// 배당 이벤트 목록 — DividendApi.fetchAll (캐시·오프라인 폴백).
 ///
 /// 종목 검색 소스(corp_name dedupe)와 CashflowEngine 입력으로 공용.
-final dividendEventsProvider =
-    FutureProvider<DividendFetchResult>((ref) async {
+final dividendEventsProvider = FutureProvider<DividendFetchResult>((ref) async {
   final force = ref.watch(forceRefreshProvider) > 0;
   return ref.watch(dividendApiProvider).fetchAll(force: force);
 });
@@ -182,8 +208,10 @@ final forceRefreshProvider = StateProvider<int>((ref) => 0);
 /// family 파라미터 = 기준 연도(합성 이벤트의 지급월이 이 연도에 생성됨).
 /// holdings 변경(수동 종목 추가·삭제) 시 자동 재계산된다. 엔진 무수정 원칙 —
 /// 수동 종목도 동일한 [DividendEvent] 로 흘려보낸다.
-final combinedEventsProvider =
-    FutureProvider.family<List<DividendEvent>, int>((ref, year) async {
+final combinedEventsProvider = FutureProvider.family<List<DividendEvent>, int>((
+  ref,
+  year,
+) async {
   final result = await ref.watch(dividendEventsProvider.future);
   final holdings = ref.watch(holdingsProvider);
   return [
@@ -210,9 +238,9 @@ class AccountsNotifier extends StateNotifier<List<Account>> {
 
   /// 기본 4계좌(오버라이드 적용) + 유저 계좌 — 달력·게이지·엔진 공용 소비 뷰.
   List<Account> get effective => [
-        for (final d in kDefaultAccounts) _overrides[d.id] ?? d,
-        ...state,
-      ];
+    for (final d in kDefaultAccounts) _overrides[d.id] ?? d,
+    ...state,
+  ];
 
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -310,11 +338,15 @@ class AccountsNotifier extends StateNotifier<List<Account>> {
 
   /// 기본 계좌(`default_*`)의 잔액·월 인출액·인출 개시 여부 오버라이드 — prefs
   /// [_kDefaultAccountOverridesKey] 에 영속하고 [effective] 에 즉시 반영.
-  void updateDefaults(String id,
-      {int? balance, int? monthlyWithdrawal, bool? isWithdrawing}) {
+  void updateDefaults(
+    String id, {
+    int? balance,
+    int? monthlyWithdrawal,
+    bool? isWithdrawing,
+  }) {
     if (!kDefaultAccounts.any((a) => a.id == id)) return;
-    final current = _overrides[id] ??
-        kDefaultAccounts.firstWhere((a) => a.id == id);
+    final current =
+        _overrides[id] ?? kDefaultAccounts.firstWhere((a) => a.id == id);
     _overrides = {
       ..._overrides,
       id: current.copyWith(
@@ -328,8 +360,12 @@ class AccountsNotifier extends StateNotifier<List<Account>> {
   }
 
   /// 유저 계좌의 잔액·월 인출액·인출 개시 여부 갱신.
-  void updateUser(String id,
-      {int? balance, int? monthlyWithdrawal, bool? isWithdrawing}) {
+  void updateUser(
+    String id, {
+    int? balance,
+    int? monthlyWithdrawal,
+    bool? isWithdrawing,
+  }) {
     final idx = state.indexWhere((a) => a.id == id);
     if (idx < 0) return;
     final next = [...state];
@@ -343,8 +379,7 @@ class AccountsNotifier extends StateNotifier<List<Account>> {
   }
 }
 
-final accountsProvider =
-    StateNotifierProvider<AccountsNotifier, List<Account>>(
+final accountsProvider = StateNotifierProvider<AccountsNotifier, List<Account>>(
   (ref) => AccountsNotifier(ref),
 );
 
@@ -404,5 +439,5 @@ class InterestItemsNotifier extends StateNotifier<List<InterestItem>> {
 
 final interestItemsProvider =
     StateNotifierProvider<InterestItemsNotifier, List<InterestItem>>(
-  (ref) => InterestItemsNotifier(),
-);
+      (ref) => InterestItemsNotifier(),
+    );

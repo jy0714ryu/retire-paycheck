@@ -525,14 +525,19 @@ class _AddHoldingSheetState extends ConsumerState<_AddHoldingSheet> {
       ..sort((a, b) => a.corpName.compareTo(b.corpName));
   }
 
-  List<DividendEvent> _filtered(List<DividendEvent> candidates) {
+  List<DividendEvent> _filtered(
+    List<DividendEvent> candidates,
+    Set<String> favorites,
+  ) {
     // 대소문자 무시 매칭 — 'ace' 로 'ACE 미국나스닥100' 검색 가능해야 한다.
     final q = _query.trim().toLowerCase();
-    if (q.isEmpty) return candidates.take(30).toList();
-    return candidates
-        .where((e) => e.corpName.toLowerCase().contains(q))
-        .take(30)
-        .toList();
+    final matched = q.isEmpty
+        ? candidates
+        : candidates.where((e) => e.corpName.toLowerCase().contains(q));
+    // 즐겨찾기를 맨 위로 (각 그룹 안은 이름순 유지).
+    final fav = matched.where((e) => favorites.contains(e.corpCode));
+    final rest = matched.where((e) => !favorites.contains(e.corpCode));
+    return [...fav, ...rest].take(30).toList();
   }
 
   void _submit() {
@@ -777,7 +782,8 @@ class _AddHoldingSheetState extends ConsumerState<_AddHoldingSheet> {
                 ),
               );
             }
-            final filtered = _filtered(candidates);
+            final favorites = ref.watch(favoriteCorpsProvider);
+            final filtered = _filtered(candidates, favorites);
             return ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 240),
               child: ListView.builder(
@@ -786,8 +792,23 @@ class _AddHoldingSheetState extends ConsumerState<_AddHoldingSheet> {
                 itemBuilder: (_, i) {
                   final e = filtered[i];
                   final selected = _selected?.corpCode == e.corpCode;
+                  final starred = favorites.contains(e.corpCode);
                   return ListTile(
                     dense: true,
+                    contentPadding: const EdgeInsets.only(left: 4, right: 8),
+                    leading: IconButton(
+                      key: ValueKey('fav_${e.corpCode}'),
+                      tooltip: starred ? '즐겨찾기 해제' : '즐겨찾기',
+                      icon: Icon(
+                        starred
+                            ? Icons.star_rounded
+                            : Icons.star_border_rounded,
+                        color: starred ? AppColors.gold : AppColors.gray400,
+                      ),
+                      onPressed: () => ref
+                          .read(favoriteCorpsProvider.notifier)
+                          .toggle(e.corpCode),
+                    ),
                     title: Text(e.corpName, style: AppTextStyles.body),
                     trailing: selected
                         ? const Icon(Icons.check_circle, color: AppColors.green)
