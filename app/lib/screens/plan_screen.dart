@@ -12,6 +12,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 import '../utils/currency_format.dart';
 import '../widgets/banner_ad_widget.dart';
+import '../widgets/nps_estimate_sheet.dart';
 import '../widgets/plan_accuracy_card.dart';
 
 /// 계획 탭 — 연금나침반 엔진으로 인출 순서 4가지 전략의 총 세금을 비교한다 (v2, 2026-10-22).
@@ -223,6 +224,9 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
   }
 
   Widget _assumptions(PlanBalances b) {
+    final publicPension = ref
+        .read(retirementInputProvider)
+        .publicPensionMonthly;
     Widget chips<T>(
       String label,
       List<(T, String)> opts,
@@ -347,7 +351,30 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          if (_npsCtl.text.trim().isEmpty && publicPension > 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                '비워 두면 내 자산의 공적연금 월 ${CurrencyFormat.man(publicPension)}만원을 써요',
+                key: const Key('plan_nps_from_assets'),
+                style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
+              ),
+            ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              key: const Key('plan_nps_estimate'),
+              onPressed: () async {
+                final r = await showNpsEstimateSheet(context);
+                if (r == null || !mounted) return;
+                _npsCtl.text = '${r.monthly ~/ 10000}';
+                _npsAgeCtl.text = '${r.startAge}';
+                _syncNps();
+              },
+              child: const Text('국민연금 금액을 모르면 추정하기'),
+            ),
+          ),
+          const SizedBox(height: 4),
         ],
       ),
     );

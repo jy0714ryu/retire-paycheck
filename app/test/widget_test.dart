@@ -151,6 +151,46 @@ void main() {
       expect(find.text('세금이 가장 적게 계산된 인출 순서'), findsOneWidget);
     });
 
+    testWidgets('계획 탭 국민연금 "모르면 추정하기" → 값이 칸에 채워진다', (
+      WidgetTester tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({kDisclaimerAcceptedKey: true});
+      await tester.pumpWidget(const ProviderScope(child: RetirePaycheckApp()));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('qs_age')), '58');
+      await tester.enterText(find.byKey(const Key('qs_balance')), '35000');
+      await tester.enterText(find.byKey(const Key('qs_monthly')), '150');
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('qs_submit')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.timeline_outlined));
+      await tester.pumpAndSettle();
+
+      final btn = find.byKey(const Key('plan_nps_estimate'));
+      await tester.scrollUntilVisible(
+        btn,
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.ensureVisible(btn);
+      await tester.pumpAndSettle();
+      await tester.tap(btn);
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('nps_income')), '300');
+      await tester.enterText(find.byKey(const Key('nps_years')), '30');
+      await tester.enterText(find.byKey(const Key('nps_birth')), '1968');
+      await tester.pump();
+      expect(find.byKey(const Key('nps_result')), findsOneWidget);
+      expect(find.textContaining('64세부터'), findsOneWidget); // 1965~68년생 64세
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('nps_apply')));
+      await tester.pumpAndSettle();
+
+      final nps = tester.widget<TextField>(find.byKey(const Key('plan_nps')));
+      expect(int.parse(nps.controller!.text), greaterThan(0));
+    });
+
     testWidgets('건너뛰기 — 완료 표시만 하고 닫힘', (WidgetTester tester) async {
       SharedPreferences.setMockInitialValues({kDisclaimerAcceptedKey: true});
       await tester.pumpWidget(const ProviderScope(child: RetirePaycheckApp()));
