@@ -39,10 +39,7 @@ class GaugeScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('세금 임계치'),
-        backgroundColor: AppColors.navy,
-        foregroundColor: Colors.white,
-        elevation: 0,
+        title: const Text('세금 문턱 경보'),
       ),
       body: asyncEvents.when(
         loading: () => const Center(child: CircularProgressIndicator()),

@@ -33,10 +33,7 @@ class InputScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('자산 입력'),
-        backgroundColor: AppColors.navy,
-        foregroundColor: Colors.white,
-        elevation: 0,
+        title: const Text('내 자산'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),

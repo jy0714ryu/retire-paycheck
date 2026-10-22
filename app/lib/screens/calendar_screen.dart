@@ -102,10 +102,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('은퇴 월급 달력'),
-        backgroundColor: AppColors.navy,
-        foregroundColor: Colors.white,
-        elevation: 0,
+        title: const Text('은퇴월급'),
       ),
       body: asyncEvents.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -351,28 +348,27 @@ class _MainCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // v2 프라이빗 뱅킹: 아이보리 카드 + 골드 헤어라인, 큰 금액은 명조.
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(22, 20, 22, 22),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.navy, AppColors.navyLight],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.gray200),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Container(width: 28, height: 2, color: AppColors.gold),
+          const SizedBox(height: 12),
           Row(
             children: [
-              const Text(
-                '이번 달 실수령',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.white70,
+              Text(
+                '이번 달 세후 은퇴 월급',
+                style: AppTextStyles.label.copyWith(
+                  color: AppColors.gray500,
+                  letterSpacing: 0.3,
                 ),
               ),
               if (overThreshold) ...[
@@ -385,16 +381,33 @@ class _MainCard extends StatelessWidget {
               ],
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            '${CalendarScreenFmt.man(net)}만원',
-            style: const TextStyle(
-              fontSize: 40,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
-              height: 1.1,
-            ),
+          const SizedBox(height: 6),
+          Text.rich(
+            TextSpan(children: [
+              TextSpan(
+                text: CalendarScreenFmt.man(net),
+                style: const TextStyle(
+                  fontFamily: AppTextStyles.serif,
+                  fontFeatures: AppTextStyles.tabular,
+                  fontSize: 40,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.navy,
+                  height: 1.1,
+                ),
+              ),
+              const TextSpan(
+                text: ' 만원',
+                style: TextStyle(
+                  fontFamily: AppTextStyles.serif,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.navy,
+                ),
+              ),
+            ]),
           ),
+          const SizedBox(height: 12),
+          const Divider(),
           const SizedBox(height: 10),
           Text(
             interestGross > 0
@@ -407,8 +420,9 @@ class _MainCard extends StatelessWidget {
                     '연금 ${CalendarScreenFmt.man(pensionGross)}만',
             style: const TextStyle(
               fontSize: 14,
-              color: Colors.white70,
-              height: 1.4,
+              fontFeatures: AppTextStyles.tabular,
+              color: AppColors.gray600,
+              height: 1.45,
             ),
           ),
           if (overThreshold) ...[
@@ -416,7 +430,7 @@ class _MainCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: AppColors.warning.withValues(alpha: 0.2),
+                color: AppColors.warning.withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Row(
@@ -425,16 +439,16 @@ class _MainCard extends StatelessWidget {
                   Icon(
                     Icons.warning_amber_rounded,
                     size: 16,
-                    color: Colors.white,
+                    color: AppColors.warning,
                   ),
                   SizedBox(width: 6),
                   Flexible(
                     child: Text(
-                      '세금 임계치 초과 — 게이지 탭 확인',
+                      '세금 문턱 초과 — 경보 탭에서 확인하세요',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: Colors.white,
+                        color: AppColors.warning,
                       ),
                     ),
                   ),
