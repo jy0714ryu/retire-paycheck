@@ -15,6 +15,7 @@ import 'package:retire_paycheck/main.dart';
 import 'package:retire_paycheck/models/dividend_event.dart';
 import 'package:retire_paycheck/models/holding.dart';
 import 'package:retire_paycheck/health_engine/engine.dart';
+import 'package:retire_paycheck/models/retirement_input.dart';
 import 'package:retire_paycheck/providers/app_providers.dart';
 import 'package:retire_paycheck/services/health_bridge.dart';
 import 'package:retire_paycheck/screens/quick_start_screen.dart';
@@ -53,14 +54,15 @@ List<Override> _overrides() => [
       healthParamsProvider.overrideWith((ref) async => _healthParams),
       holdingsProvider.overrideWith((ref) => HoldingsNotifier()
         ..add(const Holding(corpCode: '005930', corpName: '삼성전자', shares: 1200))
-        ..add(const Holding(corpCode: '458730', corpName: 'TIGER 미국배당다우존스', shares: 3000))),
+        ..add(const Holding(corpCode: '458730', corpName: 'TIGER 미국배당다우존스', shares: 3000))
+        ..add(const Holding(corpCode: '458730', corpName: 'TIGER 미국배당다우존스', shares: 2000, accountId: 'default_isa'))),
       retirementInputProvider.overrideWith((ref) => RetirementInputNotifier()
-        ..update((s) => s.copyWith(currentAge: 66, publicPensionMonthly: 900000, propertyTaxBase: 420000000, lastMonthlySalary: 5200000))),
+        ..update((s) => s.copyWith(currentAge: 66, healthInsType: HealthInsType.regional, publicPensionMonthly: 900000, propertyTaxBase: 420000000, lastMonthlySalary: 5200000).withPlanExtras(pensionNonDeducted: 20000000, irpRetirement: 80000000, retirementTaxRatePct: 4.2, isaProfit: 3000000))),
       accountsProvider.overrideWith((ref) => AccountsNotifier(ref)
         ..updateDefaults('default_pension_savings',
-            balance: 240000000, monthlyWithdrawal: 1420000, isWithdrawing: true)
+            balance: 240000000, monthlyWithdrawal: 800000, isWithdrawing: true)
         ..updateDefaults('default_irp',
-            balance: 110000000, monthlyWithdrawal: 722000, isWithdrawing: true)
+            balance: 110000000, monthlyWithdrawal: 400000, isWithdrawing: true)
         ..updateDefaults('default_isa', balance: 30000000)),
       dividendEventsProvider.overrideWith((ref) async => DividendFetchResult(
             events: [
@@ -98,9 +100,23 @@ void main() {
     await t.tap(find.byIcon(Icons.timeline_outlined));
     await t.pumpAndSettle();
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('${_dir}2_plan.png'));
+    // 연도별 표 펼친 화면 (스토어용).
+    final yearly = find.byKey(const Key('plan_yearly_tile'));
+    await t.scrollUntilVisible(yearly, 300, scrollable: find.byType(Scrollable).first);
+    await t.tap(yearly);
+    await t.pumpAndSettle();
+    await Scrollable.ensureVisible(t.element(yearly), alignment: 0.02);
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('${_dir}2b_plan_yearly.png'));
     await t.tap(find.byIcon(Icons.notifications_none_outlined));
     await t.pumpAndSettle();
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('${_dir}3_alerts.png'));
+    // 건보 카드(지역 보험료 + 퇴직 후 비교)가 위로 오게 (스토어용).
+    final health = find.text('건강보험 (지역가입자)');
+    await t.scrollUntilVisible(health, 300, scrollable: find.byType(Scrollable).first);
+    await Scrollable.ensureVisible(t.element(health), alignment: 0.02);
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('${_dir}3b_health.png'));
     await t.tap(find.byIcon(Icons.account_balance_wallet_outlined));
     await t.pumpAndSettle();
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('${_dir}4_assets.png'));
