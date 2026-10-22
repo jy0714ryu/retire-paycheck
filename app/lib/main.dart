@@ -47,6 +47,7 @@ class HomeShell extends StatefulWidget {
 }
 
 class _HomeShellState extends State<HomeShell> {
+  static const int kPlanTab = 1;
   static const int kAssetsTab = 3;
   int _index = 0;
 
@@ -115,7 +116,7 @@ class _HomeShellState extends State<HomeShell> {
       const CalendarScreen(),
       PlanScreen(onGoToAssets: () => setState(() => _index = kAssetsTab)),
       const GaugeScreen(),
-      const InputScreen(),
+      InputScreen(onGoToPlan: () => setState(() => _index = kPlanTab)),
     ];
     return Scaffold(
       body: SafeArea(child: tabs[_index]),

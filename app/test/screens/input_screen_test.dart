@@ -31,8 +31,8 @@ void main() {
     expect(find.text('일반계좌'), findsOneWidget);
     expect(find.text('공통 설정'), findsOneWidget);
     expect(find.text('(선택) 연 이자소득'), findsOneWidget);
-    // CTA 안내 텍스트
-    expect(find.textContaining('연금나침반'), findsOneWidget);
+    // v2: 연금나침반 외부 링크 제거 (계획 탭으로 흡수)
+    expect(find.textContaining('연금나침반'), findsNothing);
     // 자동 저장 안내(대장님 피드백: 저장 UX 불안 해소)
     expect(find.textContaining('자동으로 저장됩니다'), findsOneWidget);
 
