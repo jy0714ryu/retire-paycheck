@@ -76,7 +76,7 @@ class _AmountInputFieldState extends State<AmountInputField> {
             hintText: widget.hint ?? '0',
             suffixText: widget.suffix,
             filled: true,
-            fillColor: widget.enabled ? Colors.white : AppColors.gray100,
+            fillColor: widget.enabled ? AppColors.surface : AppColors.gray100,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: AppColors.gray200),
@@ -181,7 +181,7 @@ class NumberInputField extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppColors.surface,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppColors.gray200),
                 ),
@@ -224,15 +224,9 @@ class InputSectionCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.gray200.withValues(alpha: 0.5),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: AppColors.gray200),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

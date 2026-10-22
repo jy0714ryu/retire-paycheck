@@ -203,8 +203,8 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '연금저축 ${CurrencyFormat.man(b.pensionSavings)}만 · IRP ${CurrencyFormat.man(b.irp)}만 · '
-            'ISA ${CurrencyFormat.man(b.isa)}만 (내 자산 기준)',
+            '연금저축 ${CurrencyFormat.eokMan(b.pensionSavings)} · IRP ${CurrencyFormat.eokMan(b.irp)} · '
+            'ISA ${CurrencyFormat.eokMan(b.isa)} (내 자산 기준)',
             style: AppTextStyles.bodySmall.copyWith(
                 color: AppColors.gray600, fontFeatures: AppTextStyles.tabular),
           ),

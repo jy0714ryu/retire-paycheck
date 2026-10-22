@@ -66,7 +66,8 @@ ThemeData buildPrivateBankingTheme() {
       style: FilledButton.styleFrom(
         backgroundColor: AppColors.navy,
         foregroundColor: AppColors.surface,
-        textStyle: const TextStyle(fontWeight: FontWeight.w600),
+        textStyle: const TextStyle(
+            fontFamily: AppTextStyles.sans, fontWeight: FontWeight.w600),
       ),
     ),
     inputDecorationTheme: const InputDecorationTheme(

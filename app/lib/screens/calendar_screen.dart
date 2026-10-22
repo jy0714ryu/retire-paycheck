@@ -679,13 +679,13 @@ class _YearlyDividendCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: AppColors.navy.withValues(alpha: 0.05),
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.navy.withValues(alpha: 0.15)),
+        border: Border.all(color: AppColors.gray200),
       ),
       child: Row(
         children: [
-          const Icon(Icons.calendar_month, size: 20, color: AppColors.navy),
+          const Icon(Icons.calendar_month, size: 20, color: AppColors.gold),
           const SizedBox(width: 12),
           Expanded(
             child: Column(

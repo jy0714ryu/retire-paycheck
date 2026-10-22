@@ -49,4 +49,17 @@ void main() {
       expect(CurrencyFormat.man(5000), '0.5');
     });
   });
+
+  group('CurrencyFormat.eokMan', () {
+    test('1억 이상은 억+만', () {
+      expect(CurrencyFormat.eokMan(240000000), '2억 4,000만');
+      expect(CurrencyFormat.eokMan(110000000), '1억 1,000만');
+      expect(CurrencyFormat.eokMan(300000000), '3억');
+    });
+    test('1억 미만·0·음수', () {
+      expect(CurrencyFormat.eokMan(30000000), '3,000만');
+      expect(CurrencyFormat.eokMan(0), '0만');
+      expect(CurrencyFormat.eokMan(-125000000), '-1억 2,500만');
+    });
+  });
 }
