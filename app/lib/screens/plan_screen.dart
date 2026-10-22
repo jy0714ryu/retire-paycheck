@@ -78,7 +78,10 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
       accounts: accounts,
       currentAge: age,
       assumptions: _a,
-      extras: retirement,
+      // 국민연금 칸을 비워 둘 때만 내 자산 공적연금으로 대체 (입력 중 깜빡 바뀌지 않게).
+      extras: _npsCtl.text.trim().isEmpty
+          ? retirement
+          : retirement.copyWith(publicPensionMonthly: 0),
     );
     final unknowns = planUnknowns(accounts, retirement);
     final result = input == null ? null : WithdrawalOptimizer.optimize(input);

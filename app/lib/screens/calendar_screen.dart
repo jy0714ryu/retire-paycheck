@@ -284,7 +284,11 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           _AccountFilterChips(userAccounts: userAccounts),
           if (holdings.isNotEmpty) ...[
             const SizedBox(height: 12),
-            _YearlyDividendCard(year: _month.year, summary: divSummary),
+            _YearlyDividendCard(
+              year: _month.year,
+              summary: divSummary,
+              allDividends: allDividends,
+            ),
           ],
           if (showBarChart) ...[
             const SizedBox(height: 12),
@@ -301,7 +305,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             style: AppTextStyles.h4,
           ),
           const SizedBox(height: 8),
-          if (listLines.isEmpty)
+          // 통장 보기에서 계좌 안 배당만 있는 달은 아래 접힘 칸이 보여 주므로 '없음'을 띄우지 않는다.
+          if (listLines.isEmpty && (allDividends || filteredReinvestGross == 0))
             _EmptyDividend()
           else
             ...listLines.map(
@@ -310,6 +315,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 perShare: perShareByName[line.corpName],
                 shares: sharesByAccount['${line.corpName}|${line.accountId}'],
                 inAccount: inAccountLines.contains(line),
+                showGross: allDividends,
               ),
             ),
           if (!allDividends && filteredReinvestGross > 0) ...[
@@ -528,11 +534,15 @@ class _DividendLineTile extends StatelessWidget {
   /// 연금·ISA 계좌 안에 남는 배당 — "계좌 안" 배지, 금액은 세전.
   final bool inAccount;
 
+  /// 배당 전체 보기 = 세전(카드·막대와 같은 기준), 통장 보기 = 세후.
+  final bool showGross;
+
   const _DividendLineTile({
     required this.line,
     required this.perShare,
     required this.shares,
     this.inAccount = false,
+    this.showGross = false,
   });
 
   @override
@@ -557,7 +567,7 @@ class _DividendLineTile extends StatelessWidget {
     // 쓴다(일반=원천징수 15.4% 후, ISA·연금=gross 그대로) — 여기서 재계산 금지.
     // 재계산하면 ISA·연금 라인이 일반계좌 공식으로 잘못 과세돼 상단 합산 카드와
     // 어긋난다(2026-07-11 최종 리뷰 C1).
-    final netAmount = line.amountNet;
+    final netAmount = showGross ? line.amountGross : line.amountNet;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -751,7 +761,14 @@ class _YearlyDividendCard extends StatelessWidget {
   final int year;
   final YearlyDividendSummary summary;
 
-  const _YearlyDividendCard({required this.year, required this.summary});
+  /// 배당 전체 보기 — 연금·ISA 배당은 인출 때 과세되므로 '세후'를 붙이지 않고 세전만.
+  final bool allDividends;
+
+  const _YearlyDividendCard({
+    required this.year,
+    required this.summary,
+    this.allDividends = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -772,8 +789,11 @@ class _YearlyDividendCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '올해 예상 배당 총 ${CalendarScreenFmt.man(summary.gross)}만원 '
-                  '(세후 ${CalendarScreenFmt.man(summary.net)}만원)',
+                  allDividends
+                      ? '올해 예상 배당 총 ${CalendarScreenFmt.man(summary.gross)}만원 '
+                            '(세전, 계좌 안 포함)'
+                      : '올해 예상 배당 총 ${CalendarScreenFmt.man(summary.gross)}만원 '
+                            '(세후 ${CalendarScreenFmt.man(summary.net)}만원)',
                   style: AppTextStyles.bodyLarge,
                 ),
                 const SizedBox(height: 2),

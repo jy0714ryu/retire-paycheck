@@ -135,9 +135,7 @@ class _PlanAccuracyCardState extends ConsumerState<PlanAccuracyCard> {
       ),
       onChanged: (t) {
         final v = double.tryParse(t.trim());
-        _save(
-          (s) => _with(s, rate: (v == null || v <= 0 || v > 45) ? null : v),
-        );
+        _save((s) => _with(s, rate: (v == null || v < 0 || v > 45) ? null : v));
       },
     ),
   );
