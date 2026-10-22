@@ -1,3 +1,8 @@
+/// 건강보험 가입 형태 — 경보 탭 건보 게이지의 기준이 달라진다.
+/// dependent=가족 밑 피부양자(기본, v2.0.1 이전 동작), employee=본인이 직장 다님,
+/// regional=지역가입자(문턱 없이 소득·재산으로 부과).
+enum HealthInsType { dependent, employee, regional }
+
 /// 은퇴 자산·인출 계획 입력값 — 화면1(자산 입력)에서 수집.
 ///
 /// 금액은 전부 int 원 단위.
@@ -19,6 +24,14 @@ class RetirementInput {
   /// 달의 모든 인출을 0 으로 게이팅한다.
   final DateTime? withdrawalStartMonth;
 
+  final HealthInsType healthInsType;
+
+  /// 국민연금·공무원연금 등 공적연금 월 수령액(원). 피부양자 판정에 전액 들어간다.
+  final int publicPensionMonthly;
+
+  /// 그 밖의 연 소득(원) — 사업·임대·기타. 월급(근로소득)은 넣지 않는다.
+  final int otherAnnualIncome;
+
   const RetirementInput({
     required this.pensionSavings,
     required this.irpBalance,
@@ -29,6 +42,9 @@ class RetirementInput {
     this.annualInterestIncome = 0,
     this.isWithdrawing = true,
     this.withdrawalStartMonth,
+    this.healthInsType = HealthInsType.dependent,
+    this.publicPensionMonthly = 0,
+    this.otherAnnualIncome = 0,
   });
 
   /// 음수 금지, 나이 20~100 범위만 유효.
@@ -38,7 +54,9 @@ class RetirementInput {
         isaBalance < 0 ||
         monthlyPensionWithdrawal < 0 ||
         monthlyOtherWithdrawal < 0 ||
-        annualInterestIncome < 0) {
+        annualInterestIncome < 0 ||
+        publicPensionMonthly < 0 ||
+        otherAnnualIncome < 0) {
       return false;
     }
     if (currentAge < 20 || currentAge > 100) {
@@ -61,6 +79,9 @@ class RetirementInput {
     bool? isWithdrawing,
     DateTime? withdrawalStartMonth,
     bool clearWithdrawalStartMonth = false,
+    HealthInsType? healthInsType,
+    int? publicPensionMonthly,
+    int? otherAnnualIncome,
   }) {
     final nextStart = clearWithdrawalStartMonth
         ? null
@@ -76,26 +97,33 @@ class RetirementInput {
           monthlyOtherWithdrawal ?? this.monthlyOtherWithdrawal,
       annualInterestIncome: annualInterestIncome ?? this.annualInterestIncome,
       isWithdrawing: isWithdrawing ?? this.isWithdrawing,
-      withdrawalStartMonth:
-          nextStart == null ? null : DateTime(nextStart.year, nextStart.month),
+      withdrawalStartMonth: nextStart == null
+          ? null
+          : DateTime(nextStart.year, nextStart.month),
+      healthInsType: healthInsType ?? this.healthInsType,
+      publicPensionMonthly: publicPensionMonthly ?? this.publicPensionMonthly,
+      otherAnnualIncome: otherAnnualIncome ?? this.otherAnnualIncome,
     );
   }
 
   Map<String, dynamic> toJson() => {
-        'pension_savings': pensionSavings,
-        'irp_balance': irpBalance,
-        'isa_balance': isaBalance,
-        'current_age': currentAge,
-        'monthly_pension_withdrawal': monthlyPensionWithdrawal,
-        'monthly_other_withdrawal': monthlyOtherWithdrawal,
-        'annual_interest_income': annualInterestIncome,
-        'is_withdrawing': isWithdrawing,
-        // null 이면 키를 내보내지 않아 기존 저장분과 완전 호환(마이그레이션 불필요).
-        if (withdrawalStartMonth != null)
-          'withdrawal_start_month':
-              '${withdrawalStartMonth!.year.toString().padLeft(4, '0')}-'
-                  '${withdrawalStartMonth!.month.toString().padLeft(2, '0')}',
-      };
+    'pension_savings': pensionSavings,
+    'irp_balance': irpBalance,
+    'isa_balance': isaBalance,
+    'current_age': currentAge,
+    'monthly_pension_withdrawal': monthlyPensionWithdrawal,
+    'monthly_other_withdrawal': monthlyOtherWithdrawal,
+    'annual_interest_income': annualInterestIncome,
+    'is_withdrawing': isWithdrawing,
+    'health_ins_type': healthInsType.name,
+    'public_pension_monthly': publicPensionMonthly,
+    'other_annual_income': otherAnnualIncome,
+    // null 이면 키를 내보내지 않아 기존 저장분과 완전 호환(마이그레이션 불필요).
+    if (withdrawalStartMonth != null)
+      'withdrawal_start_month':
+          '${withdrawalStartMonth!.year.toString().padLeft(4, '0')}-'
+          '${withdrawalStartMonth!.month.toString().padLeft(2, '0')}',
+  };
 
   factory RetirementInput.fromJson(Map<String, dynamic> json) {
     return RetirementInput(
@@ -110,12 +138,20 @@ class RetirementInput {
       annualInterestIncome:
           (json['annual_interest_income'] as num?)?.toInt() ?? 0,
       // 명시 키 우선, 없으면(v1 저장분) 인출액>0 여부로 판정(스펙 §1.3 마이그레이션).
-      isWithdrawing: json['is_withdrawing'] as bool? ??
+      isWithdrawing:
+          json['is_withdrawing'] as bool? ??
           (((json['monthly_pension_withdrawal'] as num?)?.toInt() ?? 0) > 0 ||
-              ((json['monthly_other_withdrawal'] as num?)?.toInt() ?? 0) >
-                  0),
+              ((json['monthly_other_withdrawal'] as num?)?.toInt() ?? 0) > 0),
       // 'YYYY-MM' (또는 'YYYY-MM-DD') 문자열 → 연-월 정규화. 키 없음/null 이면 null.
       withdrawalStartMonth: _parseYearMonth(json['withdrawal_start_month']),
+      // v2.0.2 신설 — 키 없는 기존 저장분은 피부양자·0원(이전 동작 그대로).
+      healthInsType: HealthInsType.values.firstWhere(
+        (t) => t.name == json['health_ins_type'],
+        orElse: () => HealthInsType.dependent,
+      ),
+      publicPensionMonthly:
+          (json['public_pension_monthly'] as num?)?.toInt() ?? 0,
+      otherAnnualIncome: (json['other_annual_income'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -143,18 +179,24 @@ class RetirementInput {
           monthlyOtherWithdrawal == other.monthlyOtherWithdrawal &&
           annualInterestIncome == other.annualInterestIncome &&
           isWithdrawing == other.isWithdrawing &&
-          withdrawalStartMonth == other.withdrawalStartMonth;
+          withdrawalStartMonth == other.withdrawalStartMonth &&
+          healthInsType == other.healthInsType &&
+          publicPensionMonthly == other.publicPensionMonthly &&
+          otherAnnualIncome == other.otherAnnualIncome;
 
   @override
   int get hashCode => Object.hash(
-        pensionSavings,
-        irpBalance,
-        isaBalance,
-        currentAge,
-        monthlyPensionWithdrawal,
-        monthlyOtherWithdrawal,
-        annualInterestIncome,
-        isWithdrawing,
-        withdrawalStartMonth,
-      );
+    pensionSavings,
+    irpBalance,
+    isaBalance,
+    currentAge,
+    monthlyPensionWithdrawal,
+    monthlyOtherWithdrawal,
+    annualInterestIncome,
+    isWithdrawing,
+    withdrawalStartMonth,
+    healthInsType,
+    publicPensionMonthly,
+    otherAnnualIncome,
+  );
 }

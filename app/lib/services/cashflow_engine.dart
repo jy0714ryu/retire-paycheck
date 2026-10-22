@@ -168,8 +168,10 @@ class CashflowEngine {
     // 개시월과 무관하게 항상 표시(게이팅 대상 아님).
     final gateStart = input.withdrawalStartMonth == null
         ? null
-        : DateTime(input.withdrawalStartMonth!.year,
-            input.withdrawalStartMonth!.month);
+        : DateTime(
+            input.withdrawalStartMonth!.year,
+            input.withdrawalStartMonth!.month,
+          );
     final result = <MonthlyCashflow>[];
 
     for (var i = 0; i < monthCount; i++) {
@@ -227,18 +229,20 @@ class CashflowEngine {
       }
       final interestNet = (interestGross * (1 - kDividendWithholding)).round();
 
-      result.add(MonthlyCashflow(
-        month: month,
-        dividendGross: dividendGross,
-        dividendNet: dividendNet,
-        pensionGross: monthPensionGross,
-        pensionNet: monthPensionNet,
-        interestGross: interestGross,
-        interestNet: interestNet,
-        reinvestGross: reinvestGross,
-        lines: lines,
-        reinvestLines: reinvestLines,
-      ));
+      result.add(
+        MonthlyCashflow(
+          month: month,
+          dividendGross: dividendGross,
+          dividendNet: dividendNet,
+          pensionGross: monthPensionGross,
+          pensionNet: monthPensionNet,
+          interestGross: interestGross,
+          interestNet: interestNet,
+          reinvestGross: reinvestGross,
+          lines: lines,
+          reinvestLines: reinvestLines,
+        ),
+      );
     }
 
     return result;
@@ -273,8 +277,10 @@ class CashflowEngine {
 
     // 이자소득 — interest_items 로 이관. input.annualInterestIncome 은 더 이상
     // 사용하지 않는다(구 필드는 저장소 보존용).
-    final interestAnnual =
-        interestItems.fold<int>(0, (s, i) => s + i.annualAmount);
+    final interestAnnual = interestItems.fold<int>(
+      0,
+      (s, i) => s + i.annualAmount,
+    );
 
     // 금융소득(세전) = 일반계좌 배당 gross 합 + 이자소득.
     final financialIncomeTotal = generalDividendGross + interestAnnual;
@@ -284,15 +290,25 @@ class CashflowEngine {
     // 계좌는 자동 제외 — 전역 input.isWithdrawing 게이트는 읽지 않는다. 전역
     // 개시월(withdrawalStartMonth) 이 미래면 그 해 인출 0, 개시 연도면 개시월~12월
     // 개월 수만 산입한다(세금 계산은 개시월 이후 인출 기준). null 이면 12(기존).
-    final withdrawingMonths =
-        _withdrawingMonthsInYear(input.withdrawalStartMonth, year);
+    final withdrawingMonths = _withdrawingMonthsInYear(
+      input.withdrawalStartMonth,
+      year,
+    );
     final annualPensionTaxable =
         pensionMonthlyWithdrawal(accounts) * withdrawingMonths;
 
-    // 건보 산입: 금융소득이 1,000만 초과면 전액, 이하면 0.
-    // 사적연금 인출은 건보 소득 미산입 (공적연금만 — 2026-07 현행).
+    // 건보 산입 (사적연금 인출은 미산입 — 2026-10 현행):
+    // - 피부양자·지역: 금융소득 1,000만 초과면 전액(이하 0) + 공적연금 전액 + 기타 소득.
+    // - 직장(월급 외 소득): 감면 규칙이 단일 출처뿐이라 금융소득·공적연금을 보수적으로
+    //   전액 합산 — 경보가 늦게 울리는 쪽보다 일찍 울리는 쪽이 안전하다.
+    final publicPensionAnnual = input.publicPensionMonthly * 12;
+    final financialForHealth = input.healthInsType == HealthInsType.employee
+        ? financialIncomeTotal
+        : (financialIncomeTotal > kHealthInsFinancialFloor
+              ? financialIncomeTotal
+              : 0);
     final healthCurrent =
-        financialIncomeTotal > kHealthInsFinancialFloor ? financialIncomeTotal : 0;
+        financialForHealth + publicPensionAnnual + input.otherAnnualIncome;
 
     return YearlyGauges(
       financialIncome: GaugeStatus(
@@ -382,7 +398,10 @@ class CashflowEngine {
   /// 월 인출액([Account.monthlyWithdrawal]) 합산(v4). 인출 게이트가 전역
   /// input.isWithdrawing 에서 계좌별 Account.isWithdrawing 으로 이관됨 —
   /// 과세 연금 인출 = 인출 켠 pension 계좌 합, 비과세 인출 = 인출 켠 isa 계좌 합.
-  static int _monthlyWithdrawalByType(List<Account> accounts, AccountType type) {
+  static int _monthlyWithdrawalByType(
+    List<Account> accounts,
+    AccountType type,
+  ) {
     var sum = 0;
     for (final a in accounts) {
       if (a.type == type && a.isWithdrawing) sum += a.monthlyWithdrawal;
@@ -414,7 +433,8 @@ class CashflowEngine {
   /// 이벤트를 corpCode → 이벤트 목록으로 인덱싱(O(m)). holdings 순회와 결합해
   /// 배당 매칭을 O(n+m) 로 유지한다.
   static Map<String, List<DividendEvent>> _indexEvents(
-      List<DividendEvent> events) {
+    List<DividendEvent> events,
+  ) {
     final map = <String, List<DividendEvent>>{};
     for (final e in events) {
       (map[e.corpCode] ??= <DividendEvent>[]).add(e);

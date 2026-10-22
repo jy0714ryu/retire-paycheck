@@ -145,6 +145,44 @@ void main() {
     expect(g.financialIncome.current, 500000); // 예측도 게이지에 포함
   });
 
+  group('건보 게이지 — 가입 형태·공적연금·기타 소득 (v2.0.2)', () {
+    int health(RetirementInput input) => CashflowEngine.buildGauges(
+          holdings: [_holdingA],
+          events: [_eventA], // 금융소득 50만 (1,000만 이하)
+          input: input,
+          year: 2026,
+        ).healthInsurance.current;
+
+    test('피부양자: 금융 1,000만 이하 0 + 공적연금 전액(월×12) + 기타 소득', () {
+      expect(health(_input), 0); // 기존 저장분 동작 그대로
+      expect(
+          health(_input.copyWith(
+              publicPensionMonthly: 1000000, otherAnnualIncome: 3000000)),
+          12000000 + 3000000);
+    });
+
+    test('직장 다님: 금융소득은 1,000만 이하여도 보수적으로 전액 합산', () {
+      expect(
+          health(_input.copyWith(
+              healthInsType: HealthInsType.employee,
+              otherAnnualIncome: 5000000)),
+          500000 + 5000000);
+    });
+
+    test('저장·복원 — 새 키 없는 기존 JSON 은 피부양자·0원', () {
+      final legacy = _input.toJson()
+        ..remove('health_ins_type')
+        ..remove('public_pension_monthly')
+        ..remove('other_annual_income');
+      final r = RetirementInput.fromJson(legacy);
+      expect(r.healthInsType, HealthInsType.dependent);
+      expect(r.publicPensionMonthly, 0);
+      final full = _input.copyWith(
+          healthInsType: HealthInsType.regional, publicPensionMonthly: 700000);
+      expect(RetirementInput.fromJson(full.toJson()), full);
+    });
+  });
+
   group('사적연금 1,500만 절벽 (전액 16.5% 분리과세)', () {
     test('경계값 월 125만(연 1,500만 정확) → 저율 5.5% 유지', () {
       const input = RetirementInput(

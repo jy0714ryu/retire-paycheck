@@ -38,14 +38,11 @@ class GaugeScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('세금 문턱 경보'),
-      ),
+      appBar: AppBar(title: const Text('세금 문턱 경보')),
       body: asyncEvents.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => _ErrorView(
-          onRetry: () => ref.invalidate(dividendEventsProvider),
-        ),
+        error: (e, _) =>
+            _ErrorView(onRetry: () => ref.invalidate(dividendEventsProvider)),
         data: (events) => _buildBody(
           context,
           holdings,
@@ -89,9 +86,14 @@ class GaugeScreen extends ConsumerWidget {
     // (buildGauges 와 동일), v5: 전역 withdrawalStartMonth 게이트를 추가로 반영.
     final start = input.withdrawalStartMonth;
     final now = DateTime.now();
-    final globalStartInFuture = start != null &&
-        DateTime(now.year, now.month).isBefore(DateTime(start.year, start.month));
-    final pensionIsReference = globalStartInFuture ||
+    final globalStartInFuture =
+        start != null &&
+        DateTime(
+          now.year,
+          now.month,
+        ).isBefore(DateTime(start.year, start.month));
+    final pensionIsReference =
+        globalStartInFuture ||
         !accounts.any((a) => a.type == AccountType.pension && a.isWithdrawing);
 
     return ListView(
@@ -119,23 +121,69 @@ class GaugeScreen extends ConsumerWidget {
         _GaugeCard(
           title: '사적연금 저율과세 한도',
           status: gauges.pensionLowRate,
-          overWarning:
-              '1,500만원을 넘으면 초과분이 아니라 전액이 16.5% 과세로 전환될 수 있습니다',
+          overWarning: '1,500만원을 넘으면 초과분이 아니라 전액이 16.5% 과세로 전환될 수 있습니다',
           isReference: pensionIsReference,
           referenceNote: pensionIsReference ? '연금 인출 전 (참고용)' : null,
         ),
         const SizedBox(height: 14),
-        _GaugeCard(
-          title: '건강보험 피부양자 소득',
-          status: gauges.healthInsurance,
-          overWarning: '피부양자 자격에 영향을 줄 수 있습니다',
-          isReference: true,
-          referenceNote:
-              '공적연금·기타 소득 합산에 따라 달라질 수 있으며, 사적연금 인출은 포함되지 않습니다 (기준: 2026-07 현행)',
-        ),
+        ..._healthCard(input, gauges.healthInsurance),
         const SizedBox(height: 40),
       ],
     );
+  }
+}
+
+/// 건보 카드 — 가입 형태별로 기준·문구가 다르다 (2026-10 현행 기준).
+/// 공적연금·기타 소득은 '내 자산 › 공통 설정'에서 입력.
+List<Widget> _healthCard(RetirementInput input, GaugeStatus status) {
+  switch (input.healthInsType) {
+    case HealthInsType.dependent:
+      return [
+        _GaugeCard(
+          title: '건강보험 피부양자 소득',
+          status: status,
+          overWarning: '2,000만원을 넘으면 피부양자 자격을 잃고 지역가입자로 바뀔 수 있어요',
+          referenceNote:
+              '합산: 금융소득(1,000만원 넘으면 전액) + 공적연금 전액 + 그 밖의 소득. '
+              '연금저축·IRP 인출은 들어가지 않아요. 재산 요건은 따로 봅니다.',
+        ),
+      ];
+    case HealthInsType.employee:
+      return [
+        _GaugeCard(
+          title: '월급 외 소득 (건보료 추가)',
+          status: status,
+          overWarning: '2,000만원 넘는 부분에 건보료가 추가로 붙어요 (소득월액보험료)',
+          referenceNote:
+              '금융소득·공적연금·그 밖의 소득을 넉넉하게 전액 합산했어요. 실제로는 더 낮을 수 있어요. '
+              '공제 기준을 1,000만원으로 낮추는 개편안이 논의 중이에요.',
+        ),
+      ];
+    case HealthInsType.regional:
+      return [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.gray200),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('건강보험 (지역가입자)', style: AppTextStyles.h4),
+              const SizedBox(height: 8),
+              Text(
+                '지역가입자는 문턱 없이 소득·재산으로 건보료가 정해져요. '
+                '금융소득(1,000만원 넘으면 전액)·공적연금·그 밖의 소득이 늘면 건보료도 함께 늘어요. '
+                '연금저축·IRP 인출은 들어가지 않아요.',
+                style: AppTextStyles.body.copyWith(color: AppColors.gray700),
+              ),
+            ],
+          ),
+        ),
+      ];
   }
 }
 
@@ -182,10 +230,7 @@ class _GaugeCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              if (isReference) ...[
-                const SizedBox(width: 8),
-                _ReferenceBadge(),
-              ],
+              if (isReference) ...[const SizedBox(width: 8), _ReferenceBadge()],
             ],
           ),
           const SizedBox(height: 14),
@@ -218,8 +263,11 @@ class _GaugeCard extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.warning_amber_rounded,
-                      size: 16, color: AppColors.error),
+                  const Icon(
+                    Icons.warning_amber_rounded,
+                    size: 16,
+                    color: AppColors.error,
+                  ),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
@@ -234,13 +282,16 @@ class _GaugeCard extends StatelessWidget {
               ),
             ),
           ],
-          if (isReference && referenceNote != null) ...[
+          if (referenceNote != null) ...[
             const SizedBox(height: 10),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.info_outline,
-                    size: 14, color: AppColors.gray400),
+                const Icon(
+                  Icons.info_outline,
+                  size: 14,
+                  color: AppColors.gray400,
+                ),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
@@ -299,8 +350,11 @@ class _IsaSavingsCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.savings_outlined,
-                  size: 18, color: AppColors.success),
+              const Icon(
+                Icons.savings_outlined,
+                size: 18,
+                color: AppColors.success,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -355,8 +409,10 @@ class _ErrorView extends StatelessWidget {
         children: [
           const Icon(Icons.cloud_off, size: 48, color: AppColors.gray400),
           const SizedBox(height: 12),
-          Text('배당 정보를 불러오지 못했습니다',
-              style: AppTextStyles.body.copyWith(color: AppColors.gray500)),
+          Text(
+            '배당 정보를 불러오지 못했습니다',
+            style: AppTextStyles.body.copyWith(color: AppColors.gray500),
+          ),
           const SizedBox(height: 12),
           OutlinedButton(onPressed: onRetry, child: const Text('다시 시도')),
         ],
