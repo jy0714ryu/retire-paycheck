@@ -1,5 +1,6 @@
 import '../engine/pension_input.dart';
 import '../models/account.dart';
+import '../models/retirement_input.dart';
 
 /// 계획 탭 설정값 — 화면에서 바꾸는 가정들.
 class PlanAssumptions {
@@ -90,30 +91,56 @@ PlanBalances planBalancesFrom(List<Account> accounts) {
 
 /// 계획 계산 입력. 계산할 수 없으면(잔액 0·인출 목표 0·나이 범위 밖) null.
 ///
-/// 내 자산에 없는 정보는 보수적으로 가정한다 — 연금저축 전액 세액공제분, IRP 퇴직금 이전분 0, ISA 수익 0.
+/// [extras] 의 정확도 입력이 null(모름)이면 보수적으로 가정한다 — 연금저축 전액 세액공제분,
+/// IRP 퇴직금 이전분 0, ISA 수익 0 (세금이 크게 나오는 쪽). 국민연금은 계획 탭에 따로 넣지 않았으면
+/// 내 자산의 공적연금 월액을 쓴다(개시 = 65세, 이미 지났으면 지금).
 PensionInput? buildPlanInput({
   required List<Account> accounts,
   required int currentAge,
   required PlanAssumptions assumptions,
+  RetirementInput? extras,
 }) {
   final b = planBalancesFrom(accounts);
   if (b.total <= 0) return null;
   final target = assumptions.annualTargetOverride ?? b.monthlyWithdrawal * 12;
   if (target <= 0) return null;
-  final hasNps =
-      (assumptions.npsMonthly ?? 0) > 0 && assumptions.npsStartAge != null;
+  var npsMonthly = assumptions.npsMonthly;
+  var npsStartAge = assumptions.npsStartAge;
+  if (npsMonthly == null && (extras?.publicPensionMonthly ?? 0) > 0) {
+    npsMonthly = extras!.publicPensionMonthly;
+    npsStartAge = currentAge >= 65 ? currentAge : 65;
+  }
+  final hasNps = (npsMonthly ?? 0) > 0 && npsStartAge != null;
+  int clampTo(int? v, int max) => (v ?? 0).clamp(0, max);
+  final nonDeducted = clampTo(extras?.pensionNonDeducted, b.pensionSavings);
   final input = PensionInput(
     pensionSavings: b.pensionSavings,
-    pensionSavingsDeducted: b.pensionSavings,
+    pensionSavingsDeducted: b.pensionSavings - nonDeducted,
     irpBalance: b.irp,
-    irpRetirementPortion: 0,
+    irpRetirementPortion: clampTo(extras?.irpRetirement, b.irp),
     isaMaturity: b.isa,
+    isaProfit: clampTo(extras?.isaProfit, b.isa),
     currentAge: currentAge,
     targetAnnualWithdrawal: target,
     simulationYears: assumptions.years,
     expectedReturnRate: assumptions.returnRate,
-    npsMonthlyAmount: hasNps ? assumptions.npsMonthly : null,
-    npsStartAge: hasNps ? assumptions.npsStartAge : null,
+    npsMonthlyAmount: hasNps ? npsMonthly : null,
+    npsStartAge: hasNps ? npsStartAge : null,
+    retirementTaxRate: ((extras?.retirementTaxRatePct ?? 5) / 100).clamp(
+      0.0,
+      0.45,
+    ),
   );
   return input.isValid ? input : null;
+}
+
+/// 잔액이 있는데 '모름'으로 남은 정확도 입력 이름들 — 있으면 결과를 "기본 가정 비교"로 표시.
+List<String> planUnknowns(List<Account> accounts, RetirementInput input) {
+  final b = planBalancesFrom(accounts);
+  return [
+    if (b.pensionSavings > 0 && input.pensionNonDeducted == null)
+      '세액공제 안 받은 원금',
+    if (b.irp > 0 && input.irpRetirement == null) 'IRP 퇴직금',
+    if (b.isa > 0 && input.isaProfit == null) 'ISA 수익',
+  ];
 }

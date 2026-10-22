@@ -13,8 +13,10 @@ void main() {
     setUp(() {
       // 입력 탭이 SharedPreferences 를 로드하므로 mock 초기화 필요.
       // 면책은 이미 동의 처리해 다이얼로그가 탭 조작을 막지 않도록 한다.
-      SharedPreferences.setMockInitialValues(
-          {kDisclaimerAcceptedKey: true, kQuickStartDoneKey: true});
+      SharedPreferences.setMockInitialValues({
+        kDisclaimerAcceptedKey: true,
+        kQuickStartDoneKey: true,
+      });
     });
 
     testWidgets('앱 기동 — 4탭 셸 렌더 + 기본 탭은 이번 달', (WidgetTester tester) async {
@@ -50,8 +52,9 @@ void main() {
       expect(find.text('내 자산 입력하기'), findsOneWidget);
     });
 
-    testWidgets('뒤로 가기 — 입력 중엔 키보드만, 다른 탭은 첫 탭, 첫 탭은 두 번 눌러 종료 안내',
-        (WidgetTester tester) async {
+    testWidgets('뒤로 가기 — 입력 중엔 키보드만, 다른 탭은 첫 탭, 첫 탭은 두 번 눌러 종료 안내', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(const ProviderScope(child: RetirePaycheckApp()));
       await tester.pumpAndSettle();
       await tester.tap(find.byIcon(Icons.account_balance_wallet_outlined));
@@ -79,15 +82,19 @@ void main() {
       expect(find.text('한 번 더 누르면 종료돼요'), findsOneWidget);
     });
 
-    testWidgets('내 자산 → "어떤 순서로 빼야…" 안내는 계획 탭으로 이동 (연금나침반 외부 링크 없음)',
-        (WidgetTester tester) async {
+    testWidgets('내 자산 → "어떤 순서로 빼야…" 안내는 계획 탭으로 이동 (연금나침반 외부 링크 없음)', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(const ProviderScope(child: RetirePaycheckApp()));
       await tester.pumpAndSettle();
       await tester.tap(find.byIcon(Icons.account_balance_wallet_outlined));
       await tester.pumpAndSettle();
       expect(find.textContaining('연금나침반'), findsNothing);
-      await tester.scrollUntilVisible(find.byKey(const Key('go_to_plan')), 300,
-          scrollable: find.byType(Scrollable).first);
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('go_to_plan')),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.tap(find.byKey(const Key('go_to_plan')));
       await tester.pumpAndSettle();
       expect(find.text('인출 계획'), findsOneWidget);
@@ -115,6 +122,33 @@ void main() {
       await tester.tap(find.byIcon(Icons.timeline_outlined));
       await tester.pumpAndSettle();
       expect(find.text('계산 결과 1위'), findsOneWidget);
+
+      // v2.1: 공제 안 받은 원금을 모름으로 두면 "기본 가정" 표시 → '없음' 답하면 사라진다.
+      expect(find.byKey(const Key('plan_unknown_note')), findsOneWidget);
+      expect(find.text('기본 가정에서 세금이 가장 적게 계산된 인출 순서'), findsOneWidget);
+      final tile = find.byKey(const Key('plan_accuracy_tile'));
+      await tester.scrollUntilVisible(
+        tile,
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(tile);
+      await tester.pumpAndSettle();
+      final q = find.byKey(const Key('plan_q_nonDeducted'));
+      await tester.scrollUntilVisible(
+        q,
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(find.descendant(of: q, matching: find.text('없음')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('plan_unknown_note')), findsNothing);
+      await tester.scrollUntilVisible(
+        find.text('세금이 가장 적게 계산된 인출 순서'),
+        -300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text('세금이 가장 적게 계산된 인출 순서'), findsOneWidget);
     });
 
     testWidgets('건너뛰기 — 완료 표시만 하고 닫힘', (WidgetTester tester) async {
@@ -142,16 +176,23 @@ void main() {
 
     test('기존 사용자 데이터가 있으면 첫 실행 화면을 건너뛴다', () {
       expect(needsQuickStart(storedKeys: {}, done: false), isTrue);
-      expect(needsQuickStart(storedKeys: {'retirement_input'}, done: false), isTrue);
+      expect(
+        needsQuickStart(storedKeys: {'retirement_input'}, done: false),
+        isTrue,
+      );
       expect(needsQuickStart(storedKeys: {'holdings'}, done: false), isFalse);
-      expect(needsQuickStart(storedKeys: {'default_account_overrides'}, done: false), isFalse);
+      expect(
+        needsQuickStart(storedKeys: {'default_account_overrides'}, done: false),
+        isFalse,
+      );
       expect(needsQuickStart(storedKeys: {}, done: true), isFalse);
     });
   });
 
   group('첫 실행 면책 다이얼로그', () {
-    testWidgets('미동의 상태 → 다이얼로그 표시 후 확인 시 닫히고 플래그 저장',
-        (WidgetTester tester) async {
+    testWidgets('미동의 상태 → 다이얼로그 표시 후 확인 시 닫히고 플래그 저장', (
+      WidgetTester tester,
+    ) async {
       SharedPreferences.setMockInitialValues({});
 
       await tester.pumpWidget(const ProviderScope(child: RetirePaycheckApp()));

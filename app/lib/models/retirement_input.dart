@@ -32,6 +32,19 @@ class RetirementInput {
   /// 그 밖의 연 소득(원) — 사업·임대·기타. 월급(근로소득)은 넣지 않는다.
   final int otherAnnualIncome;
 
+  /// 계획 탭 정확도 입력 (v2.1). null = 모름(보수적 가정), 0 = 없음.
+  /// 연금저축 중 세액공제 안 받고 넣은 원금(비과세로 꺼냄).
+  final int? pensionNonDeducted;
+
+  /// IRP 중 퇴직금으로 넣은 금액(퇴직소득세 30~40% 감면 재원).
+  final int? irpRetirement;
+
+  /// 그 퇴직금의 원래 퇴직소득세 실효세율(%). null 이면 5%.
+  final double? retirementTaxRatePct;
+
+  /// ISA 평가이익(수익) — 비과세·분리과세 재원.
+  final int? isaProfit;
+
   const RetirementInput({
     required this.pensionSavings,
     required this.irpBalance,
@@ -45,7 +58,36 @@ class RetirementInput {
     this.healthInsType = HealthInsType.dependent,
     this.publicPensionMonthly = 0,
     this.otherAnnualIncome = 0,
+    this.pensionNonDeducted,
+    this.irpRetirement,
+    this.retirementTaxRatePct,
+    this.isaProfit,
   });
+
+  /// 계획 정확도 입력 4종을 한꺼번에 바꾼다 (null 로 되돌리기 = 모름).
+  RetirementInput withPlanExtras({
+    required int? pensionNonDeducted,
+    required int? irpRetirement,
+    required double? retirementTaxRatePct,
+    required int? isaProfit,
+  }) => RetirementInput(
+    pensionSavings: pensionSavings,
+    irpBalance: irpBalance,
+    isaBalance: isaBalance,
+    currentAge: currentAge,
+    monthlyPensionWithdrawal: monthlyPensionWithdrawal,
+    monthlyOtherWithdrawal: monthlyOtherWithdrawal,
+    annualInterestIncome: annualInterestIncome,
+    isWithdrawing: isWithdrawing,
+    withdrawalStartMonth: withdrawalStartMonth,
+    healthInsType: healthInsType,
+    publicPensionMonthly: publicPensionMonthly,
+    otherAnnualIncome: otherAnnualIncome,
+    pensionNonDeducted: pensionNonDeducted,
+    irpRetirement: irpRetirement,
+    retirementTaxRatePct: retirementTaxRatePct,
+    isaProfit: isaProfit,
+  );
 
   /// 음수 금지, 나이 20~100 범위만 유효.
   bool get isValid {
@@ -103,6 +145,10 @@ class RetirementInput {
       healthInsType: healthInsType ?? this.healthInsType,
       publicPensionMonthly: publicPensionMonthly ?? this.publicPensionMonthly,
       otherAnnualIncome: otherAnnualIncome ?? this.otherAnnualIncome,
+      pensionNonDeducted: pensionNonDeducted,
+      irpRetirement: irpRetirement,
+      retirementTaxRatePct: retirementTaxRatePct,
+      isaProfit: isaProfit,
     );
   }
 
@@ -118,6 +164,11 @@ class RetirementInput {
     'health_ins_type': healthInsType.name,
     'public_pension_monthly': publicPensionMonthly,
     'other_annual_income': otherAnnualIncome,
+    if (pensionNonDeducted != null) 'pension_non_deducted': pensionNonDeducted,
+    if (irpRetirement != null) 'irp_retirement': irpRetirement,
+    if (retirementTaxRatePct != null)
+      'retirement_tax_rate_pct': retirementTaxRatePct,
+    if (isaProfit != null) 'isa_profit': isaProfit,
     // null 이면 키를 내보내지 않아 기존 저장분과 완전 호환(마이그레이션 불필요).
     if (withdrawalStartMonth != null)
       'withdrawal_start_month':
@@ -152,6 +203,11 @@ class RetirementInput {
       publicPensionMonthly:
           (json['public_pension_monthly'] as num?)?.toInt() ?? 0,
       otherAnnualIncome: (json['other_annual_income'] as num?)?.toInt() ?? 0,
+      pensionNonDeducted: (json['pension_non_deducted'] as num?)?.toInt(),
+      irpRetirement: (json['irp_retirement'] as num?)?.toInt(),
+      retirementTaxRatePct: (json['retirement_tax_rate_pct'] as num?)
+          ?.toDouble(),
+      isaProfit: (json['isa_profit'] as num?)?.toInt(),
     );
   }
 
@@ -182,7 +238,11 @@ class RetirementInput {
           withdrawalStartMonth == other.withdrawalStartMonth &&
           healthInsType == other.healthInsType &&
           publicPensionMonthly == other.publicPensionMonthly &&
-          otherAnnualIncome == other.otherAnnualIncome;
+          otherAnnualIncome == other.otherAnnualIncome &&
+          pensionNonDeducted == other.pensionNonDeducted &&
+          irpRetirement == other.irpRetirement &&
+          retirementTaxRatePct == other.retirementTaxRatePct &&
+          isaProfit == other.isaProfit;
 
   @override
   int get hashCode => Object.hash(
@@ -198,5 +258,9 @@ class RetirementInput {
     healthInsType,
     publicPensionMonthly,
     otherAnnualIncome,
+    pensionNonDeducted,
+    irpRetirement,
+    retirementTaxRatePct,
+    isaProfit,
   );
 }
