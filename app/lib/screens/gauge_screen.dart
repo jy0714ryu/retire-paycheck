@@ -8,6 +8,8 @@ import '../models/interest_item.dart';
 import '../models/retirement_input.dart';
 import '../providers/app_providers.dart';
 import '../services/cashflow_engine.dart';
+import '../services/health_bridge.dart';
+import '../health_engine/engine.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 import '../utils/currency_format.dart';
@@ -35,6 +37,8 @@ class GaugeScreen extends ConsumerWidget {
     final targetYear = year ?? DateTime.now().year;
     // API + 수동 입력 합성 이벤트 merge (합성 연도 = 게이지 기준 연도).
     final asyncEvents = ref.watch(combinedEventsProvider(targetYear));
+    // 건보료나침반 엔진 파라미터(번들) — 로딩 전엔 기존 단순 카드로 보인다.
+    final healthParams = ref.watch(healthParamsProvider).valueOrNull;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -51,6 +55,7 @@ class GaugeScreen extends ConsumerWidget {
           targetYear,
           accounts,
           interestItems,
+          healthParams,
         ),
       ),
       bottomNavigationBar: const SafeArea(child: BannerAdWidget()),
@@ -65,6 +70,7 @@ class GaugeScreen extends ConsumerWidget {
     int targetYear,
     List<Account> accounts,
     List<InterestItem> interestItems,
+    HealthParams? healthParams,
   ) {
     final gauges = CashflowEngine.buildGauges(
       holdings: holdings,
@@ -133,31 +139,51 @@ class GaugeScreen extends ConsumerWidget {
               : null,
         ),
         const SizedBox(height: 14),
-        ..._healthCard(input, gauges.healthInsurance),
+        ..._healthCard(
+          input,
+          gauges.healthInsurance,
+          gauges.financialIncome.current,
+          healthParams,
+        ),
         const SizedBox(height: 40),
       ],
     );
   }
 }
 
-/// 건보 카드 — 가입 형태별로 기준·문구가 다르다 (2026-10 현행 기준).
-/// 공적연금·기타 소득은 '내 자산 › 공통 설정'에서 입력.
-List<Widget> _healthCard(RetirementInput input, GaugeStatus status) {
+/// 건보 카드 — 가입 형태별로 기준·문구가 다르다 (2026년 기준, v2.2 건보료나침반 엔진).
+/// 공적연금·그 밖의 소득·재산은 '내 자산 › 공통 설정 › 건강보험'에서 입력.
+List<Widget> _healthCard(
+  RetirementInput input,
+  GaugeStatus status,
+  int financialIncomeAnnual,
+  HealthParams? params,
+) {
+  final household = householdFrom(
+    input,
+    financialIncomeAnnual: financialIncomeAnnual,
+  );
+  final cards = <Widget>[];
   switch (input.healthInsType) {
     case HealthInsType.dependent:
-      return [
-        _GaugeCard(
-          title: '건강보험 피부양자 소득',
-          status: status,
-          overWarning: '2,000만원을 넘으면 피부양자 자격을 잃고 지역가입자로 바뀔 수 있어요',
-          referenceNote:
-              '합산: 금융소득(1,000만원 넘으면 전액) + 공적연금 전액 + 그 밖의 소득. '
-              '연금저축·IRP 인출은 들어가지 않아요. 사업자등록이 있는 사업소득은 금액과 관계없이, '
-              '재산은 따로 기준이 있어요.',
-        ),
-      ];
+      if (params == null) {
+        cards.add(
+          _GaugeCard(
+            title: '건강보험 피부양자 소득',
+            status: status,
+            overWarning: '2,000만원을 넘으면 피부양자 자격을 잃고 지역가입자로 바뀔 수 있어요',
+          ),
+        );
+      } else {
+        cards.add(
+          _DependentCard(
+            result: DependentJudge(params).judge(household),
+            propertyTaxBase: input.propertyTaxBase,
+          ),
+        );
+      }
     case HealthInsType.employee:
-      return [
+      cards.add(
         _GaugeCard(
           title: '월급 외 소득 (건보료 추가)',
           status: status,
@@ -166,32 +192,278 @@ List<Widget> _healthCard(RetirementInput input, GaugeStatus status) {
               '금융소득·공적연금·그 밖의 소득을 넉넉하게 전액 합산했어요. 실제로는 더 낮을 수 있어요. '
               '공제 기준을 1,000만원으로 낮추는 개편안이 논의 중이에요.',
         ),
-      ];
+      );
     case HealthInsType.regional:
-      return [
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.gray200),
+      if (params != null) {
+        cards.add(
+          _RegionalCard(
+            result: RegionalCalculator(params).calculate(
+              income: household.income,
+              propertyTaxBase: household.propertyTaxBase,
+            ),
+            propertyEntered: input.propertyTaxBase > 0,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        );
+      }
+  }
+  // 퇴직 전 월급을 넣었으면 퇴직 후 36개월 선택지 비교 (임의계속·지역·피부양자).
+  if (params != null && input.lastMonthlySalary > 0) {
+    cards
+      ..add(const SizedBox(height: 14))
+      ..add(
+        _RetireCompareCard(
+          result: RetirementComparison(params).compare(household),
+        ),
+      );
+  }
+  return cards;
+}
+
+String _manWon(int won) => '${CurrencyFormat.man(won)}만원';
+String _eok(int won) => CurrencyFormat.eokMan(won);
+
+class _HealthShell extends StatelessWidget {
+  const _HealthShell({required this.title, required this.children, this.badge});
+
+  final String title;
+  final Widget? badge;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.gray200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Text('건강보험 (지역가입자)', style: AppTextStyles.h4),
-              const SizedBox(height: 8),
-              Text(
-                '지역가입자는 문턱 없이 소득·재산으로 건보료가 정해져요. '
-                '금융소득(1,000만원 넘으면 전액)·공적연금·그 밖의 소득이 늘면 건보료도 함께 늘어요. '
-                '연금저축·IRP 인출은 들어가지 않아요.',
-                style: AppTextStyles.body.copyWith(color: AppColors.gray700),
-              ),
+              Flexible(child: Text(title, style: AppTextStyles.h4)),
+              if (badge != null) ...[const SizedBox(width: 8), badge!],
             ],
           ),
+          const SizedBox(height: 12),
+          ...children,
+        ],
+      ),
+    );
+  }
+}
+
+Widget _pill(String text, Color color) => Container(
+  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+  decoration: BoxDecoration(
+    color: color.withValues(alpha: 0.12),
+    borderRadius: BorderRadius.circular(8),
+  ),
+  child: Text(text, style: AppTextStyles.labelSmall.copyWith(color: color)),
+);
+
+Widget _note(String text) => Padding(
+  padding: const EdgeInsets.only(top: 10),
+  child: Text(
+    text,
+    style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
+  ),
+);
+
+/// 게이지 막대 + "연간 ○ ÷ 기준 ○ (○%)" 한 줄 — [_GaugeCard] 와 같은 색 규칙.
+class _GaugeBar extends StatelessWidget {
+  const _GaugeBar({required this.status});
+
+  final GaugeStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final ratio = status.ratio;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: ratio.clamp(0.0, 1.0).toDouble(),
+              minHeight: 12,
+              backgroundColor: AppColors.gray100,
+              valueColor: AlwaysStoppedAnimation<Color>(
+                _GaugeCard._gaugeColor(ratio),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            '연 소득 ${_GaugeCard._man(status.current)}만원 ÷ '
+            '한도 ${_GaugeCard._man(status.threshold)}만원 (${_GaugeCard._pct(ratio)})',
+            style: AppTextStyles.body.copyWith(
+              color: AppColors.gray700,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 피부양자 판정 — 소득(재산 구간별 한도)·재산·사업소득.
+class _DependentCard extends StatelessWidget {
+  const _DependentCard({required this.result, required this.propertyTaxBase});
+
+  final DependentResult result;
+  final int propertyTaxBase;
+
+  static const _reasonText = {
+    DependentReason.incomeOverLimit: '연 소득이 2,000만원을 넘어요',
+    DependentReason.incomeOverMidLimit: '재산 5.4억~9억 구간이라 소득 한도가 1,000만원인데, 넘어요',
+    DependentReason.propertyOverLimit: '재산 과세표준이 9억원을 넘어요',
+    DependentReason.businessRegistered: '사업자등록이 있고 사업소득이 있어요',
+    DependentReason.businessUnregistered: '사업자등록 없는 사업소득이 500만원을 넘어요',
+    DependentReason.spouseJointFail: '배우자가 소득 요건을 넘어요',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final ok = result.isEligible;
+    final bandText = switch (result.band) {
+      PropertyBand.low => '5.4억 이하 구간 (소득 한도 2,000만원)',
+      PropertyBand.mid => '5.4억~9억 구간 (소득 한도 1,000만원)',
+      PropertyBand.over => '9억 초과 (재산 요건 초과)',
+    };
+    return _HealthShell(
+      title: '건강보험 피부양자',
+      badge: ok
+          ? _pill('계산상 유지', AppColors.success)
+          : _pill('계산상 탈락 가능', AppColors.error),
+      children: [
+        if (result.band != PropertyBand.over)
+          _GaugeBar(
+            status: GaugeStatus(
+              current: result.totalIncome,
+              threshold: result.applicableIncomeLimit,
+            ),
+          ),
+        Text(
+          propertyTaxBase > 0
+              ? '재산 과세표준 ${_eok(propertyTaxBase)} — $bandText'
+              : '재산 미입력 — 5.4억 이하로 가정',
+          key: const Key('dependent_band'),
+          style: AppTextStyles.body.copyWith(color: AppColors.gray700),
         ),
-      ];
+        for (final r in result.failReasons)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              '· ${_reasonText[r] ?? r}',
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.error,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        _note(
+          '합산: 금융소득(1,000만원 넘으면 전액) + 공적연금 + 그 밖의 소득. 연금저축·IRP 인출은 '
+          '들어가지 않아요. 배우자도 피부양자라면 배우자 소득·재산도 함께 봐요. 2026년 기준 추정이에요.',
+        ),
+      ],
+    );
+  }
+}
+
+/// 지역가입자 예상 월 건보료 (소득분 + 재산분 + 장기요양).
+class _RegionalCard extends StatelessWidget {
+  const _RegionalCard({required this.result, required this.propertyEntered});
+
+  final RegionalResult result;
+  final bool propertyEntered;
+
+  @override
+  Widget build(BuildContext context) {
+    return _HealthShell(
+      title: '건강보험 (지역가입자)',
+      children: [
+        Text(
+          '예상 월 건보료 ${_manWon(result.total)}',
+          key: const Key('regional_total'),
+          style: AppTextStyles.h3.copyWith(color: AppColors.navy),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          '소득분 ${_manWon(result.incomePremium)} · 재산분 ${_manWon(result.propertyPremium)}'
+          ' · 장기요양 ${_manWon(result.ltcPremium)}',
+          style: AppTextStyles.body.copyWith(color: AppColors.gray700),
+        ),
+        if (result.clampedToMin) _note('최저 보험료가 적용됐어요.'),
+        if (result.clampedToMax) _note('상한 보험료가 적용됐어요.'),
+        _note(
+          '${propertyEntered ? '' : '재산을 넣지 않아 재산분은 0으로 계산했어요. '}'
+          '공적연금·금융소득(1,000만원 넘으면 전액)·그 밖의 소득과 재산으로 계산한 2026년 기준 추정이에요. '
+          '자동차·부양가족에 따라 달라질 수 있어요.',
+        ),
+      ],
+    );
+  }
+}
+
+/// 퇴직 후 36개월 — 임의계속가입·지역가입·피부양자 비교. "추천" 대신 계산상 비교만.
+class _RetireCompareCard extends StatelessWidget {
+  const _RetireCompareCard({required this.result});
+
+  final ComparisonResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    final cheapest = switch (result.recommended) {
+      ComparisonOption.dependent => '피부양자',
+      ComparisonOption.voluntary => '임의계속가입',
+      ComparisonOption.regional => '지역가입',
+    };
+    Widget row(String label, String value) => Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          Expanded(child: Text(label, style: AppTextStyles.body)),
+          Text(
+            value,
+            style: AppTextStyles.body.copyWith(
+              fontWeight: FontWeight.w600,
+              fontFeatures: AppTextStyles.tabular,
+            ),
+          ),
+        ],
+      ),
+    );
+    return _HealthShell(
+      title: '퇴직 후 건보료 비교 (36개월)',
+      children: [
+        row(
+          '임의계속가입',
+          '월 ${_manWon(result.voluntaryMonthly)} · 36개월 ${_manWon(result.voluntary36Total)}',
+        ),
+        row(
+          '지역가입',
+          '월 ${_manWon(result.regionalMonthly)} · 36개월 ${_manWon(result.regional36Total)}',
+        ),
+        row('피부양자', result.dependentEligible ? '계산상 가능 (0원)' : '계산상 어려움'),
+        const SizedBox(height: 4),
+        Text(
+          '계산상 부담이 가장 적은 쪽: $cheapest',
+          key: const Key('retire_compare_cheapest'),
+          style: AppTextStyles.body.copyWith(color: AppColors.navy),
+        ),
+        _note(
+          '임의계속가입은 퇴직 후 지역가입 첫 고지서를 받은 날부터 2개월 안에 신청해요. '
+          '퇴직 전 월급으로 계산한 2026년 기준 추정이며, 실제 선택 전 공단에 확인하세요.',
+        ),
+      ],
+    );
   }
 }
 

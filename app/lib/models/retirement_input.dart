@@ -32,6 +32,15 @@ class RetirementInput {
   /// 그 밖의 연 소득(원) — 사업·임대·기타. 월급(근로소득)은 넣지 않는다.
   final int otherAnnualIncome;
 
+  /// 건보 판정·지역 보험료용 (v2.2, 건보료나침반 이식). 재산세 과세표준(원).
+  final int propertyTaxBase;
+
+  /// 사업자등록이 있으면 사업소득이 1원만 있어도 피부양자에서 빠진다.
+  final bool businessRegistered;
+
+  /// 퇴직 전 12개월 평균 월급(보수월액, 원) — 임의계속가입 비교용. 0 = 입력 안 함.
+  final int lastMonthlySalary;
+
   /// 계획 탭 정확도 입력 (v2.1). null = 모름(보수적 가정), 0 = 없음.
   /// 연금저축 중 세액공제 안 받고 넣은 원금(비과세로 꺼냄).
   final int? pensionNonDeducted;
@@ -58,6 +67,9 @@ class RetirementInput {
     this.healthInsType = HealthInsType.dependent,
     this.publicPensionMonthly = 0,
     this.otherAnnualIncome = 0,
+    this.propertyTaxBase = 0,
+    this.businessRegistered = false,
+    this.lastMonthlySalary = 0,
     this.pensionNonDeducted,
     this.irpRetirement,
     this.retirementTaxRatePct,
@@ -83,6 +95,9 @@ class RetirementInput {
     healthInsType: healthInsType,
     publicPensionMonthly: publicPensionMonthly,
     otherAnnualIncome: otherAnnualIncome,
+    propertyTaxBase: propertyTaxBase,
+    businessRegistered: businessRegistered,
+    lastMonthlySalary: lastMonthlySalary,
     pensionNonDeducted: pensionNonDeducted,
     irpRetirement: irpRetirement,
     retirementTaxRatePct: retirementTaxRatePct,
@@ -124,6 +139,9 @@ class RetirementInput {
     HealthInsType? healthInsType,
     int? publicPensionMonthly,
     int? otherAnnualIncome,
+    int? propertyTaxBase,
+    bool? businessRegistered,
+    int? lastMonthlySalary,
   }) {
     final nextStart = clearWithdrawalStartMonth
         ? null
@@ -145,6 +163,9 @@ class RetirementInput {
       healthInsType: healthInsType ?? this.healthInsType,
       publicPensionMonthly: publicPensionMonthly ?? this.publicPensionMonthly,
       otherAnnualIncome: otherAnnualIncome ?? this.otherAnnualIncome,
+      propertyTaxBase: propertyTaxBase ?? this.propertyTaxBase,
+      businessRegistered: businessRegistered ?? this.businessRegistered,
+      lastMonthlySalary: lastMonthlySalary ?? this.lastMonthlySalary,
       pensionNonDeducted: pensionNonDeducted,
       irpRetirement: irpRetirement,
       retirementTaxRatePct: retirementTaxRatePct,
@@ -164,6 +185,9 @@ class RetirementInput {
     'health_ins_type': healthInsType.name,
     'public_pension_monthly': publicPensionMonthly,
     'other_annual_income': otherAnnualIncome,
+    'property_tax_base': propertyTaxBase,
+    'business_registered': businessRegistered,
+    'last_monthly_salary': lastMonthlySalary,
     if (pensionNonDeducted != null) 'pension_non_deducted': pensionNonDeducted,
     if (irpRetirement != null) 'irp_retirement': irpRetirement,
     if (retirementTaxRatePct != null)
@@ -203,6 +227,9 @@ class RetirementInput {
       publicPensionMonthly:
           (json['public_pension_monthly'] as num?)?.toInt() ?? 0,
       otherAnnualIncome: (json['other_annual_income'] as num?)?.toInt() ?? 0,
+      propertyTaxBase: (json['property_tax_base'] as num?)?.toInt() ?? 0,
+      businessRegistered: json['business_registered'] as bool? ?? false,
+      lastMonthlySalary: (json['last_monthly_salary'] as num?)?.toInt() ?? 0,
       pensionNonDeducted: (json['pension_non_deducted'] as num?)?.toInt(),
       irpRetirement: (json['irp_retirement'] as num?)?.toInt(),
       retirementTaxRatePct: (json['retirement_tax_rate_pct'] as num?)
@@ -239,6 +266,9 @@ class RetirementInput {
           healthInsType == other.healthInsType &&
           publicPensionMonthly == other.publicPensionMonthly &&
           otherAnnualIncome == other.otherAnnualIncome &&
+          propertyTaxBase == other.propertyTaxBase &&
+          businessRegistered == other.businessRegistered &&
+          lastMonthlySalary == other.lastMonthlySalary &&
           pensionNonDeducted == other.pensionNonDeducted &&
           irpRetirement == other.irpRetirement &&
           retirementTaxRatePct == other.retirementTaxRatePct &&
@@ -258,6 +288,9 @@ class RetirementInput {
     healthInsType,
     publicPensionMonthly,
     otherAnnualIncome,
+    propertyTaxBase,
+    businessRegistered,
+    lastMonthlySalary,
     pensionNonDeducted,
     irpRetirement,
     retirementTaxRatePct,

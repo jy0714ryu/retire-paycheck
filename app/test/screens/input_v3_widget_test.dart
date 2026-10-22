@@ -28,9 +28,9 @@ void main() {
     expect(find.text('연금저축'), findsOneWidget);
     expect(find.text('IRP'), findsOneWidget);
 
-    // 잔액 필드는 ISA·연금저축·IRP 만(일반계좌 제외) → 3개 + 공통 설정의
-    // 공적연금·그 밖의 소득(v2.0.2) 2개 = 5개. 인출 토글 OFF라 월 인출 필드는 없다.
-    expect(find.byType(AmountInputField), findsNWidgets(5));
+    // 잔액 필드는 ISA·연금저축·IRP 만(일반계좌 제외) → 3개. 건강보험 입력은 v2.2부터
+    // 접힘 카드(기본 접힘)라 그려지지 않는다. 인출 토글 OFF라 월 인출 필드는 없다.
+    expect(find.byType(AmountInputField), findsNWidgets(3));
   });
 
   testWidgets('계좌별 인출 스위치 ON 시 해당 계좌 카드에 월 인출 필드 노출',
