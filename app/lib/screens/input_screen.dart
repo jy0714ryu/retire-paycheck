@@ -279,6 +279,17 @@ class _AccountCard extends ConsumerWidget {
             )
           else
             ...entries.map((e) => _HoldingRow(index: e.key, holding: e.value)),
+          // 연금계좌 배당은 월급(실수령)에 안 잡힌다 — "반영 안 됨"으로 오해하지 않게.
+          if (entries.isNotEmpty && account.type == AccountType.pension)
+            Padding(
+              key: ValueKey('reinvestNote_${account.id}'),
+              padding: const EdgeInsets.only(top: 4, bottom: 8),
+              child: Text(
+                '이 계좌 배당은 통장으로 나오지 않고 계좌 안에서 재투자돼요. '
+                "'이번 달' 화면 아래 '연금계좌 안 배당'에서 볼 수 있어요.",
+                style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
+              ),
+            ),
 
           // 유형 isa·pension: 현금성 잔액 + 계좌별 인출 개시 스위치 +
           // (인출 ON 시) 월 인출·소진 캡션·재원 안내.

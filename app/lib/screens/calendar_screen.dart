@@ -921,7 +921,7 @@ class _ReinvestAccordion extends StatelessWidget {
             color: AppColors.gray500,
           ),
           title: Text(
-            '계좌 내 재투자 +${fmt.format(gross)}원',
+            '연금계좌 안 배당 (재투자) +${fmt.format(gross)}원',
             style: AppTextStyles.body.copyWith(color: AppColors.gray600),
           ),
           children: [
