@@ -13,6 +13,7 @@ import '../theme/app_text_styles.dart';
 import '../widgets/health_inputs_card.dart';
 import '../widgets/input_widgets.dart';
 import '../widgets/keyboard_safe_back.dart';
+import '../widgets/settings_button.dart';
 
 /// 화면1 — 자산 입력 (v3: 계좌 중심 IA).
 ///
@@ -32,7 +33,10 @@ class InputScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('내 자산')),
+      appBar: AppBar(
+        title: const Text('내 자산'),
+        actions: const [SettingsButton()],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -279,14 +283,13 @@ class _AccountCard extends ConsumerWidget {
             )
           else
             ...entries.map((e) => _HoldingRow(index: e.key, holding: e.value)),
-          // 연금·ISA 계좌 배당은 통장 입금에 안 잡힌다 — "반영 안 됨"으로 오해하지 않게.
+          // 연금·ISA 계좌 배당은 총계(은퇴 월급)에 안 잡힌다 — "반영 안 됨"으로 오해하지 않게.
           if (entries.isNotEmpty && account.type != AccountType.general)
             Padding(
               key: ValueKey('reinvestNote_${account.id}'),
               padding: const EdgeInsets.only(top: 4, bottom: 8),
               child: Text(
-                '이 계좌 배당은 통장으로 나오지 않고 계좌 안에 남아요. '
-                "'이번 달 › 배당 전체'에서 볼 수 있어요.",
+                "이 계좌 배당은 꺼내기 전까지 계좌에 남아요 · '이번 달 › 배당금'에서 확인",
                 style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
               ),
             ),
@@ -1087,7 +1090,7 @@ class _WithdrawalStartMonthField extends ConsumerWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          '은퇴가 미래라면 인출 시작 월을 정하세요. 그 전 달은 인출 없이 배당만 표시됩니다.',
+          '인출 시작 월을 정하면 그 전 달은 배당만 보여요',
           style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
         ),
       ],
@@ -1237,7 +1240,7 @@ class _InterestItemsSection extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: Text(
-              '등록한 이자소득 항목이 없습니다.\n예금 이자 등을 추가하면 금융소득종합과세 게이지에 합산됩니다.',
+              '이자소득 없음\n예금 이자를 넣으면 금융소득 합계에 더해져요',
               style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
             ),
           )

@@ -14,6 +14,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 import '../utils/currency_format.dart';
 import '../widgets/banner_ad_widget.dart';
+import '../widgets/settings_button.dart';
 
 /// 화면3 — 세금 임계치 게이지 3종.
 ///
@@ -42,7 +43,10 @@ class GaugeScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('세금 문턱 경보')),
+      appBar: AppBar(
+        title: const Text('세금 문턱'),
+        actions: const [SettingsButton()],
+      ),
       body: asyncEvents.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) =>
@@ -108,7 +112,7 @@ class GaugeScreen extends ConsumerWidget {
         Text('$targetYear년 세금 임계치', style: AppTextStyles.h3),
         const SizedBox(height: 4),
         Text(
-          '연간 누계가 기준선에 얼마나 가까운지 보여줍니다 · 2026년 세법·건보 기준',
+          '올해 누계와 기준선 · 2026년 기준',
           style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
         ),
         const SizedBox(height: 20),
@@ -127,15 +131,14 @@ class GaugeScreen extends ConsumerWidget {
         _GaugeCard(
           title: '사적연금 저율과세 한도',
           status: gauges.pensionLowRate,
-          overWarning: '1,500만원을 넘으면 초과분이 아니라 전액이 16.5% 과세로 전환될 수 있습니다',
+          overWarning: '1,500만원을 넘으면 전액 16.5% 과세될 수 있어요',
           isReference: pensionIsReference,
           referenceNote: pensionIsReference
               ? '연금 인출 전 (참고용)'
               : ((input.pensionNonDeducted ?? 0) > 0 ||
                     (input.irpRetirement ?? 0) > 0)
               // 게이지는 월 인출 합계로 센다 — 어느 재원에서 꺼낼지는 계획 탭이 정한다.
-              ? '세액공제 안 받은 원금·퇴직금에서 꺼낸 돈은 이 한도에 들어가지 않아요. '
-                    '실제 여유는 더 클 수 있어요 (계획 탭에서 순서 확인).'
+              ? '공제 안 받은 원금·퇴직금 인출은 한도에서 빠져요 — 여유가 더 클 수 있어요'
               : null,
         ),
         const SizedBox(height: 14),
@@ -171,10 +174,10 @@ List<Widget> _healthCard(
           _GaugeCard(
             title: '건강보험 피부양자 소득',
             status: status,
-            overWarning: '2,000만원을 넘으면 피부양자 자격을 잃고 지역가입자로 바뀔 수 있어요',
+            overWarning: '2,000만원을 넘으면 피부양자에서 빠질 수 있어요',
             referenceNote:
-                '합산: 금융소득(1,000만원 넘으면 전액) + 공적연금 + 그 밖의 소득. '
-                '연금저축·IRP 인출은 들어가지 않아요.',
+                '금융소득(1,000만원 초과 시 전액) + 공적연금 + 기타 소득 · '
+                '연금저축·IRP 인출 제외',
           ),
         );
       } else {
@@ -190,10 +193,8 @@ List<Widget> _healthCard(
         _GaugeCard(
           title: '월급 외 소득 (건보료 추가)',
           status: status,
-          overWarning: '2,000만원 넘는 부분에 건보료가 추가로 붙어요 (소득월액보험료)',
-          referenceNote:
-              '금융소득·공적연금·그 밖의 소득을 넉넉하게 전액 합산했어요. 실제로는 더 낮을 수 있어요. '
-              '공제 기준을 1,000만원으로 낮추는 개편안이 논의 중이에요.',
+          overWarning: '2,000만원 넘는 부분에 건보료 추가',
+          referenceNote: '넉넉히 전액 합산 — 실제는 더 낮을 수 있어요 · 1,000만원 하향 개편 논의 중',
         ),
       );
     case HealthInsType.regional:
@@ -201,7 +202,7 @@ List<Widget> _healthCard(
         cards.add(
           const _HealthShell(
             title: '건강보험 (지역가입자)',
-            children: [Text('지역가입자는 소득·재산으로 건보료가 정해져요. 계산 기준을 불러오는 중이에요.')],
+            children: [Text('소득·재산 기준을 불러오는 중이에요')],
           ),
         );
       } else {
@@ -336,7 +337,7 @@ class _DependentCard extends StatelessWidget {
 
   static const _reasonText = {
     DependentReason.incomeOverLimit: '연 소득이 2,000만원을 넘어요',
-    DependentReason.incomeOverMidLimit: '재산 5.4억~9억 구간이라 소득 한도가 1,000만원인데, 넘어요',
+    DependentReason.incomeOverMidLimit: '재산 5.4억~9억은 소득 한도 1,000만원 — 넘어요',
     DependentReason.propertyOverLimit: '재산 과세표준이 9억원을 넘어요',
     DependentReason.businessRegistered: '사업자등록이 있고 사업소득이 있어요',
     DependentReason.businessUnregistered: '사업자등록 없는 사업소득이 500만원을 넘어요',
@@ -383,8 +384,8 @@ class _DependentCard extends StatelessWidget {
             ),
           ),
         _note(
-          '합산: 금융소득(1,000만원 넘으면 전액) + 공적연금 + 그 밖의 소득. 연금저축·IRP 인출은 '
-          '들어가지 않아요. 배우자도 피부양자라면 배우자 소득·재산도 함께 봐요. 2026년 기준 추정이에요.',
+          '금융소득(1,000만원 초과 시 전액) + 공적연금 + 기타 소득 · 연금저축·IRP 인출 제외 · '
+          '배우자도 함께 봐요 · 2026년 기준 추정',
         ),
       ],
     );
@@ -417,9 +418,8 @@ class _RegionalCard extends StatelessWidget {
         if (result.clampedToMin) _note('최저 보험료가 적용됐어요.'),
         if (result.clampedToMax) _note('상한 보험료가 적용됐어요.'),
         _note(
-          '${propertyEntered ? '' : '재산을 넣지 않아 재산분은 0으로 계산했어요. '}'
-          '공적연금·금융소득(1,000만원 넘으면 전액)·그 밖의 소득과 재산으로 계산한 2026년 기준 추정이에요. '
-          '자동차·부양가족에 따라 달라질 수 있어요.',
+          '${propertyEntered ? '' : '재산 미입력 → 재산분 0 · '}'
+          '2026년 기준 추정 · 자동차·부양가족에 따라 달라져요',
         ),
       ],
     );
@@ -477,9 +477,8 @@ class _RetireCompareCard extends StatelessWidget {
           style: AppTextStyles.body.copyWith(color: AppColors.navy),
         ),
         _note(
-          '${propertyEntered ? '' : '재산 미입력 — 지역가입 재산분은 0으로 계산했어요. '}'
-          '임의계속가입은 퇴직 후 지역가입 첫 고지서를 받은 날부터 2개월 안에 신청해요. '
-          '퇴직 전 월급으로 계산한 2026년 기준 추정이며, 실제 선택 전 공단에 확인하세요.',
+          '${propertyEntered ? '' : '재산 미입력 → 지역 재산분 0 · '}'
+          '임의계속은 지역 첫 고지서 후 2개월 안 신청 · 선택 전 공단 확인',
         ),
       ],
     );

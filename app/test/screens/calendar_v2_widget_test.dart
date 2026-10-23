@@ -79,15 +79,22 @@ const _input = RetirementInput(
   isWithdrawing: false,
 );
 
-/// 이번 달 탭을 '배당 전체' 보기로 전환 (setUp 은 '통장 입금' 고정).
-Future<void> _showAllDividends(WidgetTester tester) async {
+/// 이번 달 탭 보기 전환 (setUp 은 '총계' 고정). 기본 '배당금'.
+Future<void> _showAllDividends(
+  WidgetTester tester, [
+  String label = '배당금',
+]) async {
+  final segment = find.descendant(
+    of: find.byKey(const ValueKey('calendarViewToggle')),
+    matching: find.text(label),
+  );
   // 목록 아래로 내려가 있으면 전환 버튼이 아직 안 그려져 있다 — 위로 올린다.
-  if (find.text('배당 전체').evaluate().isEmpty) {
-    await tester.scrollUntilVisible(find.text('배당 전체'), -300);
+  if (segment.evaluate().isEmpty) {
+    await tester.scrollUntilVisible(segment, -300);
   }
-  await tester.ensureVisible(find.text('배당 전체'));
+  await tester.ensureVisible(segment);
   await tester.pumpAndSettle();
-  await tester.tap(find.text('배당 전체'));
+  await tester.tap(segment);
   await tester.pumpAndSettle();
 }
 
@@ -146,7 +153,7 @@ Future<void> _pump(
 
 void main() {
   setUp(() {
-    // 기존 회귀는 '통장 입금' 보기 기준 (v2.1 기본은 '배당 전체').
+    // 기존 회귀는 '총계' 보기 기준 (구 키 false → 총계, v2.3).
     SharedPreferences.setMockInitialValues({'calendar_view': false});
   });
 
@@ -168,7 +175,7 @@ void main() {
       initialMonth: DateTime(2026, 4),
     );
 
-    // v2.1: ISA 배당은 계좌 안 — '배당 전체' 보기에서 카드 = 세전 100만원(일반 50 + ISA 50).
+    // ISA 배당은 계좌에 남음 — '배당금' 보기에서 카드 = 세전 100만원(일반 50 + ISA 50).
     await _showAllDividends(tester);
     expect(findWon('100'), findsOneWidget);
     // 상세: 전체 모드에선 일반주·ISA주 둘 다 노출(스크롤로 뷰포트에 올림).
@@ -212,14 +219,17 @@ void main() {
       initialMonth: DateTime(2026, 4),
     );
 
-    // 통장 입금 보기: 일반계좌 라인 gross 500,000 × (1-0.154) = 423,000 → 세후 "42.3만원"
+    // 총계 보기: 일반계좌 라인 gross 500,000 × (1-0.154) = 423,000 → 세후 "42.3만원"
     // (엔진 amountNet 그대로 — 화면에서 재계산 금지).
     final generalLine = find.text('일반주');
     await tester.scrollUntilVisible(generalLine, 200);
-    // 통장 보기 카드(ISA 배당은 계좌 안이라 일반 세후만) + 일반 라인 = 42.3 두 곳.
+    // 총계 카드(ISA 배당은 계좌에 남아 일반 세후만) + 일반 라인 = 42.3 두 곳.
     expect(findWon('42.3'), findsNWidgets(2));
+    // ISA 라인은 총계에 없음 — 하단 한 줄 안내로만.
+    expect(find.text('ISA주'), findsNothing);
+    expect(find.textContaining('ISA·연금 계좌 배당 50만원은'), findsOneWidget);
 
-    // v2.1 배당 전체 보기: 카드·막대와 같은 세전 기준 + ISA 라인에 "계좌 안" 배지.
+    // 배당금 보기: 카드·막대와 같은 세전 기준 + ISA 라인에 계좌 이름 배지.
     await _showAllDividends(tester);
     await tester.scrollUntilVisible(find.text('일반주'), 200);
     expect(findWon('42.3'), findsNothing);
@@ -229,10 +239,12 @@ void main() {
     final isaLine = find.text('ISA주');
     await tester.scrollUntilVisible(isaLine, 200);
     expect(findWon('50'), findsNWidgets(2)); // 일반 세전 50 + ISA 50
-    expect(find.text('계좌 안'), findsOneWidget);
+    // 'ISA' = 필터 칩 + ISA 라인 배지. '계좌 안' 용어는 폐지(v2.3).
+    expect(find.text('ISA'), findsNWidgets(2));
+    expect(find.text('계좌 안'), findsNothing);
   });
 
-  testWidgets('연금계좌 배당 → 재투자 아코디언(기본 접힘) + 펼치면 과세이연 캡션', (
+  testWidgets('연금계좌 배당 → 총계엔 한 줄 안내, 배당금 보기엔 계좌 이름 배지 + 안내(v2.3)', (
     WidgetTester tester,
   ) async {
     await _pump(
@@ -249,19 +261,16 @@ void main() {
       initialMonth: DateTime(2026, 4),
     );
 
-    // 재투자 세전 = 500 × 1,000 = 500,000원. 접힌 제목 노출.
-    final title = find.text('계좌 안 배당 (연금·ISA) +500,000원');
-    await tester.scrollUntilVisible(title, 200);
-    expect(title, findsOneWidget);
-    // 기본 접힘 → 캡션 미노출.
-    expect(find.textContaining('인출 전까지 계좌 안에 남습니다'), findsNothing);
+    // 세전 = 500 × 1,000 = 500,000원 → 총계에선 빠지고 안내만.
+    final note = find.text('ISA·연금 계좌 배당 50만원은 계좌에 쌓여 여기엔 빠져요');
+    await tester.scrollUntilVisible(note, 200);
+    expect(note, findsOneWidget);
+    expect(find.text('연금주'), findsNothing);
 
-    // 펼치면 과세이연 캡션 노출.
-    await tester.ensureVisible(title);
-    await tester.pumpAndSettle();
-    await tester.tap(title);
-    await tester.pumpAndSettle();
-    expect(find.textContaining('인출 전까지 계좌 안에 남습니다'), findsOneWidget);
+    await _showAllDividends(tester);
+    await tester.scrollUntilVisible(find.text('연금주'), 200);
+    expect(find.text('연금저축'), findsOneWidget);
+    expect(find.text('ISA·연금 계좌 배당은 꺼내기 전까지 계좌에 남아요'), findsOneWidget);
   });
 
   testWidgets('이자소득 존재 시 상단 카드 서브라인에 이자 병기', (WidgetTester tester) async {
@@ -275,8 +284,8 @@ void main() {
       initialMonth: DateTime(2026, 4),
     );
 
-    // 이자 월 균등 = 100,000 → 이자 10만 병기.
-    expect(find.textContaining('+ 이자 10만'), findsOneWidget);
+    // 이자 월 균등 = 100,000 → 세후 84,600 → "이자 8.5만" 병기.
+    expect(find.text('배당 42.3만 · 이자 8.5만'), findsOneWidget);
   });
 
   testWidgets('연금 인출 모드 OFF → 필터가 all/연금 이어도 달력에 연금 타일 없음(I1)', (
@@ -290,13 +299,12 @@ void main() {
       initialMonth: DateTime(2026, 4),
     );
 
-    // 전체(all) 필터에서도 "계좌 인출" 섹션 자체가 렌더되지 않아야 한다.
-    expect(find.text('계좌 인출'), findsNothing);
+    // 총계에서 연금 인출 타일 자체가 렌더되지 않아야 한다.
+    expect(find.text('연금 인출'), findsNothing);
 
-    // '연금' 칩으로 바꿔도(과거엔 이 필터에서 무조건 노출) 여전히 미노출.
-    await tester.tap(find.widgetWithText(ChoiceChip, '연금'));
-    await tester.pumpAndSettle();
-    expect(find.text('계좌 인출'), findsNothing);
+    // 연금 보기로 바꾸면 빈 안내(인출 개시 유도).
+    await _showAllDividends(tester, '연금');
+    expect(find.textContaining('인출 중인 계좌가 없어요'), findsOneWidget);
   });
 
   testWidgets('전역 OFF(신규 유저 기본)라도 계좌별 인출 ON 이면 연금 타일·절벽 캡션 노출(C1 회귀)', (
@@ -329,7 +337,15 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     expect(cliff, findsOneWidget);
-    expect(find.text('계좌 인출'), findsWidgets);
+    expect(find.text('연금 인출'), findsOneWidget);
+
+    // 연금 보기: 계좌별 타일 + 절벽 안내.
+    await _showAllDividends(tester, '연금');
+    await tester.scrollUntilVisible(find.text('연금인출'), 200);
+    expect(find.text('연금인출'), findsOneWidget);
+    final cliffNote = find.textContaining('전액 16.5% 적용');
+    await tester.scrollUntilVisible(cliffNote, 200);
+    expect(cliffNote, findsOneWidget);
   });
 
   testWidgets('같은 corpCode 를 일반+ISA 두 계좌에 나눠 보유 → 각 라인 수량이 계좌 몫과 일치(M1)', (
@@ -369,7 +385,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    // v2.1: ISA 몫은 계좌 안 — 두 라인을 함께 보려면 '배당 전체' 보기.
+    // ISA 몫은 계좌에 남음 — 두 라인을 함께 보려면 '배당금' 보기.
     await _showAllDividends(tester);
 
     // 두 라인 모두 이름이 "분할보유주"로 동일해 scrollUntilVisible 에 그대로 쓰면
@@ -388,7 +404,7 @@ void main() {
     expect(find.text('분할보유주'), findsNWidgets(2));
   });
 
-  testWidgets('v2.1 기본 보기 = 배당 전체, 통장 입금으로 바꾸면 카드 제목이 바뀌고 선택이 저장된다', (
+  testWidgets('v2.3 기본 보기 = 총계, 배당금으로 바꾸면 카드 제목이 바뀌고 선택이 저장된다', (
     WidgetTester tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
@@ -398,11 +414,60 @@ void main() {
       events: [_eventGeneral],
       initialMonth: DateTime(2026, 4),
     );
-    expect(find.text('이번 달 배당 총액 (세전)'), findsOneWidget);
-    await tester.tap(find.text('통장 입금'));
-    await tester.pumpAndSettle();
-    expect(find.text('이번 달 세후 은퇴 월급'), findsOneWidget);
+    expect(find.text('4월 은퇴 월급 (세후)'), findsOneWidget);
+    await _showAllDividends(tester);
+    expect(find.text('4월 배당금 (세전)'), findsOneWidget);
     final prefs = await SharedPreferences.getInstance();
-    expect(prefs.getBool('calendar_view'), isFalse);
+    expect(prefs.getString('calendar_view_mode'), 'dividends');
+  });
+
+  testWidgets('구 저장값 calendar_view=true(배당 전체) → 배당금 보기로 이어짐', (
+    WidgetTester tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({'calendar_view': true});
+    await _pump(
+      tester,
+      holdings: const [Holding(corpCode: 'A', corpName: '일반주', shares: 1000)],
+      events: [_eventGeneral],
+      initialMonth: DateTime(2026, 4),
+    );
+    expect(find.text('4월 배당금 (세전)'), findsOneWidget);
+  });
+
+  testWidgets('연금 보기 — 인출 시작월 전 달은 계좌 타일 대신 시작 안내(게이트 회귀 가드)', (
+    WidgetTester tester,
+  ) async {
+    await _pump(
+      tester,
+      input: _input.copyWith(withdrawalStartMonth: DateTime(2026, 10)),
+      accounts: const [
+        Account(
+          id: 'wp',
+          name: '연금인출',
+          type: AccountType.pension,
+          monthlyWithdrawal: 1000000,
+          isWithdrawing: true,
+        ),
+      ],
+      initialMonth: DateTime(2026, 4),
+    );
+    await _showAllDividends(tester, '연금');
+    expect(find.text('2026년 10월부터 인출해요'), findsOneWidget);
+    expect(find.text('연금인출'), findsNothing);
+  });
+
+  testWidgets('배당금 보기 — 배당 없는 계좌 칩을 눌러도 차트는 남는다', (tester) async {
+    await _pump(
+      tester,
+      holdings: const [Holding(corpCode: 'A', corpName: '일반주', shares: 1000)],
+      events: [_eventGeneral],
+      initialMonth: DateTime(2026, 4),
+    );
+    await _showAllDividends(tester);
+    await tester.tap(find.widgetWithText(ChoiceChip, 'ISA'));
+    await tester.pumpAndSettle();
+    final total = find.byKey(const ValueKey('yearlyTotal'));
+    await tester.scrollUntilVisible(total, 100);
+    expect(tester.widget<Text>(total).data, '올해 배당 0만원');
   });
 }
