@@ -106,7 +106,7 @@ void main() {
     await t.tap(find.text('총계'));
     await t.pumpAndSettle();
 
-    await t.tap(find.byIcon(Icons.timeline_outlined));
+    await t.tap(find.byIcon(Icons.format_list_numbered_rounded));
     await t.pumpAndSettle();
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('${_dir}2_plan.png'));
     // 연도별 표 펼친 화면 (스토어용).

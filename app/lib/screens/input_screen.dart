@@ -1058,7 +1058,7 @@ class _CommonSettingsCard extends ConsumerWidget {
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: Text(
-                '어떤 순서로 빼야 세금을 아낄까? → 계획 탭에서 비교',
+                '어떤 순서로 빼야 세금을 아낄까? → 인출 순서 탭에서 비교',
                 style: AppTextStyles.captionBold.copyWith(
                   color: AppColors.navy,
                 ),

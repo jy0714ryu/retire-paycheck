@@ -24,7 +24,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('이번 달'), findsWidgets);
-      expect(find.text('계획'), findsWidgets);
+      expect(find.text('인출 순서'), findsWidgets);
       expect(find.text('세금'), findsWidgets);
       expect(find.text('내 자산'), findsWidgets);
       // 기본 탭 = 이번 달 (은퇴월급 헤더)
@@ -45,9 +45,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('일반계좌'), findsOneWidget);
 
-      await tester.tap(find.byIcon(Icons.timeline_outlined));
+      await tester.tap(find.byIcon(Icons.format_list_numbered_rounded));
       await tester.pumpAndSettle();
-      expect(find.widgetWithText(AppBar, '계획'), findsOneWidget);
+      expect(find.widgetWithText(AppBar, '인출 순서'), findsOneWidget);
       // 잔액이 없으면 내 자산 입력 안내
       expect(find.text('내 자산 입력하기'), findsOneWidget);
     });
@@ -97,7 +97,7 @@ void main() {
       );
       await tester.tap(find.byKey(const Key('go_to_plan')));
       await tester.pumpAndSettle();
-      expect(find.widgetWithText(AppBar, '계획'), findsOneWidget);
+      expect(find.widgetWithText(AppBar, '인출 순서'), findsOneWidget);
     });
   });
 
@@ -119,7 +119,7 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.getBool(kQuickStartDoneKey), isTrue);
 
-      await tester.tap(find.byIcon(Icons.timeline_outlined));
+      await tester.tap(find.byIcon(Icons.format_list_numbered_rounded));
       await tester.pumpAndSettle();
       expect(find.text('세금 가장 적음'), findsOneWidget);
       expect(find.byKey(const Key('plan_share')), findsOneWidget);
@@ -200,7 +200,7 @@ void main() {
       await tester.pump();
       await tester.tap(find.byKey(const Key('qs_submit')));
       await tester.pumpAndSettle();
-      await tester.tap(find.byIcon(Icons.timeline_outlined));
+      await tester.tap(find.byIcon(Icons.format_list_numbered_rounded));
       await tester.pumpAndSettle();
 
       // v2.3.1: 계산 조건은 기본 접힘 — 펼친 뒤 국민연금 추정 버튼을 누른다.

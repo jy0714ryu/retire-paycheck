@@ -118,7 +118,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('계획'),
+        title: const Text('인출 순서'),
         actions: const [SettingsButton()],
       ),
       body: ListView(
