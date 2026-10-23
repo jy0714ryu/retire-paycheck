@@ -504,9 +504,7 @@ class _MainCard extends StatelessWidget {
             separated: true,
           ),
         ],
-        inAccount > 0
-            ? '연금계좌·ISA 배당 ${_m(inAccount)}만원은 계좌에 쌓여요 (세금은 꺼낼 때)'
-            : null,
+        inAccount > 0 ? '연금계좌·ISA 배당 ${_m(inAccount)}만원은 계좌에 쌓여요' : null,
       ),
       CalendarView.dividends => (
         '$month월 배당금 (세전)',

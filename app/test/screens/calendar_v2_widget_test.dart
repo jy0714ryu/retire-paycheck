@@ -266,7 +266,7 @@ void main() {
     );
 
     // 세전 = 500 × 1,000 = 500,000원 → 총계에선 빠지고 안내만.
-    final note = find.text('연금계좌·ISA 배당 50만원은 계좌에 쌓여요 (세금은 꺼낼 때)');
+    final note = find.text('연금계좌·ISA 배당 50만원은 계좌에 쌓여요');
     await tester.scrollUntilVisible(note, 200);
     expect(note, findsOneWidget);
     // v2.3.1: 총계 내역에도 연금계좌 배당이 계좌 배지와 함께 나온다.
