@@ -45,6 +45,11 @@ class PensionInput {
   /// IRP 퇴직금 재원의 원래 퇴직소득세 실효세율 (기본 5%). 연금으로 받으면 70%(11년차부터 60%)만 낸다.
   final double retirementTaxRate;
 
+  /// true(연금나침반 원래 뜻) = [targetAnnualWithdrawal] 은 국민연금을 포함한 연 생활비라
+  /// 국민연금만큼 계좌 인출을 줄인다. false(은퇴월급) = 목표가 곧 '계좌에서 꺼낼 돈'이고
+  /// 국민연금은 따로 들어오는 돈 — 인출을 줄이지 않고 표에만 보여 준다(v2.3.1 수정).
+  final bool npsReducesTarget;
+
   const PensionInput({
     required this.pensionSavings,
     required this.pensionSavingsDeducted,
@@ -60,6 +65,7 @@ class PensionInput {
     this.npsMonthlyAmount,
     this.npsStartAge,
     this.retirementTaxRate = 0.05,
+    this.npsReducesTarget = true,
   });
 
   /// 국민연금 정보가 완전히 입력되었는지 (월수령액·개시연령 둘 다 있어야 활성)
@@ -113,6 +119,7 @@ class PensionInput {
     int? npsMonthlyAmount,
     int? npsStartAge,
     double? retirementTaxRate,
+    bool? npsReducesTarget,
   }) {
     return PensionInput(
       pensionSavings: pensionSavings ?? this.pensionSavings,
@@ -131,6 +138,7 @@ class PensionInput {
       npsMonthlyAmount: npsMonthlyAmount ?? this.npsMonthlyAmount,
       npsStartAge: npsStartAge ?? this.npsStartAge,
       retirementTaxRate: retirementTaxRate ?? this.retirementTaxRate,
+      npsReducesTarget: npsReducesTarget ?? this.npsReducesTarget,
     );
   }
 

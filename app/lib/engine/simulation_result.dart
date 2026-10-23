@@ -1,3 +1,8 @@
+/// '한도 없음' 상한 — 2^53-1. 웹(JS)에서도 정확히 표현되는 가장 큰 정수.
+/// `1 << 32`·`1 << 60` 은 웹에서 비트 연산이 32비트로 잘려 0·2.68억이 되므로 쓰지 않는다
+/// (v2.3.1 웹 체험판에서 계획 탭이 clamp(1, 0) 오류로 안 뜨던 원인).
+const int kNoLimit = 9007199254740991;
+
 // 연금나침반(pension-compass)에서 이식 — 2026-10-22 v2 통합 (보강된 C안). 계산 규칙 SSOT 는 이 폴더.
 /// 시뮬레이션 결과 모델
 class SimulationResult {
@@ -36,7 +41,7 @@ class SimulationResult {
 
   /// 절감 금액 — 우승 판정은 taxBurden(잠재세 포함) 기준이라 이론상
   /// totalTaxOptimal이 baseline보다 클 수 있어 음수 방지 clamp 적용.
-  int get savings => (totalTaxBaseline - totalTaxOptimal).clamp(0, 1 << 60);
+  int get savings => (totalTaxBaseline - totalTaxOptimal).clamp(0, kNoLimit);
 
   /// 절감률 (%)
   double get savingsRate {

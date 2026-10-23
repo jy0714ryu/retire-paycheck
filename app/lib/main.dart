@@ -9,6 +9,7 @@ import 'screens/input_screen.dart';
 import 'screens/plan_screen.dart';
 import 'screens/quick_start_screen.dart';
 import 'services/ad_service.dart';
+import 'services/demo_seed.dart';
 import 'services/migration.dart';
 import 'theme/app_theme.dart';
 import 'widgets/disclaimer_dialog.dart';
@@ -20,7 +21,10 @@ const String kDisclaimerAcceptedKey = 'disclaimer_accepted';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // v1→v2 스키마 마이그레이션 — 스토어 로드보다 먼저 완료돼야 한다.
-  await runMigrations(await SharedPreferences.getInstance());
+  final prefs = await SharedPreferences.getInstance();
+  // 웹 체험판 빌드에서만 예시 자산을 채운다(앱 빌드에선 상수 false 로 빠짐).
+  await seedDemoIfNeeded(prefs);
+  await runMigrations(prefs);
   // AdMob SDK 초기화 (플랫폼 채널 부재 환경에서는 조용히 흡수).
   AdService().initialize();
   runApp(const ProviderScope(child: RetirePaycheckApp()));
@@ -40,7 +44,7 @@ class RetirePaycheckApp extends StatelessWidget {
   }
 }
 
-/// 하단 4탭 셸 (v2): 이번 달 / 계획 / 세금 / 내 자산. 기본 탭 = 이번 달.
+/// 하단 4탭 셸 (v2): 이번 달 / 인출 순서 / 세금 / 내 자산. 기본 탭 = 이번 달.
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
 
@@ -139,9 +143,9 @@ class _HomeShellState extends State<HomeShell> {
               label: '이번 달',
             ),
             NavigationDestination(
-              icon: Icon(Icons.timeline_outlined),
-              selectedIcon: Icon(Icons.timeline),
-              label: '계획',
+              icon: Icon(Icons.format_list_numbered_rounded),
+              selectedIcon: Icon(Icons.format_list_numbered_rounded),
+              label: '인출 순서',
             ),
             NavigationDestination(
               icon: Icon(Icons.receipt_long_outlined),

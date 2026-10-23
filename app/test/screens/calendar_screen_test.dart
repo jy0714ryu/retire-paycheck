@@ -127,10 +127,15 @@ void main() {
 
     // 메인 카드: 실수령(net) 1,868,000 → 186.8만원.
     expect(findWon('186.8'), findsOneWidget);
-    // 서브(v2.3): 세후 구성 — 배당 42.3만 + 연금 144.5만 = 186.8만 (큰 숫자와 합 일치).
-    expect(find.text('배당 42.3만 · 연금 144.5만'), findsOneWidget);
+    // 내역(v2.3.1): 배당금 통장 입금분 42.3만 + 연금 통장 입금분 144.5만 = 186.8만.
+    expect(find.text('배당금 (모든 계좌)'), findsOneWidget);
+    expect(find.text('42.3만'), findsOneWidget);
+    expect(find.text('144.5만'), findsOneWidget);
+    // 연금계좌·ISA 배당이 없는 달은 통장 입금 = 총계.
+    expect(find.text('이 중 통장 입금'), findsOneWidget);
+    expect(find.text('186.8만'), findsOneWidget);
     // 카드 제목은 '이번 달'이 아니라 표시 월.
-    expect(find.text('4월 은퇴 월급 (세후)'), findsOneWidget);
+    expect(find.text('4월 총계 (세후)'), findsOneWidget);
 
     // 배당 라인: A사 종목명 + 주당×수량 상세(막대 차트 아래 — 스크롤로 뷰포트에 올림).
     final aSa = find.text('A사');
@@ -179,7 +184,7 @@ void main() {
     await tester.pumpAndSettle();
     final total = find.byKey(const ValueKey('yearlyTotal'));
     await tester.scrollUntilVisible(total, 100);
-    expect(tester.widget<Text>(total).data, '올해 배당 50만원');
+    expect(tester.widget<Text>(total).data, '2026년 배당 50만원');
     expect(tester.widget<Text>(total).maxLines, 1);
     expect(find.textContaining('세전 · 확정 1건 · 예상 0건'), findsOneWidget);
   });
@@ -189,8 +194,13 @@ void main() {
 
     final title = find.byKey(const ValueKey('yearlyTotal'));
     await tester.scrollUntilVisible(title, 100);
-    expect(tester.widget<Text>(title).data, startsWith('올해 은퇴 월급 '));
+    expect(tester.widget<Text>(title).data, startsWith('2026년 총계 '));
     expect(find.textContaining('세후 · 막대를 누르면'), findsOneWidget);
+    // v2.3.1 막대 위 금액(만원 정수): 7월 = 연금 144.5만 → "145".
+    expect(
+      tester.widget<Text>(find.byKey(const ValueKey('yearlyBarLabel_7'))).data,
+      '145만',
+    );
 
     // 1~12월 막대 12개 렌더.
     for (var m = 1; m <= 12; m++) {
@@ -198,22 +208,26 @@ void main() {
     }
   });
 
-  testWidgets('4월 막대 탭 → 2026년 4월로 이동(광고 트리거 없음)', (WidgetTester tester) async {
+  testWidgets('4월 막대 탭 → 아래 달 카드가 4월로 이동(광고 트리거 없음)', (
+    WidgetTester tester,
+  ) async {
     await _pumpCalendar(tester, initialMonth: DateTime(2026, 7));
     expect(find.text('2026년 7월'), findsOneWidget);
 
     final bar4 = find.byKey(const ValueKey('yearlyBar_4'));
     await tester.scrollUntilVisible(bar4, 100);
-    // v2.1 보기 전환 탭이 생겨 화면이 길어졌다 — 막대를 화면 안쪽까지 올린다.
-    await tester.drag(find.byType(Scrollable).first, const Offset(0, -150));
+    // v2.3.1: 막대 차트는 화면 위쪽(보기 선택 바로 아래)에 있다.
+    await tester.ensureVisible(bar4);
     await tester.pumpAndSettle();
     await tester.tap(bar4);
     await tester.pumpAndSettle();
 
-    // 상단 월 네비게이션으로 스크롤해 이동 결과 확인.
+    // v2.3.1: 막대 탭 = 달만 이동(시트 없음). 바로 아래 달 카드가 4월로 바뀐다.
+    expect(find.byKey(const ValueKey('monthSheet')), findsNothing);
     final aprNav = find.text('2026년 4월');
-    await tester.scrollUntilVisible(aprNav, -100);
+    await tester.scrollUntilVisible(aprNav, 100);
     expect(aprNav, findsOneWidget);
+    expect(find.text('4월 총계 (세후)'), findsOneWidget);
   });
 
   testWidgets('현재 표시 월 막대 하이라이트(그린)', (WidgetTester tester) async {
@@ -325,5 +339,26 @@ void main() {
     expect(name, findsOneWidget);
     expect(find.textContaining('주당 12,000원 × 100주 (직접 입력)'), findsOneWidget);
     expect(find.text('예상'), findsOneWidget);
+  });
+
+  testWidgets('v2.3.1 세 탭 숫자가 맞물림 — 총계 통장 입금 = 배당금 탭 통장 입금 + 연금 탭', (
+    WidgetTester tester,
+  ) async {
+    await _pumpCalendar(tester, initialMonth: DateTime(2026, 4));
+    // 총계 큰 숫자 186.8 = 42.3 + 144.5.
+    expect(findWon('186.8'), findsOneWidget);
+
+    await tester.tap(find.text('배당금'));
+    await tester.pumpAndSettle();
+    // 배당금 세전 50만 = 통장 입금 42.3 + 배당소득세 7.7.
+    expect(findWon('50'), findsWidgets);
+    expect(find.text('통장 입금 (일반계좌, 세후)'), findsOneWidget);
+    expect(find.text('42.3만'), findsOneWidget);
+    expect(find.text('7.7만'), findsOneWidget);
+
+    await tester.tap(find.text('연금'));
+    await tester.pumpAndSettle();
+    expect(find.text('4월 연금 통장 입금 (세후)'), findsOneWidget);
+    expect(findWon('144.5'), findsOneWidget);
   });
 }

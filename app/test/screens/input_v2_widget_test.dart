@@ -54,7 +54,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final ctaFinder = find.text('어떤 순서로 빼야 세금을 아낄까? → 계획 탭에서 비교');
+    final ctaFinder = find.text('어떤 순서로 빼야 세금을 아낄까? → 인출 순서 탭에서 비교');
     await tester.ensureVisible(ctaFinder);
     await tester.tap(ctaFinder);
     expect(tapped, 1);

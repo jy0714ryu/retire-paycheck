@@ -185,11 +185,12 @@ void main() {
     await tester.scrollUntilVisible(find.text('ISA주'), 200);
     expect(find.text('ISA주'), findsOneWidget);
 
-    // 상단으로 복귀(월 네비게이션) → 카드·칩 모두 뷰포트에(offset≈0).
-    await tester.scrollUntilVisible(find.text('2026년 4월'), -300);
-    // ISA 칩 탭(추가 스크롤 없이 — ensureVisible 은 카드를 밀어내므로 금지).
-    await tester.tap(find.widgetWithText(ChoiceChip, 'ISA'));
+    // v2.3.1: 칩은 맨 위(보기 선택 바로 아래) — 위로 올려 ISA 칩을 누른다.
+    final isaChip = find.widgetWithText(ChoiceChip, 'ISA');
+    await tester.scrollUntilVisible(isaChip, -300);
+    await tester.tap(isaChip);
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('2026년 4월'), 200);
 
     // 상단 합산 카드 불변(100만원 그대로 — 필터와 무관).
     expect(findWon('100'), findsOneWidget);
@@ -221,13 +222,17 @@ void main() {
 
     // 총계 보기: 일반계좌 라인 gross 500,000 × (1-0.154) = 423,000 → 세후 "42.3만원"
     // (엔진 amountNet 그대로 — 화면에서 재계산 금지).
+    // v2.3.1 총계 = 모든 계좌 배당 + 연금: 큰 숫자 92.3(일반 세후 42.3 + ISA 50),
+    // 이 중 통장 입금은 일반 세후 42.3 만.
+    expect(findWon('92.3'), findsOneWidget);
+    expect(find.text('이 중 통장 입금'), findsOneWidget);
+    expect(find.textContaining('연금계좌·ISA 배당 50만원은 계좌에 쌓여요'), findsOneWidget);
     final generalLine = find.text('일반주');
     await tester.scrollUntilVisible(generalLine, 200);
-    // 총계 카드(ISA 배당은 계좌에 남아 일반 세후만) + 일반 라인 = 42.3 두 곳.
-    expect(findWon('42.3'), findsNWidgets(2));
-    // ISA 라인은 총계에 없음 — 하단 한 줄 안내로만.
-    expect(find.text('ISA주'), findsNothing);
-    expect(find.textContaining('ISA·연금 계좌 배당 50만원은'), findsOneWidget);
+    // 내역: 일반 라인은 세후 42.3, ISA 라인은 비과세 50 그대로(재계산 금지).
+    expect(findWon('42.3'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('ISA주'), 200);
+    expect(findWon('50'), findsOneWidget);
 
     // 배당금 보기: 카드·막대와 같은 세전 기준 + ISA 라인에 계좌 이름 배지.
     await _showAllDividends(tester);
@@ -239,8 +244,8 @@ void main() {
     final isaLine = find.text('ISA주');
     await tester.scrollUntilVisible(isaLine, 200);
     expect(findWon('50'), findsNWidgets(2)); // 일반 세전 50 + ISA 50
-    // 'ISA' = 필터 칩 + ISA 라인 배지. '계좌 안' 용어는 폐지(v2.3).
-    expect(find.text('ISA'), findsNWidgets(2));
+    // ISA 라인에 'ISA' 배지('계좌 안' 용어는 폐지 v2.3). 칩은 위로 스크롤돼 있을 수 있다.
+    expect(find.text('ISA'), findsWidgets);
     expect(find.text('계좌 안'), findsNothing);
   });
 
@@ -262,15 +267,17 @@ void main() {
     );
 
     // 세전 = 500 × 1,000 = 500,000원 → 총계에선 빠지고 안내만.
-    final note = find.text('ISA·연금 계좌 배당 50만원은 계좌에 쌓여 여기엔 빠져요');
+    final note = find.text('연금계좌·ISA 배당 50만원은 계좌에 쌓여요');
     await tester.scrollUntilVisible(note, 200);
     expect(note, findsOneWidget);
-    expect(find.text('연금주'), findsNothing);
+    // v2.3.1: 총계 내역에도 연금계좌 배당이 계좌 배지와 함께 나온다.
+    await tester.scrollUntilVisible(find.text('연금주'), 200);
+    expect(find.text('연금주'), findsOneWidget);
 
     await _showAllDividends(tester);
     await tester.scrollUntilVisible(find.text('연금주'), 200);
     expect(find.text('연금저축'), findsOneWidget);
-    expect(find.text('ISA·연금 계좌 배당은 꺼내기 전까지 계좌에 남아요'), findsOneWidget);
+    expect(find.text('연금계좌·ISA 배당은 꺼내기 전까지 계좌에 남아요'), findsOneWidget);
   });
 
   testWidgets('이자소득 존재 시 상단 카드 서브라인에 이자 병기', (WidgetTester tester) async {
@@ -284,8 +291,10 @@ void main() {
       initialMonth: DateTime(2026, 4),
     );
 
-    // 이자 월 균등 = 100,000 → 세후 84,600 → "이자 8.5만" 병기.
-    expect(find.text('배당 42.3만 · 이자 8.5만'), findsOneWidget);
+    // 이자 월 균등 = 100,000 → 세후 84,600 → "이자 8.5만" 줄. 큰 숫자 = 42.3 + 0 + 8.5.
+    expect(find.text('이자'), findsWidgets);
+    expect(find.text('8.5만'), findsOneWidget);
+    expect(findWon('50.8'), findsOneWidget);
   });
 
   testWidgets('연금 인출 모드 OFF → 필터가 all/연금 이어도 달력에 연금 타일 없음(I1)', (
@@ -415,7 +424,7 @@ void main() {
       events: [_eventGeneral],
       initialMonth: DateTime(2026, 4),
     );
-    expect(find.text('4월 은퇴 월급 (세후)'), findsOneWidget);
+    expect(find.text('4월 총계 (세후)'), findsOneWidget);
     await _showAllDividends(tester);
     expect(find.text('4월 배당금 (세전)'), findsOneWidget);
     final prefs = await SharedPreferences.getInstance();
@@ -454,6 +463,7 @@ void main() {
       initialMonth: DateTime(2026, 4),
     );
     await _showAllDividends(tester, '연금');
+    await tester.scrollUntilVisible(find.text('2026년 10월부터 인출해요'), 200);
     expect(find.text('2026년 10월부터 인출해요'), findsOneWidget);
     expect(find.text('연금인출'), findsNothing);
   });
@@ -470,6 +480,6 @@ void main() {
     await tester.pumpAndSettle();
     final total = find.byKey(const ValueKey('yearlyTotal'));
     await tester.scrollUntilVisible(total, 100);
-    expect(tester.widget<Text>(total).data, '올해 배당 0만원');
+    expect(tester.widget<Text>(total).data, '2026년 배당 0만원');
   });
 }

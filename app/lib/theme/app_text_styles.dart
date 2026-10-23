@@ -139,13 +139,13 @@ class AppTextStyles {
     height: 1.4,
   );
 
-  /// 목록·표 금액 — 고정폭 숫자(자릿수 정렬). 한글이 섞이면 본문 글꼴로 대체.
+  /// 목록·표 금액 — 화면 공통 규칙(v2.3.1): 큰 핵심 숫자만 명조, 목록 금액은 이 스타일
+  /// (본문 글꼴 + 숫자 폭 고정)으로 통일한다.
   static const TextStyle amount = TextStyle(
-    fontFamily: mono,
-    fontFamilyFallback: [sans],
+    fontFamily: sans,
     fontFeatures: tabular,
-    fontSize: 15,
-    fontWeight: FontWeight.w500,
+    fontSize: 16,
+    fontWeight: FontWeight.w600,
     color: AppColors.navy,
   );
 }

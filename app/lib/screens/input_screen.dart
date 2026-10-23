@@ -7,6 +7,7 @@ import '../models/account.dart';
 import '../models/dividend_event.dart';
 import '../models/holding.dart';
 import '../models/interest_item.dart';
+import '../models/retirement_input.dart';
 import '../providers/app_providers.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
@@ -153,7 +154,7 @@ class _AccountCard extends ConsumerWidget {
       case AccountType.isa:
         return 'ISA';
       case AccountType.pension:
-        return '연금';
+        return '연금계좌';
     }
   }
 
@@ -167,14 +168,19 @@ class _AccountCard extends ConsumerWidget {
       ? '과세 대상 — 나이별 연금소득세(5.5~3.3%)가 붙습니다'
       : '비과세 취급 — 세금 없이 그대로 수령합니다';
 
-  /// 잔액 소진 예상 캡션 — 현금성 잔액 ÷ (월 인출 × 12) 로 년·개월 환산.
-  /// 월 인출이 0 이면 계산 불가 → null(캡션 미노출).
-  String? get _depletionCaption {
+  /// 잔액이 버티는 개월 수 — 현금성 잔액 ÷ 월 인출(운용 수익 없이). 계산 불가면 null.
+  /// 잔액 0 은 [_noCashWarning], 1개월분 미만은 [_shortCashWarning] 이 따로 경고한다.
+  int? get _depletionMonths {
     final w = account.monthlyWithdrawal;
     if (w <= 0) return null;
     final totalMonths = account.balance ~/ w;
-    // 잔액 0 은 [_noCashWarning], 1개월분 미만은 [_shortCashWarning] 이 따로 경고한다.
-    if (totalMonths < 1) return null;
+    return totalMonths < 1 ? null : totalMonths;
+  }
+
+  /// 소진 예상 한 줄 — "이 속도면 약 N년 M개월분".
+  String? get _depletionCaption {
+    final totalMonths = _depletionMonths;
+    if (totalMonths == null) return null;
     if (totalMonths < 12) return '이 속도면 약 $totalMonths개월분';
     final years = totalMonths ~/ 12;
     final months = totalMonths % 12;
@@ -298,7 +304,7 @@ class _AccountCard extends ConsumerWidget {
               key: ValueKey('reinvestNote_${account.id}'),
               padding: const EdgeInsets.only(top: 4, bottom: 8),
               child: Text(
-                "이 계좌 배당은 꺼내기 전까지 계좌에 남아요 · '이번 달 › 배당금'에서 확인",
+                "이 계좌 배당은 꺼내기 전까지 계좌에 남아요 · 이번 달 탭 '배당금'에서 확인",
                 style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
               ),
             ),
@@ -353,12 +359,12 @@ class _AccountCard extends ConsumerWidget {
                 helperText: _withdrawalHelper,
               ),
               if (_depletionCaption != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  _depletionCaption!,
-                  style: AppTextStyles.caption.copyWith(
-                    color: AppColors.gray500,
-                  ),
+                const SizedBox(height: 10),
+                _DepletionBanner(
+                  key: ValueKey('depletion_${account.id}'),
+                  caption: _depletionCaption!,
+                  months: _depletionMonths!,
+                  input: ref.watch(retirementInputProvider),
                 ),
               ],
               if (entries.isNotEmpty) ...[
@@ -495,7 +501,10 @@ class _HoldingRow extends ConsumerWidget {
                 ],
               ),
             ),
-            Text('${holding.shares}주', style: AppTextStyles.captionBold),
+            Text(
+              '${NumberFormat('#,###').format(holding.shares)}주',
+              style: AppTextStyles.captionBold,
+            ),
             const SizedBox(width: 4),
             // 명시적 삭제 버튼 — 스와이프를 모르는 사용자를 위한 탭 삭제 경로.
             IconButton(
@@ -997,7 +1006,7 @@ class _AddAccountDialogState extends State<_AddAccountDialog> {
             segments: const [
               ButtonSegment(value: AccountType.general, label: Text('일반')),
               ButtonSegment(value: AccountType.isa, label: Text('ISA')),
-              ButtonSegment(value: AccountType.pension, label: Text('연금')),
+              ButtonSegment(value: AccountType.pension, label: Text('연금계좌')),
             ],
             selected: {_type},
             onSelectionChanged: (s) => setState(() => _type = s.first),
@@ -1049,7 +1058,7 @@ class _CommonSettingsCard extends ConsumerWidget {
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: Text(
-                '어떤 순서로 빼야 세금을 아낄까? → 계획 탭에서 비교',
+                '어떤 순서로 빼야 세금을 아낄까? → 인출 순서 탭에서 비교',
                 style: AppTextStyles.captionBold.copyWith(
                   color: AppColors.navy,
                 ),
@@ -1523,6 +1532,77 @@ class _CashWarning extends StatelessWidget {
             child: Text(
               text,
               style: AppTextStyles.caption.copyWith(color: AppColors.warning),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 잔액 소진 예상 — 인출 계좌 카드 안 강조 칸(v2.3.1: 작은 회색 글씨라 눈에 안 띈다는 피드백).
+/// 3년 안에 바닥나면 경고색.
+class _DepletionBanner extends StatelessWidget {
+  const _DepletionBanner({
+    super.key,
+    required this.caption,
+    required this.months,
+    required this.input,
+  });
+
+  final String caption;
+  final int months;
+  final RetirementInput input;
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final thisMonth = DateTime(now.year, now.month);
+    final start = input.withdrawalStartMonth;
+    // 인출 시작이 미래면 그때부터 센다.
+    final from = start != null && start.isAfter(thisMonth) ? start : thisMonth;
+    final end = DateTime(from.year, from.month + months);
+    final monthsFromNow =
+        (end.year - thisMonth.year) * 12 + end.month - thisMonth.month;
+    final age = input.currentAge + monthsFromNow ~/ 12;
+    final soon = months < 36;
+    final color = soon ? AppColors.warning : AppColors.navy;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: soon
+            ? AppColors.warning.withValues(alpha: 0.10)
+            : AppColors.goldSoft,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.hourglass_bottom_rounded, size: 20, color: color),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  caption,
+                  style: AppTextStyles.bodyLarge.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '$age세 · ${end.year}년 ${end.month}월쯤 바닥나요',
+                  style: AppTextStyles.body.copyWith(color: AppColors.gray700),
+                ),
+                Text(
+                  '운용 수익은 빼고 계산',
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.gray500,
+                  ),
+                ),
+              ],
             ),
           ),
         ],

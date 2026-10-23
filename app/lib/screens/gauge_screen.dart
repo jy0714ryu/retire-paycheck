@@ -44,7 +44,7 @@ class GaugeScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('세금 문턱'),
+        title: const Text('세금'),
         actions: const [SettingsButton()],
       ),
       body: asyncEvents.when(
@@ -111,13 +111,15 @@ class GaugeScreen extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Text('$targetYear년 세금 임계치', style: AppTextStyles.h3),
-        const SizedBox(height: 4),
-        Text(
-          '올해 누계와 기준선 · 2026년 기준',
-          style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
+        _TaxHero(
+          year: targetYear,
+          // 메인 판정은 금융소득·연금 저율 한도만(건보는 참고용 — 달력 경고와 같은 기준).
+          ratios: [
+            gauges.financialIncome.ratio,
+            if (!pensionIsReference) gauges.pensionLowRate.ratio,
+          ],
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 14),
         // 만원 단위 표시가 0이 되는 소액(1만원 미만)은 "0만원 절세 중" 으로
         // 보이므로 노출하지 않는다 (실기기 E2E 발견 — 2026-07-12).
         if (isaSavings >= 10000) ...[
@@ -715,6 +717,55 @@ class _ErrorView extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           OutlinedButton(onPressed: onRetry, child: const Text('다시 시도')),
+        ],
+      ),
+    );
+  }
+}
+
+/// 세금 탭 요약 카드 — 다른 탭과 같은 머리 카드(골드 선 + 라벨 + 큰 글씨) 규칙.
+class _TaxHero extends StatelessWidget {
+  const _TaxHero({required this.year, required this.ratios});
+  final int year;
+  final List<double> ratios;
+
+  @override
+  Widget build(BuildContext context) {
+    final over = ratios.where((r) => r > 1.0).length;
+    final near = ratios.where((r) => r >= 0.8 && r <= 1.0).length;
+    final (String headline, Color color) = over > 0
+        ? ('기준을 넘은 항목 $over개', AppColors.error)
+        : near > 0
+        ? ('기준에 가까운 항목 $near개', AppColors.warning)
+        : ('모두 기준 안이에요', AppColors.navy);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(22, 20, 22, 20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.gray200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(width: 28, height: 2, color: AppColors.gold),
+          const SizedBox(height: 12),
+          Text(
+            '$year년 세금 문턱',
+            style: AppTextStyles.label.copyWith(color: AppColors.gray500),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            headline,
+            key: const Key('tax_hero_headline'),
+            style: AppTextStyles.h2.copyWith(color: color, fontSize: 24),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '올해 누계를 기준선과 비교 · 80% 넘으면 주의',
+            style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
+          ),
         ],
       ),
     );

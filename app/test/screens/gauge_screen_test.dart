@@ -165,6 +165,12 @@ void main() {
     expect(_barColorForCard(tester, '사적연금 저율과세 한도'), AppColors.error);
     // 경고 한 줄.
     expect(find.text('1,500만원을 넘으면 전액 16.5% 과세될 수 있어요'), findsOneWidget);
+    // v2.3.1 요약 카드: 연금 저율 한도를 넘었으니 "기준을 넘은 항목 1개".
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('tax_hero_headline')),
+      -300,
+    );
+    expect(find.text('기준을 넘은 항목 1개'), findsOneWidget);
   });
 
   group('건보료나침반 엔진 카드 (v2.2)', () {

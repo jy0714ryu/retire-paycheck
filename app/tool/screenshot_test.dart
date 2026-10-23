@@ -97,7 +97,16 @@ void main() {
     await t.pumpWidget(ProviderScope(overrides: _overrides(), child: const RetirePaycheckApp()));
     await t.pumpAndSettle();
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('${_dir}1_this_month.png'));
-    await t.tap(find.byIcon(Icons.timeline_outlined));
+    await t.tap(find.text('배당금'));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('${_dir}1b_dividends.png'));
+    await t.tap(find.text('연금'));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('${_dir}1c_pension.png'));
+    await t.tap(find.text('총계'));
+    await t.pumpAndSettle();
+
+    await t.tap(find.byIcon(Icons.format_list_numbered_rounded));
     await t.pumpAndSettle();
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('${_dir}2_plan.png'));
     // 연도별 표 펼친 화면 (스토어용).
@@ -108,7 +117,7 @@ void main() {
     await Scrollable.ensureVisible(t.element(yearly), alignment: 0.02);
     await t.pumpAndSettle();
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('${_dir}2b_plan_yearly.png'));
-    await t.tap(find.byIcon(Icons.notifications_none_outlined));
+    await t.tap(find.byIcon(Icons.receipt_long_outlined));
     await t.pumpAndSettle();
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('${_dir}3_alerts.png'));
     // 건보 카드(지역 보험료 + 퇴직 후 비교)가 위로 오게 (스토어용).
@@ -120,6 +129,11 @@ void main() {
     await t.tap(find.byIcon(Icons.account_balance_wallet_outlined));
     await t.pumpAndSettle();
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('${_dir}4_assets.png'));
+    final dep = find.byKey(const ValueKey('depletion_default_pension_savings'));
+    await t.scrollUntilVisible(dep, 300, scrollable: find.byType(Scrollable).first);
+    await Scrollable.ensureVisible(t.element(dep), alignment: 0.4);
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('${_dir}4b_depletion.png'));
   });
 
   testWidgets('quick start', (t) async {

@@ -29,7 +29,10 @@ void main() {
     final input = PensionInput.example();
     final r = WithdrawalOptimizer.optimize(input);
     final text = planShareText(r, 20);
-    expect(text, contains(r.optimalStrategyName));
+    expect(
+      text,
+      contains(planStrategyName(r.optimalStrategyId, r.optimalStrategyName)),
+    );
     expect(text, contains('${CurrencyFormat.man(r.totalTaxOptimal)}만원'));
     expect(text, contains('투자 권유 아님'));
     for (final asset in [

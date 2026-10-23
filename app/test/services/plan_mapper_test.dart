@@ -1,3 +1,4 @@
+import 'package:retire_paycheck/engine/withdrawal_optimizer.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:retire_paycheck/models/account.dart';
 import 'package:retire_paycheck/models/retirement_input.dart';
@@ -213,5 +214,39 @@ void main() {
       expect(back, x);
       expect(x.toJson().containsKey('isa_profit'), isFalse);
     });
+  });
+
+  test('v2.3.1 국민연금은 계좌 인출을 줄이지 않는다 — 월 120만 인출이면 해마다 1,440만 인출', () {
+    final accounts = [
+      kDefaultAccounts[1].copyWith(balance: 30000000),
+      kDefaultAccounts[2].copyWith(
+        balance: 200000000,
+        monthlyWithdrawal: 800000,
+        isWithdrawing: true,
+      ),
+      kDefaultAccounts[3].copyWith(
+        balance: 100000000,
+        monthlyWithdrawal: 400000,
+        isWithdrawing: true,
+      ),
+    ];
+    const extras = RetirementInput(
+      pensionSavings: 0,
+      irpBalance: 0,
+      isaBalance: 0,
+      currentAge: 66,
+      monthlyPensionWithdrawal: 0,
+      monthlyOtherWithdrawal: 0,
+      publicPensionMonthly: 900000,
+    );
+    final input = buildPlanInput(
+      accounts: accounts,
+      currentAge: 66,
+      assumptions: const PlanAssumptions(),
+      extras: extras,
+    )!;
+    final r = WithdrawalOptimizer.optimize(input);
+    expect(r.schedule.first.npsAnnualAmount, 10800000);
+    expect(r.schedule.first.totalAmount, 14400000);
   });
 }

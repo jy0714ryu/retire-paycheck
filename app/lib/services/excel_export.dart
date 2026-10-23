@@ -23,11 +23,12 @@ List<int> buildExportXlsx({
   final flow = excel['$year 월별'];
   flow.appendRow([
     t('월'),
-    t('은퇴 월급(세후)'),
+    t('통장 입금(세후)'),
     t('일반계좌 배당(세후)'),
     t('연금 인출(세후)'),
     t('이자(세후)'),
     t('ISA·연금 계좌 배당(세전)'),
+    t('총계(모든 계좌 배당+연금+이자)'),
   ]);
   for (final m in months) {
     flow.appendRow([
@@ -37,6 +38,7 @@ List<int> buildExportXlsx({
       n(m.pensionNet),
       n(m.interestNet),
       n(m.reinvestGross),
+      n(m.totalNet + m.reinvestGross),
     ]);
   }
   flow.appendRow([
@@ -47,6 +49,7 @@ List<int> buildExportXlsx({
       (m) => m.pensionNet,
       (m) => m.interestNet,
       (m) => m.reinvestGross,
+      (m) => m.totalNet + m.reinvestGross,
     ])
       n(months.fold<int>(0, (s, m) => s + pick(m))),
   ]);

@@ -72,10 +72,9 @@ WithdrawalNarrative computeWithdrawalNarrative(
     // 55세 전 적립기 행은 인출 0이 정상 — 고갈·충족 판정 대상에서 제외
     if (yearRow.age < kPensionWithdrawalMinAge) continue;
     final targetForYear =
-        (input.targetAnnualWithdrawal - yearRow.npsAnnualAmount).clamp(
-          0,
-          1 << 60,
-        );
+        (input.targetAnnualWithdrawal -
+                (input.npsReducesTarget ? yearRow.npsAnnualAmount : 0))
+            .clamp(0, kNoLimit);
     if (yearRow.totalAmount < targetForYear) {
       depletionAge = yearRow.age;
       break;
