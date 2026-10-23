@@ -105,13 +105,7 @@ void main() {
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('${_dir}1c_pension.png'));
     await t.tap(find.text('총계'));
     await t.pumpAndSettle();
-    final bar4 = find.byKey(const ValueKey('yearlyBar_4'));
-    await t.scrollUntilVisible(bar4, 200, scrollable: find.byType(Scrollable).first);
-    await t.tap(bar4);
-    await t.pumpAndSettle();
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('${_dir}1d_sheet.png'));
-    await t.tapAt(const Offset(10, 10));
-    await t.pumpAndSettle();
+
     await t.tap(find.byIcon(Icons.timeline_outlined));
     await t.pumpAndSettle();
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('${_dir}2_plan.png'));

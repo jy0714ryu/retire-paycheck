@@ -74,7 +74,7 @@ WithdrawalNarrative computeWithdrawalNarrative(
     final targetForYear =
         (input.targetAnnualWithdrawal - yearRow.npsAnnualAmount).clamp(
           0,
-          1 << 60,
+          kNoLimit,
         );
     if (yearRow.totalAmount < targetForYear) {
       depletionAge = yearRow.age;

@@ -221,12 +221,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         padding: const EdgeInsets.all(16),
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
-          _MonthNav(
-            month: _month,
-            onPrev: () => _shiftMonth(-1),
-            onNext: () => _shiftMonth(1),
-          ),
-          const SizedBox(height: 12),
+          // v2.3.1 배치: 보기 선택 → 1년 한눈에(막대) → 고른 달(◀ ▶ + 카드) → 그 달 내역.
+          // 막대를 누르면 바로 아래 달 카드가 그 달로 바뀐다(위에서 아래로 좁혀 보는 흐름).
           SizedBox(
             width: double.infinity,
             child: SegmentedButton<CalendarView>(
@@ -245,13 +241,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                   ref.read(calendarViewProvider.notifier).set(v.first),
             ),
           ),
-          const SizedBox(height: 12),
-          _MainCard(
-            view: view,
-            month: _month.month,
-            cf: cf,
-            overThreshold: overThreshold,
-          ),
           if (view == CalendarView.dividends) ...[
             const SizedBox(height: 12),
             _AccountFilterChips(userAccounts: userAccounts),
@@ -260,9 +249,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             const SizedBox(height: 12),
             _YearlyBarChart(
               title: switch (view) {
-                CalendarView.total => '올해 총계',
-                CalendarView.dividends => '올해 배당',
-                CalendarView.pension => '올해 연금',
+                CalendarView.total => '${_month.year}년 총계',
+                CalendarView.dividends => '${_month.year}년 배당',
+                CalendarView.pension => '${_month.year}년 연금',
               },
               total: yearTotal,
               caption: view == CalendarView.dividends
@@ -273,35 +262,22 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                   : '세후',
               selectedMonth: _month.month,
               byMonth: byMonth,
-              onSelectMonth: (m) {
-                _goToMonth(m);
-                _openMonthSheet(
-                  view: view,
-                  cf: yearMonths[m - 1],
-                  overThreshold: overThreshold,
-                  section: (mcf) => switch (view) {
-                    CalendarView.total => _totalSection(
-                      mcf,
-                      pensionOverLowRate,
-                      lineTile,
-                    ),
-                    CalendarView.dividends => _dividendSection(
-                      mcf,
-                      filter,
-                      accountById,
-                      lineTile,
-                    ),
-                    CalendarView.pension => _pensionSection(
-                      mcf,
-                      input,
-                      effectiveAccounts,
-                      pensionOverLowRate,
-                    ),
-                  },
-                );
-              },
+              onSelectMonth: _goToMonth,
             ),
           ],
+          const SizedBox(height: 8),
+          _MonthNav(
+            month: _month,
+            onPrev: () => _shiftMonth(-1),
+            onNext: () => _shiftMonth(1),
+          ),
+          const SizedBox(height: 4),
+          _MainCard(
+            view: view,
+            month: _month.month,
+            cf: cf,
+            overThreshold: overThreshold,
+          ),
           const SizedBox(height: 20),
           ...switch (view) {
             CalendarView.total => _totalSection(
@@ -326,42 +302,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           const _Notice('지급월은 예상이며 회사별로 다를 수 있어요'),
           const SizedBox(height: 40),
         ],
-      ),
-    );
-  }
-
-  /// 막대 탭 → 그 달 상세를 아래에서 올라오는 시트로 (v2.3.1). 위 카드·내역도 그 달로 바뀐다.
-  void _openMonthSheet({
-    required CalendarView view,
-    required MonthlyCashflow cf,
-    required bool overThreshold,
-    required List<Widget> Function(MonthlyCashflow) section,
-  }) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      backgroundColor: AppColors.background,
-      builder: (sheetContext) => DraggableScrollableSheet(
-        key: const ValueKey('monthSheet'),
-        expand: false,
-        initialChildSize: 0.8,
-        minChildSize: 0.4,
-        maxChildSize: 0.95,
-        builder: (_, controller) => ListView(
-          controller: controller,
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-          children: [
-            _MainCard(
-              view: view,
-              month: cf.month.month,
-              cf: cf,
-              overThreshold: overThreshold,
-            ),
-            const SizedBox(height: 16),
-            ...section(cf),
-          ],
-        ),
       ),
     );
   }
@@ -1036,7 +976,7 @@ class _YearlyBarChart extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '$caption · 단위 만원 · 막대를 누르면 그 달 상세',
+                  '$caption · 막대를 누르면 아래에 그 달이 나와요',
                   style: AppTextStyles.caption.copyWith(
                     color: AppColors.gray500,
                   ),
@@ -1091,7 +1031,7 @@ class _YearlyBarChart extends StatelessWidget {
                 child: Text(
                   isZero
                       ? ''
-                      : NumberFormat('#,###').format((value / 10000).round()),
+                      : '${NumberFormat('#,###').format((value / 10000).round())}만',
                   key: ValueKey('yearlyBarLabel_$month'),
                   style: TextStyle(
                     fontSize: 10,
@@ -1116,8 +1056,9 @@ class _YearlyBarChart extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              '$month',
+              '$month월',
               style: AppTextStyles.labelSmall.copyWith(
+                fontSize: 11,
                 color: isSelected ? AppColors.greenDark : AppColors.gray500,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
               ),

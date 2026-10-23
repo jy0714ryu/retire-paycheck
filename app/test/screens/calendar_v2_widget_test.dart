@@ -185,11 +185,12 @@ void main() {
     await tester.scrollUntilVisible(find.text('ISA주'), 200);
     expect(find.text('ISA주'), findsOneWidget);
 
-    // 상단으로 복귀(월 네비게이션) → 카드·칩 모두 뷰포트에(offset≈0).
-    await tester.scrollUntilVisible(find.text('2026년 4월'), -300);
-    // ISA 칩 탭(추가 스크롤 없이 — ensureVisible 은 카드를 밀어내므로 금지).
-    await tester.tap(find.widgetWithText(ChoiceChip, 'ISA'));
+    // v2.3.1: 칩은 맨 위(보기 선택 바로 아래) — 위로 올려 ISA 칩을 누른다.
+    final isaChip = find.widgetWithText(ChoiceChip, 'ISA');
+    await tester.scrollUntilVisible(isaChip, -300);
+    await tester.tap(isaChip);
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('2026년 4월'), 200);
 
     // 상단 합산 카드 불변(100만원 그대로 — 필터와 무관).
     expect(findWon('100'), findsOneWidget);
@@ -243,8 +244,8 @@ void main() {
     final isaLine = find.text('ISA주');
     await tester.scrollUntilVisible(isaLine, 200);
     expect(findWon('50'), findsNWidgets(2)); // 일반 세전 50 + ISA 50
-    // 'ISA' = 필터 칩 + ISA 라인 배지. '계좌 안' 용어는 폐지(v2.3).
-    expect(find.text('ISA'), findsNWidgets(2));
+    // ISA 라인에 'ISA' 배지('계좌 안' 용어는 폐지 v2.3). 칩은 위로 스크롤돼 있을 수 있다.
+    expect(find.text('ISA'), findsWidgets);
     expect(find.text('계좌 안'), findsNothing);
   });
 
@@ -462,6 +463,7 @@ void main() {
       initialMonth: DateTime(2026, 4),
     );
     await _showAllDividends(tester, '연금');
+    await tester.scrollUntilVisible(find.text('2026년 10월부터 인출해요'), 200);
     expect(find.text('2026년 10월부터 인출해요'), findsOneWidget);
     expect(find.text('연금인출'), findsNothing);
   });
@@ -478,6 +480,6 @@ void main() {
     await tester.pumpAndSettle();
     final total = find.byKey(const ValueKey('yearlyTotal'));
     await tester.scrollUntilVisible(total, 100);
-    expect(tester.widget<Text>(total).data, '올해 배당 0만원');
+    expect(tester.widget<Text>(total).data, '2026년 배당 0만원');
   });
 }

@@ -48,7 +48,7 @@ class PensionSimulator {
   /// 연금수령한도: 연차 1~10년 = 연초 연금계좌 평가액(ISA 제외) / (11-연차) × 1.2
   /// 연차 11년+ 무제한. ×1.2 는 정수 연산 (평가액×12 ÷ ((11-연차)×10)).
   static int payoutLimitFor(Map<WithdrawalSource, int> pools, int year) {
-    if (year >= 11) return 1 << 60;
+    if (year >= 11) return kNoLimit;
     final base =
         (pools[WithdrawalSource.pensionNonDeducted] ?? 0) +
         (pools[WithdrawalSource.pensionDeducted] ?? 0) +
@@ -175,14 +175,14 @@ class PensionSimulator {
     // 55세 전 적립기 연수 — 연금수령연차(수령한도·퇴직세 감면)는 55세부터 기산
     final preYears = (kPensionWithdrawalMinAge - input.currentAge).clamp(
       0,
-      1 << 32,
+      kNoLimit,
     );
 
     for (int year = 1; year <= input.simulationYears; year++) {
       final age = input.currentAge + year - 1;
       // 55세 미만 = 인출 불가(연금외수령 16.5%) — 적립·운용만 수행
       final withdrawalActive = age >= kPensionWithdrawalMinAge;
-      final payoutYear = (year - preYears).clamp(1, 1 << 32);
+      final payoutYear = (year - preYears).clamp(1, kNoLimit);
 
       // 국민연금 소득 크레바스 — 개시연령 이후 연간 목표 인출액에서
       // (월수령액×12)만큼 선차감. 미입력(hasNps=false)이거나 개시 전이면
@@ -197,7 +197,7 @@ class PensionSimulator {
       var bracketRemaining = kAnnualPensionBracket;
       // 국민연금이 목표를 초과해도 연금계좌 인출은 0에서 멈춘다 (음수 인출 금지).
       var remaining = withdrawalActive
-          ? (input.targetAnnualWithdrawal - npsAnnualAmount).clamp(0, 1 << 60)
+          ? (input.targetAnnualWithdrawal - npsAnnualAmount).clamp(0, kNoLimit)
           : 0;
       final ledger = <WithdrawalSource, DrawSplit>{};
 
@@ -213,7 +213,7 @@ class PensionSimulator {
           split.over += amount - within;
           payoutRemaining -= within;
           if (kBracketSources.contains(src)) {
-            bracketRemaining = (bracketRemaining - within).clamp(0, 1 << 60);
+            bracketRemaining = (bracketRemaining - within).clamp(0, kNoLimit);
           }
         } else {
           split.within += amount; // 한도 미적용 소스는 전액 within
