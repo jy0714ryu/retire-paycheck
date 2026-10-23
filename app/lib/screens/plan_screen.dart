@@ -118,7 +118,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('인출 계획'),
+        title: const Text('계획'),
         actions: const [SettingsButton()],
       ),
       body: ListView(
@@ -182,13 +182,8 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
     );
   }
 
-  Widget _section(String t) => Text(
-    t,
-    style: AppTextStyles.labelSmall.copyWith(
-      color: AppColors.gray500,
-      letterSpacing: 0.6,
-    ),
-  );
+  /// 섹션 제목 — 화면 공통 규칙(v2.3.1): 모든 탭이 h4 하나로.
+  Widget _section(String t) => Text(t, style: AppTextStyles.h4);
 
   List<Widget> _strategyTiles(SimulationResult r) {
     final sorted = [...r.outcomes]
@@ -259,7 +254,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
               ),
               const SizedBox(width: 12),
               Text(
-                '${CurrencyFormat.man(o.totalTax)}만',
+                '${CurrencyFormat.man(o.totalTax)}만원',
                 style: AppTextStyles.amount,
               ),
             ],

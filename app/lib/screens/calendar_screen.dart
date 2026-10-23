@@ -273,7 +273,33 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                   : '세후',
               selectedMonth: _month.month,
               byMonth: byMonth,
-              onSelectMonth: _goToMonth,
+              onSelectMonth: (m) {
+                _goToMonth(m);
+                _openMonthSheet(
+                  view: view,
+                  cf: yearMonths[m - 1],
+                  overThreshold: overThreshold,
+                  section: (mcf) => switch (view) {
+                    CalendarView.total => _totalSection(
+                      mcf,
+                      pensionOverLowRate,
+                      lineTile,
+                    ),
+                    CalendarView.dividends => _dividendSection(
+                      mcf,
+                      filter,
+                      accountById,
+                      lineTile,
+                    ),
+                    CalendarView.pension => _pensionSection(
+                      mcf,
+                      input,
+                      effectiveAccounts,
+                      pensionOverLowRate,
+                    ),
+                  },
+                );
+              },
             ),
           ],
           const SizedBox(height: 20),
@@ -300,6 +326,42 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           const _Notice('지급월은 예상이며 회사별로 다를 수 있어요'),
           const SizedBox(height: 40),
         ],
+      ),
+    );
+  }
+
+  /// 막대 탭 → 그 달 상세를 아래에서 올라오는 시트로 (v2.3.1). 위 카드·내역도 그 달로 바뀐다.
+  void _openMonthSheet({
+    required CalendarView view,
+    required MonthlyCashflow cf,
+    required bool overThreshold,
+    required List<Widget> Function(MonthlyCashflow) section,
+  }) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: AppColors.background,
+      builder: (sheetContext) => DraggableScrollableSheet(
+        key: const ValueKey('monthSheet'),
+        expand: false,
+        initialChildSize: 0.8,
+        minChildSize: 0.4,
+        maxChildSize: 0.95,
+        builder: (_, controller) => ListView(
+          controller: controller,
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+          children: [
+            _MainCard(
+              view: view,
+              month: cf.month.month,
+              cf: cf,
+              overThreshold: overThreshold,
+            ),
+            const SizedBox(height: 16),
+            ...section(cf),
+          ],
+        ),
       ),
     );
   }
@@ -775,7 +837,7 @@ class _DividendLineTile extends StatelessWidget {
           const SizedBox(width: 12),
           Text(
             '${CalendarScreenFmt.man(amount)}만원',
-            style: AppTextStyles.numberSmall.copyWith(color: amountColor),
+            style: AppTextStyles.amount.copyWith(color: amountColor),
           ),
         ],
       ),
@@ -853,13 +915,13 @@ class _SimpleTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: AppColors.green.withValues(alpha: 0.06),
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.green.withValues(alpha: 0.3)),
+        border: Border.all(color: AppColors.gray200),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: AppColors.green),
+          Icon(icon, size: 20, color: AppColors.gray500),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -900,9 +962,7 @@ class _SimpleTile extends StatelessWidget {
           const SizedBox(width: 12),
           Text(
             '${CalendarScreenFmt.man(amount)}만원',
-            style: AppTextStyles.numberSmall.copyWith(
-              color: AppColors.greenDark,
-            ),
+            style: AppTextStyles.amount,
           ),
         ],
       ),
@@ -976,7 +1036,7 @@ class _YearlyBarChart extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '$caption · 막대를 누르면 그 달 내역',
+                  '$caption · 단위 만원 · 막대를 누르면 그 달 상세',
                   style: AppTextStyles.caption.copyWith(
                     color: AppColors.gray500,
                   ),
@@ -986,7 +1046,8 @@ class _YearlyBarChart extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           SizedBox(
-            height: _maxBarHeight + 26, // 막대 + 라벨 영역(라벨 높이 여유 포함).
+            // 막대 + 위 금액 라벨 + 아래 월 라벨.
+            height: _maxBarHeight + 44,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -1022,6 +1083,26 @@ class _YearlyBarChart extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
+            // 막대 위 금액(만원, 정수) — 좁은 폭에선 글자를 줄여 한 줄 유지.
+            SizedBox(
+              height: 14,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  isZero
+                      ? ''
+                      : NumberFormat('#,###').format((value / 10000).round()),
+                  key: ValueKey('yearlyBarLabel_$month'),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontFeatures: AppTextStyles.tabular,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected ? AppColors.navy : AppColors.gray500,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 2),
             Container(
               key: ValueKey('yearlyBarFill_$month'),
               height: height,

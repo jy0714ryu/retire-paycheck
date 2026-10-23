@@ -195,7 +195,12 @@ void main() {
     final title = find.byKey(const ValueKey('yearlyTotal'));
     await tester.scrollUntilVisible(title, 100);
     expect(tester.widget<Text>(title).data, startsWith('올해 총계 '));
-    expect(find.textContaining('세후 · 막대를 누르면'), findsOneWidget);
+    expect(find.textContaining('세후 · 단위 만원 · 막대를 누르면'), findsOneWidget);
+    // v2.3.1 막대 위 금액(만원 정수): 7월 = 연금 144.5만 → "145".
+    expect(
+      tester.widget<Text>(find.byKey(const ValueKey('yearlyBarLabel_7'))).data,
+      '145',
+    );
 
     // 1~12월 막대 12개 렌더.
     for (var m = 1; m <= 12; m++) {
@@ -203,7 +208,9 @@ void main() {
     }
   });
 
-  testWidgets('4월 막대 탭 → 2026년 4월로 이동(광고 트리거 없음)', (WidgetTester tester) async {
+  testWidgets('4월 막대 탭 → 4월 상세 시트 + 화면도 4월로 이동(광고 트리거 없음)', (
+    WidgetTester tester,
+  ) async {
     await _pumpCalendar(tester, initialMonth: DateTime(2026, 7));
     expect(find.text('2026년 7월'), findsOneWidget);
 
@@ -215,7 +222,22 @@ void main() {
     await tester.tap(bar4);
     await tester.pumpAndSettle();
 
-    // 상단 월 네비게이션으로 스크롤해 이동 결과 확인.
+    // v2.3.1: 막대 탭 → 그 달 상세 시트(카드 + 내역)가 올라온다.
+    final sheet = find.byKey(const ValueKey('monthSheet'));
+    expect(sheet, findsOneWidget);
+    expect(
+      find.descendant(of: sheet, matching: find.text('4월 총계 (세후)')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: sheet, matching: find.text('A사')),
+      findsOneWidget,
+    );
+
+    // 시트를 닫으면 화면도 4월로 바뀌어 있다.
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pumpAndSettle();
+    expect(sheet, findsNothing);
     final aprNav = find.text('2026년 4월');
     await tester.scrollUntilVisible(aprNav, -100);
     expect(aprNav, findsOneWidget);

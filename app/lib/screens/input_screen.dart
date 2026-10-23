@@ -298,7 +298,7 @@ class _AccountCard extends ConsumerWidget {
               key: ValueKey('reinvestNote_${account.id}'),
               padding: const EdgeInsets.only(top: 4, bottom: 8),
               child: Text(
-                "이 계좌 배당은 꺼내기 전까지 계좌에 남아요 · '이번 달 › 배당금'에서 확인",
+                "이 계좌 배당은 꺼내기 전까지 계좌에 남아요 · 이번 달 탭 '배당금'에서 확인",
                 style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
               ),
             ),
@@ -495,7 +495,10 @@ class _HoldingRow extends ConsumerWidget {
                 ],
               ),
             ),
-            Text('${holding.shares}주', style: AppTextStyles.captionBold),
+            Text(
+              '${NumberFormat('#,###').format(holding.shares)}주',
+              style: AppTextStyles.captionBold,
+            ),
             const SizedBox(width: 4),
             // 명시적 삭제 버튼 — 스와이프를 모르는 사용자를 위한 탭 삭제 경로.
             IconButton(

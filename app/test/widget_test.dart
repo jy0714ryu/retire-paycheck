@@ -39,7 +39,7 @@ void main() {
 
       await tester.tap(find.byIcon(Icons.receipt_long_outlined));
       await tester.pumpAndSettle();
-      expect(find.text('세금 문턱'), findsOneWidget);
+      expect(find.widgetWithText(AppBar, '세금'), findsOneWidget);
 
       await tester.tap(find.byIcon(Icons.account_balance_wallet_outlined));
       await tester.pumpAndSettle();
@@ -47,7 +47,7 @@ void main() {
 
       await tester.tap(find.byIcon(Icons.timeline_outlined));
       await tester.pumpAndSettle();
-      expect(find.text('인출 계획'), findsOneWidget);
+      expect(find.widgetWithText(AppBar, '계획'), findsOneWidget);
       // 잔액이 없으면 내 자산 입력 안내
       expect(find.text('내 자산 입력하기'), findsOneWidget);
     });
@@ -97,7 +97,7 @@ void main() {
       );
       await tester.tap(find.byKey(const Key('go_to_plan')));
       await tester.pumpAndSettle();
-      expect(find.text('인출 계획'), findsOneWidget);
+      expect(find.widgetWithText(AppBar, '계획'), findsOneWidget);
     });
   });
 
