@@ -23,6 +23,24 @@ import '../widgets/settings_button.dart';
 /// 입력은 내 자산 탭의 계좌 잔액·월 인출액을 그대로 쓰고, 이 화면에서는 가정(기간·수익률·
 /// 연간 인출 목표·국민연금)만 바꾼다. 1위 전략은 "추천"이 아니라 "계산 결과"로 표기한다.
 /// 계획 탭 가정 — 탭을 오가도 유지(앱 실행 중 메모리만, 저장하지 않음).
+/// 전략 쉬운 이름·한 줄 설명 (v2.3.1 — 엔진 이름 '과세 이연' 등이 어렵다는 피드백).
+/// 엔진(연금나침반 이식)의 displayName 은 그대로 두고 화면에서만 바꿔 부른다.
+String planStrategyName(String id, String fallback) => switch (id) {
+  'defer_taxable' => '세금 붙는 연금은 70세 이후에',
+  'tax_free_first' => '세금 없는 돈부터',
+  'fill_bracket' => '매년 1,500만원까지 연금 먼저',
+  'pension_first' => '연금저축부터 (흔한 방식)',
+  _ => fallback,
+};
+
+String planStrategyDesc(String id) => switch (id) {
+  'defer_taxable' => 'ISA·원금·퇴직금을 먼저 쓰고, 공제받은 연금은 세율이 낮아지는 70세 이후에',
+  'tax_free_first' => 'ISA·공제 안 받은 원금부터, 연금은 연 1,500만원 안에서',
+  'fill_bracket' => '공제받은 연금을 매년 1,500만원까지 먼저, 모자라면 ISA·원금',
+  'pension_first' => '한도를 따지지 않고 연금저축부터 차례로',
+  _ => '',
+};
+
 final planAssumptionsProvider = StateProvider<PlanAssumptions>(
   (ref) => const PlanAssumptions(),
 );
@@ -118,8 +136,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
               if (unknowns.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Text(
-                  '${unknowns.join('·')}을(를) 모름으로 두어 기본 가정으로 비교했어요. '
-                  '아래 "더 정확하게 계산하기"에서 넣으면 순서가 바뀔 수 있어요.',
+                  '${unknowns.join('·')}은(는) 기본값으로 계산 · 아래에서 넣으면 더 정확해요',
                   key: const Key('plan_unknown_note'),
                   style: AppTextStyles.caption.copyWith(
                     color: AppColors.gray600,
@@ -133,7 +150,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                 input: input,
               ),
               const SizedBox(height: 18),
-              _section('전략별 ${_a.years}년 총 세금'),
+              _section('꺼내는 순서별 ${_a.years}년 세금'),
               const SizedBox(height: 8),
               ..._strategyTiles(result),
               const SizedBox(height: 4),
@@ -147,13 +164,15 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
             const SizedBox(height: 20),
             const PlanAccuracyCard(),
             const SizedBox(height: 20),
-            _section('계산 가정'),
-            const SizedBox(height: 8),
-            _assumptions(balances),
+            _AssumptionsTile(
+              summary:
+                  '${_a.years}년 · 수익률 연 ${(_a.returnRate * 100).round()}%'
+                  '${_a.npsMonthly != null ? ' · 국민연금 포함' : ''}',
+              child: _assumptions(balances),
+            ),
             const SizedBox(height: 16),
             Text(
-              '2026년 세법 기준의 추정 계산이며 투자 권유가 아닙니다. '
-              '국민연금공단·국민건강보험공단과 무관한 민간 계산기입니다.',
+              '2026년 세법 기준 추정 · 투자 권유 아님 · 공단과 무관한 민간 계산기',
               style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
             ),
           ],
@@ -193,46 +212,52 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
           child: Row(
             children: [
               Expanded(
-                child: Wrap(
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 6,
-                  runSpacing: 4,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      o.strategyName,
-                      style: AppTextStyles.label.copyWith(
-                        color: AppColors.navy,
-                      ),
-                    ),
-                    if (o.strategyId == r.optimalStrategyId)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 1,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.navy,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: const Text(
-                          '계산 결과 1위',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: AppColors.surface,
-                            fontWeight: FontWeight.w600,
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        Text(
+                          planStrategyName(o.strategyId, o.strategyName),
+                          style: AppTextStyles.label.copyWith(
+                            color: AppColors.navy,
                           ),
                         ),
+                        if (o.strategyId == r.optimalStrategyId)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 1,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.navy,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              '세금 가장 적음',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: AppColors.surface,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      planStrategyDesc(o.strategyId),
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.gray500,
                       ),
-                    if (o.strategyId == 'pension_first')
-                      Text(
-                        '통념',
-                        style: AppTextStyles.labelSmall.copyWith(
-                          color: AppColors.gray500,
-                        ),
-                      ),
+                    ),
                   ],
                 ),
               ),
+              const SizedBox(width: 12),
               Text(
                 '${CurrencyFormat.man(o.totalTax)}만',
                 style: AppTextStyles.amount,
@@ -441,13 +466,16 @@ class _HeroCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             basicAssumption
-                ? '기본 가정에서 세금이 가장 적게 계산된 인출 순서'
-                : '세금이 가장 적게 계산된 인출 순서',
+                ? '연금저축·IRP·ISA 꺼내는 순서 중 세금이 가장 적은 방법 (기본 가정)'
+                : '연금저축·IRP·ISA 꺼내는 순서 중 세금이 가장 적은 방법',
             style: AppTextStyles.label.copyWith(color: AppColors.gray500),
           ),
           const SizedBox(height: 6),
           Text(
-            result.optimalStrategyName,
+            planStrategyName(
+              result.optimalStrategyId,
+              result.optimalStrategyName,
+            ),
             style: AppTextStyles.h2.copyWith(
               color: AppColors.navy,
               fontSize: 24,
@@ -460,14 +488,14 @@ class _HeroCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _kv(
-                  '$years년 총 세금',
+                  '$years년 동안 세금',
                   '${CurrencyFormat.man(result.totalTaxOptimal)}만원',
                   AppColors.navy,
                 ),
               ),
               Expanded(
                 child: _kv(
-                  '통념 대비 절감',
+                  '흔한 방식보다 적게',
                   '${CurrencyFormat.man(result.savings)}만원',
                   AppColors.green,
                 ),
@@ -590,9 +618,10 @@ class _InfoCard extends StatelessWidget {
 /// 결과 공유 문구 — 총자산·잔액은 넣지 않는다 (개인 자산 노출 방지).
 String planShareText(SimulationResult r, int years) =>
     '은퇴월급 계산 결과\n'
-    '세금이 가장 적게 계산된 인출 순서: ${r.optimalStrategyName}\n'
-    '$years년 총 세금 ${CurrencyFormat.man(r.totalTaxOptimal)}만원 · '
-    '통념 대비 ${CurrencyFormat.man(r.savings)}만원 적음\n'
+    '세금이 가장 적은 인출 순서: '
+    '${planStrategyName(r.optimalStrategyId, r.optimalStrategyName)}\n'
+    '$years년 세금 ${CurrencyFormat.man(r.totalTaxOptimal)}만원 · '
+    '흔한 방식보다 ${CurrencyFormat.man(r.savings)}만원 적음\n'
     '(현행 세법 기준 추정, 투자 권유 아님)\n'
     'https://play.google.com/store/apps/details?id=com.quantlog.retirepaycheck';
 
@@ -637,7 +666,7 @@ class _YearlyTable extends StatelessWidget {
           tilePadding: const EdgeInsets.symmetric(horizontal: 14),
           childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
           title: Text(
-            '연도별 인출·세금 (${result.optimalStrategyName})',
+            '해마다 얼마 꺼내고 세금은 얼마? (표)',
             style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600),
           ),
           children: [
@@ -679,4 +708,38 @@ class _YearlyTable extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 계산 조건(기간·수익률·인출 목표·국민연금) — 기본 접힘. 처음 보는 사람에겐 결과만 보이게.
+class _AssumptionsTile extends StatelessWidget {
+  const _AssumptionsTile({required this.summary, required this.child});
+  final String summary;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    key: const Key('plan_assumptions_tile'),
+    color: AppColors.surface,
+    clipBehavior: Clip.antiAlias,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+      side: const BorderSide(color: AppColors.gray200),
+    ),
+    child: Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        tilePadding: const EdgeInsets.symmetric(horizontal: 14),
+        childrenPadding: EdgeInsets.zero,
+        title: Text(
+          '계산 조건 바꾸기',
+          style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600),
+        ),
+        subtitle: Text(
+          summary,
+          style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
+        ),
+        children: [child],
+      ),
+    ),
+  );
 }

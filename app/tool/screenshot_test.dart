@@ -97,6 +97,14 @@ void main() {
     await t.pumpWidget(ProviderScope(overrides: _overrides(), child: const RetirePaycheckApp()));
     await t.pumpAndSettle();
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('${_dir}1_this_month.png'));
+    await t.tap(find.text('배당금'));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('${_dir}1b_dividends.png'));
+    await t.tap(find.text('연금'));
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('${_dir}1c_pension.png'));
+    await t.tap(find.text('총계'));
+    await t.pumpAndSettle();
     await t.tap(find.byIcon(Icons.timeline_outlined));
     await t.pumpAndSettle();
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('${_dir}2_plan.png'));
@@ -108,7 +116,7 @@ void main() {
     await Scrollable.ensureVisible(t.element(yearly), alignment: 0.02);
     await t.pumpAndSettle();
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('${_dir}2b_plan_yearly.png'));
-    await t.tap(find.byIcon(Icons.notifications_none_outlined));
+    await t.tap(find.byIcon(Icons.receipt_long_outlined));
     await t.pumpAndSettle();
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('${_dir}3_alerts.png'));
     // 건보 카드(지역 보험료 + 퇴직 후 비교)가 위로 오게 (스토어용).

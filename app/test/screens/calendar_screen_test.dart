@@ -127,10 +127,12 @@ void main() {
 
     // 메인 카드: 실수령(net) 1,868,000 → 186.8만원.
     expect(findWon('186.8'), findsOneWidget);
-    // 서브(v2.3): 세후 구성 — 배당 42.3만 + 연금 144.5만 = 186.8만 (큰 숫자와 합 일치).
-    expect(find.text('배당 42.3만 · 연금 144.5만'), findsOneWidget);
+    // 내역(v2.3.1): 배당금 통장 입금분 42.3만 + 연금 통장 입금분 144.5만 = 186.8만.
+    expect(find.text('배당금 (통장 입금분)'), findsOneWidget);
+    expect(find.text('42.3만'), findsOneWidget);
+    expect(find.text('144.5만'), findsOneWidget);
     // 카드 제목은 '이번 달'이 아니라 표시 월.
-    expect(find.text('4월 은퇴 월급 (세후)'), findsOneWidget);
+    expect(find.text('4월 통장 입금 (세후)'), findsOneWidget);
 
     // 배당 라인: A사 종목명 + 주당×수량 상세(막대 차트 아래 — 스크롤로 뷰포트에 올림).
     final aSa = find.text('A사');
@@ -189,7 +191,7 @@ void main() {
 
     final title = find.byKey(const ValueKey('yearlyTotal'));
     await tester.scrollUntilVisible(title, 100);
-    expect(tester.widget<Text>(title).data, startsWith('올해 은퇴 월급 '));
+    expect(tester.widget<Text>(title).data, startsWith('올해 통장 입금 '));
     expect(find.textContaining('세후 · 막대를 누르면'), findsOneWidget);
 
     // 1~12월 막대 12개 렌더.
@@ -325,5 +327,26 @@ void main() {
     expect(name, findsOneWidget);
     expect(find.textContaining('주당 12,000원 × 100주 (직접 입력)'), findsOneWidget);
     expect(find.text('예상'), findsOneWidget);
+  });
+
+  testWidgets('v2.3.1 세 탭 숫자가 맞물림 — 총계 = 배당금 탭 통장 입금 + 연금 탭 통장 입금', (
+    WidgetTester tester,
+  ) async {
+    await _pumpCalendar(tester, initialMonth: DateTime(2026, 4));
+    // 총계 큰 숫자 186.8 = 42.3 + 144.5.
+    expect(findWon('186.8'), findsOneWidget);
+
+    await tester.tap(find.text('배당금'));
+    await tester.pumpAndSettle();
+    // 배당금 세전 50만 = 통장 입금 42.3 + 배당소득세 7.7.
+    expect(findWon('50'), findsWidgets);
+    expect(find.text('통장 입금 (일반계좌, 세후)'), findsOneWidget);
+    expect(find.text('42.3만'), findsOneWidget);
+    expect(find.text('7.7만'), findsOneWidget);
+
+    await tester.tap(find.text('연금'));
+    await tester.pumpAndSettle();
+    expect(find.text('4월 연금 통장 입금 (세후)'), findsOneWidget);
+    expect(findWon('144.5'), findsOneWidget);
   });
 }

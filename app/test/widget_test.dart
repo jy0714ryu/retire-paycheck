@@ -121,7 +121,7 @@ void main() {
 
       await tester.tap(find.byIcon(Icons.timeline_outlined));
       await tester.pumpAndSettle();
-      expect(find.text('계산 결과 1위'), findsOneWidget);
+      expect(find.text('세금 가장 적음'), findsOneWidget);
       expect(find.byKey(const Key('plan_share')), findsOneWidget);
 
       // v2.2: 연도별 표(기본 접힘) — 펼치면 나이별 줄.
@@ -131,9 +131,24 @@ void main() {
         200,
         scrollable: find.byType(Scrollable).first,
       );
+      await tester.ensureVisible(yearly);
+      await tester.pumpAndSettle();
       await tester.tap(yearly);
       await tester.pumpAndSettle();
+      // v2.3.1: 전략 타일에 설명 줄이 붙어 표가 화면 아래로 밀린다 — 스크롤해 확인.
+      await tester.scrollUntilVisible(
+        find.text('66세'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
       expect(find.text('66세'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        yearly,
+        -200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.ensureVisible(yearly);
+      await tester.pumpAndSettle();
       await tester.tap(yearly);
       await tester.pumpAndSettle();
       await tester.scrollUntilVisible(
@@ -144,7 +159,10 @@ void main() {
 
       // v2.1: 공제 안 받은 원금을 모름으로 두면 "기본 가정" 표시 → '없음' 답하면 사라진다.
       expect(find.byKey(const Key('plan_unknown_note')), findsOneWidget);
-      expect(find.text('기본 가정에서 세금이 가장 적게 계산된 인출 순서'), findsOneWidget);
+      expect(
+        find.text('연금저축·IRP·ISA 꺼내는 순서 중 세금이 가장 적은 방법 (기본 가정)'),
+        findsOneWidget,
+      );
       final tile = find.byKey(const Key('plan_accuracy_tile'));
       await tester.scrollUntilVisible(
         tile,
@@ -163,11 +181,11 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('plan_unknown_note')), findsNothing);
       await tester.scrollUntilVisible(
-        find.text('세금이 가장 적게 계산된 인출 순서'),
+        find.text('연금저축·IRP·ISA 꺼내는 순서 중 세금이 가장 적은 방법'),
         -300,
         scrollable: find.byType(Scrollable).first,
       );
-      expect(find.text('세금이 가장 적게 계산된 인출 순서'), findsOneWidget);
+      expect(find.text('연금저축·IRP·ISA 꺼내는 순서 중 세금이 가장 적은 방법'), findsOneWidget);
     });
 
     testWidgets('계획 탭 국민연금 "모르면 추정하기" → 값이 칸에 채워진다', (
@@ -185,6 +203,17 @@ void main() {
       await tester.tap(find.byIcon(Icons.timeline_outlined));
       await tester.pumpAndSettle();
 
+      // v2.3.1: 계산 조건은 기본 접힘 — 펼친 뒤 국민연금 추정 버튼을 누른다.
+      final assumptions = find.byKey(const Key('plan_assumptions_tile'));
+      await tester.scrollUntilVisible(
+        assumptions,
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.ensureVisible(assumptions);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('계산 조건 바꾸기'));
+      await tester.pumpAndSettle();
       final btn = find.byKey(const Key('plan_nps_estimate'));
       await tester.scrollUntilVisible(
         btn,

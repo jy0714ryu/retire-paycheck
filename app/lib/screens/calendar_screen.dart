@@ -259,7 +259,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             const SizedBox(height: 12),
             _YearlyBarChart(
               title: switch (view) {
-                CalendarView.total => '올해 은퇴 월급',
+                CalendarView.total => '올해 통장 입금',
                 CalendarView.dividends => '올해 배당',
                 CalendarView.pension => '올해 연금',
               },
@@ -331,13 +331,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           subtitle: '세전 ${CalendarScreenFmt.man(cf.interestGross)}만원',
           amount: cf.interestNet,
         ),
-      if (cf.reinvestGross > 0) ...[
-        const SizedBox(height: 4),
-        _Notice(
-          'ISA·연금 계좌 배당 ${CalendarScreenFmt.man(cf.reinvestGross)}만원은 '
-          '계좌에 쌓여 여기엔 빠져요',
-        ),
-      ],
     ];
   }
 
@@ -365,11 +358,11 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           badge: line.accountType == AccountType.general
               ? null
               : accountById[line.accountId]?.name ??
-                    (line.accountType == AccountType.isa ? 'ISA' : '연금'),
+                    (line.accountType == AccountType.isa ? 'ISA' : '연금계좌'),
         ),
       if (hasInAccount) ...[
         const SizedBox(height: 4),
-        const _Notice('ISA·연금 계좌 배당은 꺼내기 전까지 계좌에 남아요'),
+        const _Notice('연금계좌·ISA 배당은 꺼내기 전까지 계좌에 남아요'),
       ],
     ];
   }
@@ -470,25 +463,50 @@ class _MainCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (String title, int amount, String detail) = switch (view) {
+    // v2.3.1: 세 탭의 숫자가 맞물리게 — 총계 = 배당금 탭 '통장 입금' + 연금 탭 '통장 입금'
+    // (+ 이자). 각 항목을 천원 단위로 먼저 반올림하고 큰 숫자는 그 합으로 보여 줘
+    // 화면에 보이는 숫자끼리 더하면 정확히 맞는다.
+    final divNet = _r(cf.dividendNet);
+    final divTax = _r(cf.dividendGross) - divNet;
+    final inAccount = _r(cf.reinvestGross);
+    final penNet = _r(cf.pensionNet);
+    final penTax = _r(cf.pensionGross) - penNet;
+    final interest = _r(cf.interestNet);
+
+    final (
+      String title,
+      int amount,
+      List<_Row> rows,
+      String? note,
+    ) = switch (view) {
       CalendarView.total => (
-        '$month월 은퇴 월급 (세후)',
-        cf.totalNet,
+        '$month월 통장 입금 (세후)',
+        divNet + penNet + interest,
         [
-          '배당 ${_m(cf.dividendNet)}만',
-          if (cf.pensionNet > 0) '연금 ${_m(cf.pensionNet)}만',
-          if (cf.interestNet > 0) '이자 ${_m(cf.interestNet)}만',
-        ].join(' · '),
+          _Row('배당금 (통장 입금분)', divNet),
+          _Row('연금 (통장 입금분)', penNet),
+          if (interest > 0) _Row('이자', interest),
+        ],
+        inAccount > 0 ? '연금계좌·ISA에 쌓인 배당 ${_m(inAccount)}만원은 제외' : null,
       ),
       CalendarView.dividends => (
         '$month월 배당금 (세전)',
-        cf.dividendGross + cf.reinvestGross,
-        _dividendDetail(),
+        divNet + divTax + inAccount,
+        [
+          if (divNet > 0) _Row('통장 입금 (일반계좌, 세후)', divNet, strong: true),
+          if (divTax > 0) _Row('배당소득세 15.4%', divTax),
+          if (inAccount > 0) _Row('연금계좌·ISA에 쌓임 (세금은 꺼낼 때)', inAccount),
+        ],
+        divNet + divTax + inAccount == 0 ? '이 달 배당 없음' : null,
       ),
       CalendarView.pension => (
-        '$month월 연금 (세후)',
-        cf.pensionNet,
-        '세전 ${_m(cf.pensionGross)}만원',
+        '$month월 연금 통장 입금 (세후)',
+        penNet,
+        [
+          if (penNet + penTax > 0) _Row('꺼내는 돈 (세전)', penNet + penTax),
+          if (penTax > 0) _Row('연금소득세', -penTax),
+        ],
+        penNet == 0 ? '이 달 인출 없음' : null,
       ),
     };
 
@@ -555,15 +573,44 @@ class _MainCard extends StatelessWidget {
           const SizedBox(height: 12),
           const Divider(),
           const SizedBox(height: 10),
-          Text(
-            detail,
-            style: const TextStyle(
-              fontSize: 14,
-              fontFeatures: AppTextStyles.tabular,
-              color: AppColors.gray600,
-              height: 1.45,
+          for (final row in rows)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 3),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      row.label,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: row.strong ? AppColors.navy : AppColors.gray600,
+                        fontWeight: row.strong
+                            ? FontWeight.w600
+                            : FontWeight.w400,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '${row.amount < 0 ? '−' : ''}${_m(row.amount.abs())}만',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontFeatures: AppTextStyles.tabular,
+                      color: row.strong ? AppColors.navy : AppColors.gray600,
+                      fontWeight: row.strong
+                          ? FontWeight.w600
+                          : FontWeight.w400,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
+          if (note != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              note,
+              style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
+            ),
+          ],
           if (overThreshold) ...[
             const SizedBox(height: 12),
             Container(
@@ -600,23 +647,17 @@ class _MainCard extends StatelessWidget {
     );
   }
 
-  /// 배당금 카드 한 줄 — 계좌 유형별 세전 합(0 인 유형은 생략).
-  String _dividendDetail() {
-    final byType = <AccountType, int>{};
-    for (final l in [...cf.lines, ...cf.reinvestLines]) {
-      byType[l.accountType] = (byType[l.accountType] ?? 0) + l.amountGross;
-    }
-    const labels = {
-      AccountType.general: '일반',
-      AccountType.isa: 'ISA',
-      AccountType.pension: '연금',
-    };
-    final parts = [
-      for (final t in AccountType.values)
-        if ((byType[t] ?? 0) > 0) '${labels[t]} ${_m(byType[t]!)}만',
-    ];
-    return parts.isEmpty ? '이 달 배당 없음' : parts.join(' · ');
-  }
+  /// 천원 단위 반올림(원) — 화면 표기 단위(0.1만원)와 같은 정밀도.
+  static int _r(int won) => (won / 1000).round() * 1000;
+}
+
+/// 메인 카드 내역 한 줄.
+class _Row {
+  final String label;
+  final int amount;
+  final bool strong;
+
+  const _Row(this.label, this.amount, {this.strong = false});
 }
 
 /// 배당 라인 타일 — 종목명(+계좌 배지) / 주당×수량 / 금액. 예측이면 흐린 색+"예상" 배지.
@@ -996,7 +1037,7 @@ class _AccountFilterChips extends ConsumerWidget {
       ('전체', 'all'),
       ('일반', 'type:general'),
       ('ISA', 'type:isa'),
-      ('연금', 'type:pension'),
+      ('연금계좌', 'type:pension'),
       for (final a in userAccounts) (a.name, 'acct:${a.id}'),
     ];
 
