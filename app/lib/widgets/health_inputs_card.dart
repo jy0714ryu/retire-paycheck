@@ -158,7 +158,7 @@ class HealthInputsCard extends ConsumerWidget {
               key: const ValueKey('last_monthly_salary'),
               label: '퇴직 전 월급 (선택)',
               value: input.lastMonthlySalary,
-              helperText: '넣으면 경보 탭에서 퇴직 후 임의계속가입·지역가입을 비교해요',
+              helperText: '넣으면 세금 탭에서 퇴직 후 임의계속가입·지역가입을 비교해요',
               onChanged: (v) =>
                   notifier.update((s) => s.copyWith(lastMonthlySalary: v)),
             ),

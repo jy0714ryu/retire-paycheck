@@ -32,10 +32,12 @@ final _input = const RetirementInput(
 final _withdrawAccounts = [
   kDefaultAccounts[2].copyWith(
     monthlyWithdrawal: 1000000,
+    balance: 100000000,
     isWithdrawing: true,
   ), // 연금저축 과세 100만
   kDefaultAccounts[1].copyWith(
     monthlyWithdrawal: 500000,
+    balance: 100000000,
     isWithdrawing: true,
   ), // ISA 비과세 50만
 ];
@@ -218,10 +220,12 @@ void main() {
         accounts: [
           kDefaultAccounts[2].copyWith(
             monthlyWithdrawal: 1250000,
+            balance: 100000000,
             isWithdrawing: true,
           ),
           kDefaultAccounts[1].copyWith(
             monthlyWithdrawal: 500000,
+            balance: 100000000,
             isWithdrawing: true,
           ),
         ],
@@ -254,10 +258,12 @@ void main() {
         accounts: [
           kDefaultAccounts[2].copyWith(
             monthlyWithdrawal: 2000000,
+            balance: 100000000,
             isWithdrawing: true,
           ),
           kDefaultAccounts[1].copyWith(
             monthlyWithdrawal: 500000,
+            balance: 100000000,
             isWithdrawing: true,
           ),
         ],

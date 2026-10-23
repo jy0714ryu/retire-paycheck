@@ -25,10 +25,12 @@ void main() {
     final accounts = [
       kDefaultAccounts[2].copyWith(
         monthlyWithdrawal: 800000,
+        balance: 100000000,
         isWithdrawing: true,
       ), // 연금저축
       kDefaultAccounts[3].copyWith(
         monthlyWithdrawal: 400000,
+        balance: 100000000,
         isWithdrawing: true,
       ), // IRP
       const Account(
@@ -36,6 +38,7 @@ void main() {
         name: '미래에셋 IRP',
         type: AccountType.pension,
         monthlyWithdrawal: 100000,
+        balance: 100000000,
         isWithdrawing: true,
       ),
     ];
@@ -56,6 +59,7 @@ void main() {
     final accounts = [
       kDefaultAccounts[1].copyWith(
         monthlyWithdrawal: 300000,
+        balance: 100000000,
         isWithdrawing: true,
       ),
     ];
@@ -78,10 +82,12 @@ void main() {
     final accounts = [
       kDefaultAccounts[2].copyWith(
         monthlyWithdrawal: 700000,
+        balance: 100000000,
         isWithdrawing: true,
       ),
       kDefaultAccounts[3].copyWith(
         monthlyWithdrawal: 500000,
+        balance: 100000000,
         isWithdrawing: true,
       ),
     ];

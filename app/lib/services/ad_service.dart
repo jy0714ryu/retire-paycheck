@@ -4,16 +4,20 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 /// AdMob 전면(Interstitial) 광고 서비스.
 ///
-/// 달력 새로고침 등 액션마다 호출되지만, 실제 노출은 2회마다 1회만 발생한다
-/// (첫 액션은 광고 없이 가치를 먼저 경험 — AdMob 방해성 광고 정책·리텐션 보호).
+/// 달 넘기기 등 액션마다 호출되지만, 실제 노출은 3회마다 1회 + 직전 광고 후
+/// 3분이 지났을 때만 발생한다(v2.3 — 2회마다는 "넘길 때마다 광고"로 느껴진다는 피드백).
+/// 첫 2번은 광고 없이 가치를 먼저 경험 — AdMob 방해성 광고 정책·리텐션 보호.
 /// 광고가 준비되지 않았거나 로드에 실패해도 사용자 흐름은 절대 막지 않고 조용히 넘어간다.
 class AdService {
   static final AdService _instance = AdService._internal();
   factory AdService() => _instance;
   AdService._internal();
 
-  /// 2회마다 1회 노출 (2·4·6…번째 호출 — 첫 호출은 면제)
-  static const int _showEveryNCalls = 2;
+  /// 3회마다 1회 노출 (3·6·9…번째 호출 — 첫 2번은 면제)
+  static const int _showEveryNCalls = 3;
+
+  /// 직전 광고 노출 후 최소 간격 — 빠르게 넘겨도 연달아 뜨지 않게.
+  static const Duration _minInterval = Duration(minutes: 3);
 
   /// 구글 공식 테스트 전면광고 ID (Android)
   static const String _testInterstitialId =
@@ -31,6 +35,18 @@ class AdService {
   InterstitialAd? _interstitialAd;
   bool _isLoading = false;
   int _callCount = 0;
+  DateTime? _lastShownAt;
+
+  /// 노출 여부 판정(순수 — 테스트용). [callCount] 는 이번 호출을 포함한 누적 횟수.
+  @visibleForTesting
+  static bool shouldShow({
+    required int callCount,
+    required DateTime now,
+    DateTime? lastShownAt,
+  }) {
+    if (callCount % _showEveryNCalls != 0) return false;
+    return lastShownAt == null || now.difference(lastShownAt) >= _minInterval;
+  }
 
   /// SDK 초기화 + 첫 광고 미리 로드.
   ///
@@ -88,11 +104,18 @@ class AdService {
     );
   }
 
-  /// 액션마다 호출. 내부 카운터가 2회마다 1회 전면 광고를 표시한다.
+  /// 액션마다 호출. 3회마다 1회(직전 광고 후 3분 경과 시) 전면 광고를 표시한다.
   /// 광고가 준비되지 않았으면 조용히 skip (UX 차단 금지).
   Future<void> showInterstitialIfEligible() async {
     _callCount++;
-    if (_callCount % _showEveryNCalls != 0) return;
+    final now = DateTime.now();
+    if (!shouldShow(
+      callCount: _callCount,
+      now: now,
+      lastShownAt: _lastShownAt,
+    )) {
+      return;
+    }
 
     final ad = _interstitialAd;
     if (ad == null) {
@@ -102,6 +125,7 @@ class AdService {
     }
 
     try {
+      _lastShownAt = now;
       await ad.show();
     } catch (e) {
       debugPrint('📢 전면 광고 표시 중 오류: $e');

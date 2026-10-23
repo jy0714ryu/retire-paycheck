@@ -56,6 +56,7 @@ List<Override> _withdrawAccountsOverride() => [
           name: '연금인출',
           type: AccountType.pension,
           monthlyWithdrawal: 1000000,
+          balance: 100000000,
           isWithdrawing: true,
         ),
       )
@@ -65,6 +66,7 @@ List<Override> _withdrawAccountsOverride() => [
           name: 'ISA인출',
           type: AccountType.isa,
           monthlyWithdrawal: 500000,
+          balance: 100000000,
           isWithdrawing: true,
         ),
       ),
@@ -104,7 +106,7 @@ Future<void> _pumpCalendar(
 void main() {
   setUp(() {
     // override 된 notifier 의 생성자 _load 가 읽을 mock prefs(빈 값 → 시드 유지).
-    // 기존 회귀는 '통장 입금' 보기 기준 (v2.1 기본은 '배당 전체').
+    // 기존 회귀는 '총계' 보기 기준 (구 키 false → 총계, v2.3).
     SharedPreferences.setMockInitialValues({'calendar_view': false});
   });
 
@@ -125,8 +127,10 @@ void main() {
 
     // 메인 카드: 실수령(net) 1,868,000 → 186.8만원.
     expect(findWon('186.8'), findsOneWidget);
-    // 서브: 세전 200만원 = 세전 배당 50만 + 세전 연금 150만 (세전끼리 합 일치).
-    expect(find.textContaining('세전 200만원 = 배당 50만 + 연금 150만'), findsOneWidget);
+    // 서브(v2.3): 세후 구성 — 배당 42.3만 + 연금 144.5만 = 186.8만 (큰 숫자와 합 일치).
+    expect(find.text('배당 42.3만 · 연금 144.5만'), findsOneWidget);
+    // 카드 제목은 '이번 달'이 아니라 표시 월.
+    expect(find.text('4월 은퇴 월급 (세후)'), findsOneWidget);
 
     // 배당 라인: A사 종목명 + 주당×수량 상세(막대 차트 아래 — 스크롤로 뷰포트에 올림).
     final aSa = find.text('A사');
@@ -137,43 +141,56 @@ void main() {
     expect(find.text('예상'), findsNothing);
   });
 
-  testWidgets('배당 없는 달 → "이 달 예정 배당 없음" + 연금은 유지', (WidgetTester tester) async {
+  testWidgets('배당 없는 달 → 총계엔 연금 타일만, 배당금 보기엔 "이 달 예정 배당 없음"', (
+    WidgetTester tester,
+  ) async {
     await _pumpCalendar(tester, initialMonth: DateTime(2026, 3));
 
     expect(find.text('2026년 3월'), findsOneWidget);
+    final pension = find.text('연금 인출');
+    await tester.scrollUntilVisible(pension, 200);
+    expect(pension, findsOneWidget);
+    expect(find.text('이 달 들어오는 돈 없음'), findsNothing);
+    // 배당 없는 달 실수령 = 연금 net 945,000(과세)+500,000(ISA비과세) = 1,445,000 → 144.5만원.
+    expect(findWon('144.5'), findsWidgets);
+
+    await tester.scrollUntilVisible(find.text('배당금'), -300);
+    await tester.tap(find.text('배당금'));
+    await tester.pumpAndSettle();
     final empty = find.text('이 달 예정 배당 없음');
     await tester.scrollUntilVisible(empty, 200);
     expect(empty, findsOneWidget);
-    // 배당 없는 달 실수령 = 연금 net 945,000(과세)+500,000(ISA비과세) = 1,445,000 → 144.5만원.
-    expect(findWon('144.5'), findsWidgets);
   });
 
   testWidgets('하단 고지 텍스트 노출(단정 표기 금지)', (WidgetTester tester) async {
     await _pumpCalendar(tester, initialMonth: DateTime(2026, 4));
     // 지연 렌더 ListView 하단 항목 — 스크롤로 뷰포트에 올린 뒤 검증.
-    final notice = find.text('지급월은 예상이며 회사별로 다를 수 있습니다');
+    final notice = find.text('지급월은 예상이며 회사별로 다를 수 있어요');
     await tester.scrollUntilVisible(notice, 200);
     expect(notice, findsOneWidget);
   });
 
-  testWidgets('연간 배당 요약 카드 — 올해 예상 배당·세후·건수 노출', (WidgetTester tester) async {
-    // 3월(배당 없는 달)이라도 연간 요약은 2026-04 지급분(50만)을 집계.
+  testWidgets('배당금 보기 — 차트 머리에 연간 합계 한 줄 + 세전·건수 캡션(v2.3, 옛 요약 카드 통합)', (
+    WidgetTester tester,
+  ) async {
+    // 3월(배당 없는 달)이라도 연간 합계는 2026-04 지급분(50만)을 집계.
     await _pumpCalendar(tester, initialMonth: DateTime(2026, 3));
-    expect(find.textContaining('올해 예상 배당'), findsOneWidget);
-    // gross 50만 → 세후 500,000×(1-0.154)=423,000 → 42.3만. 만원 소수 한 자리 반올림 표기.
-    expect(find.textContaining('총 50만원'), findsOneWidget);
-    expect(find.textContaining('세후 42.3만원'), findsOneWidget);
-    expect(find.textContaining('확정 1건'), findsOneWidget);
-    expect(find.textContaining('예측 0건'), findsOneWidget);
+    await tester.tap(find.text('배당금'));
+    await tester.pumpAndSettle();
+    final total = find.byKey(const ValueKey('yearlyTotal'));
+    await tester.scrollUntilVisible(total, 100);
+    expect(tester.widget<Text>(total).data, '올해 배당 50만원');
+    expect(tester.widget<Text>(total).maxLines, 1);
+    expect(find.textContaining('세전 · 확정 1건 · 예상 0건'), findsOneWidget);
   });
 
   testWidgets('연간 미니 막대 차트 — 12개월 막대 + 제목 렌더', (WidgetTester tester) async {
     await _pumpCalendar(tester, initialMonth: DateTime(2026, 7));
 
-    final title = find.text('올해 월별 흐름');
+    final title = find.byKey(const ValueKey('yearlyTotal'));
     await tester.scrollUntilVisible(title, 100);
-    expect(title, findsOneWidget);
-    expect(find.text('(세후 기준)'), findsOneWidget);
+    expect(tester.widget<Text>(title).data, startsWith('올해 은퇴 월급 '));
+    expect(find.textContaining('세후 · 막대를 누르면'), findsOneWidget);
 
     // 1~12월 막대 12개 렌더.
     for (var m = 1; m <= 12; m++) {
@@ -243,6 +260,7 @@ void main() {
                   name: '연금인출',
                   type: AccountType.pension,
                   monthlyWithdrawal: 2000000,
+                  balance: 100000000,
                   isWithdrawing: true,
                 ),
               ), // ×12 = 2,400만 초과

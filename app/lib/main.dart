@@ -40,7 +40,7 @@ class RetirePaycheckApp extends StatelessWidget {
   }
 }
 
-/// 하단 4탭 셸 (v2): 이번 달 / 계획 / 경보 / 내 자산. 기본 탭 = 이번 달.
+/// 하단 4탭 셸 (v2): 이번 달 / 계획 / 세금 / 내 자산. 기본 탭 = 이번 달.
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
 
@@ -144,9 +144,9 @@ class _HomeShellState extends State<HomeShell> {
               label: '계획',
             ),
             NavigationDestination(
-              icon: Icon(Icons.notifications_none_outlined),
-              selectedIcon: Icon(Icons.notifications),
-              label: '경보',
+              icon: Icon(Icons.receipt_long_outlined),
+              selectedIcon: Icon(Icons.receipt_long),
+              label: '세금',
             ),
             NavigationDestination(
               icon: Icon(Icons.account_balance_wallet_outlined),

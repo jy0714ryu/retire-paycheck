@@ -11,7 +11,11 @@ import 'package:retire_paycheck/services/cashflow_engine.dart';
 
 // 연금저축 월 100만 인출 ON(과세), 나이 60(세율 5.5%).
 final _pensionAccounts = [
-  kDefaultAccounts[2].copyWith(monthlyWithdrawal: 1000000, isWithdrawing: true),
+  kDefaultAccounts[2].copyWith(
+    monthlyWithdrawal: 1000000,
+    balance: 100000000,
+    isWithdrawing: true,
+  ),
 ];
 
 // A사 1,000주 × per_share 500, 2025-12 기준일 → 2026-04 지급 배당.
@@ -195,5 +199,69 @@ void main() {
       );
       expect(g.pensionLowRate.current, 1000000 * 12);
     });
+  });
+
+  test('v2.3 연중 개시 — 그 해 실제 인출이 1,500만 이하면 절벽 미적용(세금 탭과 같은 기준)', () {
+    // 10월 개시 · 월 200만 → 2026년 실제 3개월 600만(한도 안), 2027년 2,400만(초과).
+    final accounts = [
+      kDefaultAccounts[2].copyWith(
+        balance: 100000000,
+        monthlyWithdrawal: 2000000,
+        isWithdrawing: true,
+      ),
+    ];
+    final input = const RetirementInput(
+      pensionSavings: 0,
+      irpBalance: 0,
+      isaBalance: 0,
+      currentAge: 60,
+      monthlyPensionWithdrawal: 0,
+      monthlyOtherWithdrawal: 0,
+      annualInterestIncome: 0,
+    ).copyWith(withdrawalStartMonth: DateTime(2026, 10));
+    final months = CashflowEngine.buildMonths(
+      holdings: const [],
+      events: const [],
+      input: input,
+      from: DateTime(2026, 10),
+      monthCount: 4,
+      accounts: accounts,
+    );
+    // 2026: 저율 5.5% → 1,890,000 / 2027-01: 절벽 16.5% → 1,670,000.
+    expect(months[0].pensionNet, 1890000);
+    expect(months[3].pensionNet, 1670000);
+    final g = CashflowEngine.buildGauges(
+      holdings: const [],
+      events: const [],
+      input: input,
+      year: 2026,
+      accounts: accounts,
+    );
+    expect(g.pensionLowRate.ratio <= 1.0, isTrue);
+  });
+
+  test('v2.3 현금성 잔액 0 인 계좌는 인출을 켜도 반영 안 됨', () {
+    final months = CashflowEngine.buildMonths(
+      holdings: const [],
+      events: const [],
+      input: const RetirementInput(
+        pensionSavings: 0,
+        irpBalance: 0,
+        isaBalance: 0,
+        currentAge: 60,
+        monthlyPensionWithdrawal: 0,
+        monthlyOtherWithdrawal: 0,
+        annualInterestIncome: 0,
+      ),
+      from: DateTime(2026, 4),
+      monthCount: 1,
+      accounts: [
+        kDefaultAccounts[2].copyWith(
+          monthlyWithdrawal: 1000000,
+          isWithdrawing: true,
+        ),
+      ],
+    );
+    expect(months.first.pensionGross, 0);
   });
 }

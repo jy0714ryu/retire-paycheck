@@ -40,8 +40,13 @@ class DividendFetchResult {
 class DividendApi {
   // limit=8000: 국내 ETF 전수 수집(2026-07-30, 951개 ETF·5천여 이벤트) 반영.
   // 서버는 현재 limit 을 무시하고 15개월 범위 전량 반환하나, clamp 도입 대비 상향.
-  static const String _baseUrl =
-      'https://api.quant-view.co.kr/dividends?limit=8000&include_predicted=true';
+  // RETIRE_DIVIDEND_URL: 웹 체험판 빌드 전용 — 외부 호출이 막힌 곳에서 같은 폴더의
+  // 스냅샷 JSON(예: 'dividends.json')을 읽게 한다. 앱 빌드는 기본값(운영 API) 그대로.
+  static const String _baseUrl = String.fromEnvironment(
+    'RETIRE_DIVIDEND_URL',
+    defaultValue:
+        'https://api.quant-view.co.kr/dividends?limit=8000&include_predicted=true',
+  );
 
   final http.Client _client;
   SharedPreferences? _prefs;

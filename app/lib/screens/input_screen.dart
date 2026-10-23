@@ -13,6 +13,7 @@ import '../theme/app_text_styles.dart';
 import '../widgets/health_inputs_card.dart';
 import '../widgets/input_widgets.dart';
 import '../widgets/keyboard_safe_back.dart';
+import '../widgets/settings_button.dart';
 
 /// 화면1 — 자산 입력 (v3: 계좌 중심 IA).
 ///
@@ -32,7 +33,10 @@ class InputScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('내 자산')),
+      appBar: AppBar(
+        title: const Text('내 자산'),
+        actions: const [SettingsButton()],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -169,7 +173,7 @@ class _AccountCard extends ConsumerWidget {
     final w = account.monthlyWithdrawal;
     if (w <= 0) return null;
     final totalMonths = account.balance ~/ w;
-    // 잔액 0(미입력)인데 인출만 켜면 "약 0개월분" 이 뜬다 → 1개월 미만은 숨김.
+    // 잔액 0 은 [_noCashWarning], 1개월분 미만은 [_shortCashWarning] 이 따로 경고한다.
     if (totalMonths < 1) return null;
     if (totalMonths < 12) return '이 속도면 약 $totalMonths개월분';
     final years = totalMonths ~/ 12;
@@ -177,6 +181,15 @@ class _AccountCard extends ConsumerWidget {
     if (months == 0) return '이 속도면 약 $years년분';
     return '이 속도면 약 $years년 $months개월분';
   }
+
+  /// 인출을 켰는데 현금성 잔액이 0 — 꺼낼 돈이 없어 달력·세금에 반영되지 않는다(v2.3).
+  bool get _noCashWarning => account.isWithdrawing && account.balance <= 0;
+
+  /// 잔액이 월 인출 1번분도 안 됨.
+  bool get _shortCashWarning =>
+      account.isWithdrawing &&
+      account.balance > 0 &&
+      account.monthlyWithdrawal > account.balance;
 
   void _toggleWithdrawing(WidgetRef ref, bool v) {
     final notifier = ref.read(accountsProvider.notifier);
@@ -279,14 +292,13 @@ class _AccountCard extends ConsumerWidget {
             )
           else
             ...entries.map((e) => _HoldingRow(index: e.key, holding: e.value)),
-          // 연금·ISA 계좌 배당은 통장 입금에 안 잡힌다 — "반영 안 됨"으로 오해하지 않게.
+          // 연금·ISA 계좌 배당은 총계(은퇴 월급)에 안 잡힌다 — "반영 안 됨"으로 오해하지 않게.
           if (entries.isNotEmpty && account.type != AccountType.general)
             Padding(
               key: ValueKey('reinvestNote_${account.id}'),
               padding: const EdgeInsets.only(top: 4, bottom: 8),
               child: Text(
-                '이 계좌 배당은 통장으로 나오지 않고 계좌 안에 남아요. '
-                "'이번 달 › 배당 전체'에서 볼 수 있어요.",
+                "이 계좌 배당은 꺼내기 전까지 계좌에 남아요 · '이번 달 › 배당금'에서 확인",
                 style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
               ),
             ),
@@ -309,11 +321,29 @@ class _AccountCard extends ConsumerWidget {
                 key: ValueKey('withdrawSwitch_${account.id}'),
                 contentPadding: EdgeInsets.zero,
                 title: const Text('인출 개시', style: AppTextStyles.label),
+                // 잔액 0 이면 켤 수 없다(이미 켜져 있으면 끄기만 허용).
+                subtitle: account.balance <= 0 && !account.isWithdrawing
+                    ? Text(
+                        '현금성 잔액을 먼저 입력하세요',
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.gray500,
+                        ),
+                      )
+                    : null,
                 value: account.isWithdrawing,
                 activeThumbColor: AppColors.navy,
-                onChanged: (v) => _toggleWithdrawing(ref, v),
+                onChanged: account.balance <= 0 && !account.isWithdrawing
+                    ? null
+                    : (v) => _toggleWithdrawing(ref, v),
               ),
             ),
+            if (_noCashWarning || _shortCashWarning)
+              _CashWarning(
+                key: ValueKey('cashWarning_${account.id}'),
+                text: _noCashWarning
+                    ? '현금성 잔액이 0원이라 인출이 반영되지 않아요'
+                    : '잔액이 월 인출 1번분보다 적어요',
+              ),
             if (account.isWithdrawing) ...[
               AmountInputField(
                 key: ValueKey('withdrawal_${account.id}'),
@@ -1087,7 +1117,7 @@ class _WithdrawalStartMonthField extends ConsumerWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          '은퇴가 미래라면 인출 시작 월을 정하세요. 그 전 달은 인출 없이 배당만 표시됩니다.',
+          '인출 시작 월을 정하면 그 전 달은 배당만 보여요',
           style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
         ),
       ],
@@ -1237,7 +1267,7 @@ class _InterestItemsSection extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: Text(
-              '등록한 이자소득 항목이 없습니다.\n예금 이자 등을 추가하면 금융소득종합과세 게이지에 합산됩니다.',
+              '이자소득 없음\n예금 이자를 넣으면 금융소득 합계에 더해져요',
               style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
             ),
           )
@@ -1463,6 +1493,36 @@ class _AddInterestItemSheetState extends State<_AddInterestItemSheet> {
                 elevation: 0,
               ),
               child: const Text('추가', style: AppTextStyles.button),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 계좌 카드 안 현금 부족 경고 한 줄(v2.3).
+class _CashWarning extends StatelessWidget {
+  final String text;
+
+  const _CashWarning({super.key, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.warning_amber_rounded,
+            size: 16,
+            color: AppColors.warning,
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              text,
+              style: AppTextStyles.caption.copyWith(color: AppColors.warning),
             ),
           ),
         ],

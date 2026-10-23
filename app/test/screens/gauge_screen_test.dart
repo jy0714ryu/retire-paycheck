@@ -79,6 +79,7 @@ Future<void> _pumpGauge(
                 name: '연금인출',
                 type: AccountType.pension,
                 monthlyWithdrawal: monthlyPensionWithdrawal,
+                balance: 100000000,
                 isWithdrawing: true,
               ),
             ),
@@ -163,10 +164,7 @@ void main() {
     // 빨강 진행바.
     expect(_barColorForCard(tester, '사적연금 저율과세 한도'), AppColors.error);
     // 경고 한 줄.
-    expect(
-      find.text('1,500만원을 넘으면 초과분이 아니라 전액이 16.5% 과세로 전환될 수 있습니다'),
-      findsOneWidget,
-    );
+    expect(find.text('1,500만원을 넘으면 전액 16.5% 과세될 수 있어요'), findsOneWidget);
   });
 
   group('건보료나침반 엔진 카드 (v2.2)', () {
@@ -222,7 +220,7 @@ void main() {
       expect(card, findsOneWidget);
       expect(find.byKey(const Key('retire_compare_cheapest')), findsOneWidget);
       expect(find.textContaining('추천'), findsNothing);
-      expect(find.textContaining('재산 미입력 — 지역가입 재산분은 0'), findsOneWidget);
+      expect(find.textContaining('재산 미입력 → 지역 재산분 0'), findsOneWidget);
     });
 
     testWidgets('피부양자 — 사업자등록 없어도 사업·임대 소득 500만원 넘으면 탈락 가능', (tester) async {

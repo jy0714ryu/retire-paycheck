@@ -153,25 +153,41 @@ class RetirementInputNotifier extends StateNotifier<RetirementInput> {
   );
 }
 
-/// 이번 달 탭 보기 — true=배당 전체(기본, 계좌 안 포함), false=통장 입금. 마지막 선택 기억.
-class CalendarViewNotifier extends StateNotifier<bool> {
-  CalendarViewNotifier() : super(true) {
+/// 이번 달 탭 보기 (v2.3) — 총계(세후 은퇴 월급) / 배당금(세전, ISA·연금 계좌 포함) / 연금(인출).
+enum CalendarView { total, dividends, pension }
+
+/// v2.3 보기 저장 키(문자열). 구 키 [_kCalendarViewKey](bool) 는 읽기만 한다 —
+/// true(배당 전체)→배당금, false(통장 입금)→총계.
+const String _kCalendarViewModeKey = 'calendar_view_mode';
+
+/// 이번 달 탭 보기 — 기본 총계. 마지막 선택 기억.
+class CalendarViewNotifier extends StateNotifier<CalendarView> {
+  CalendarViewNotifier() : super(CalendarView.total) {
     SharedPreferences.getInstance().then((p) {
-      final v = p.getBool(_kCalendarViewKey);
-      if (v != null && mounted) state = v;
+      if (!mounted) return;
+      final mode = CalendarView.values
+          .asNameMap()[p.getString(_kCalendarViewModeKey)];
+      if (mode != null) {
+        state = mode;
+        return;
+      }
+      final legacy = p.getBool(_kCalendarViewKey);
+      if (legacy != null) {
+        state = legacy ? CalendarView.dividends : CalendarView.total;
+      }
     });
   }
 
-  void set(bool allDividends) {
-    state = allDividends;
+  void set(CalendarView view) {
+    state = view;
     SharedPreferences.getInstance().then(
-      (p) => p.setBool(_kCalendarViewKey, allDividends),
+      (p) => p.setString(_kCalendarViewModeKey, view.name),
     );
   }
 }
 
-final calendarAllDividendsProvider =
-    StateNotifierProvider<CalendarViewNotifier, bool>(
+final calendarViewProvider =
+    StateNotifierProvider<CalendarViewNotifier, CalendarView>(
       (ref) => CalendarViewNotifier(),
     );
 

@@ -25,7 +25,7 @@ void main() {
 
       expect(find.text('이번 달'), findsWidgets);
       expect(find.text('계획'), findsWidgets);
-      expect(find.text('경보'), findsWidgets);
+      expect(find.text('세금'), findsWidgets);
       expect(find.text('내 자산'), findsWidgets);
       // 기본 탭 = 이번 달 (은퇴월급 헤더)
       expect(find.text('은퇴월급'), findsOneWidget);
@@ -33,13 +33,13 @@ void main() {
       expect(find.byType(QuickStartScreen), findsNothing);
     });
 
-    testWidgets('탭 전환 — 경보·내 자산·계획', (WidgetTester tester) async {
+    testWidgets('탭 전환 — 세금·내 자산·계획', (WidgetTester tester) async {
       await tester.pumpWidget(const ProviderScope(child: RetirePaycheckApp()));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byIcon(Icons.notifications_none_outlined));
+      await tester.tap(find.byIcon(Icons.receipt_long_outlined));
       await tester.pumpAndSettle();
-      expect(find.text('세금 문턱 경보'), findsOneWidget);
+      expect(find.text('세금 문턱'), findsOneWidget);
 
       await tester.tap(find.byIcon(Icons.account_balance_wallet_outlined));
       await tester.pumpAndSettle();

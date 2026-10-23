@@ -120,8 +120,7 @@ class _QuickStartScreenState extends ConsumerState<QuickStartScreen> {
             _field('매달 꺼내 쓸 금액 (선택)', '만원', _monthly, const Key('qs_monthly')),
             const SizedBox(height: 14),
             Text(
-              'IRP·ISA·보유 종목은 결과를 본 뒤 내 자산 탭에서 더할 수 있어요. '
-              '입력값은 이 폰에만 저장됩니다.',
+              'IRP·ISA·종목은 나중에 내 자산 탭에서 · 입력값은 이 폰에만 저장',
               style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
             ),
             const SizedBox(height: 28),

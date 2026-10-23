@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 2.2.0+18
+version: 2.3.0+19
 
 environment:
   sdk: ^3.12.2
@@ -52,6 +52,8 @@ dependencies:
   # v2.2 연금나침반 이식 — 결과 요약 공유·리뷰 요청
   share_plus: ^13.2.1
   in_app_review: ^2.0.10
+  # v2.3 설정 — 엑셀 내보내기 (경조사부 실측판)
+  excel: ^4.0.6
 
   # 광고 (9.0.0: Gradle 9.1/AGP 9.0.1 기본 툴체인과 호환되는 유일한 버전.
   # pension-compass 실측 검증판 — compileSdk 36 지원.)

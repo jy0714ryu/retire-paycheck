@@ -16,6 +16,7 @@ import '../utils/currency_format.dart';
 import '../widgets/banner_ad_widget.dart';
 import '../widgets/nps_estimate_sheet.dart';
 import '../widgets/plan_accuracy_card.dart';
+import '../widgets/settings_button.dart';
 
 /// 계획 탭 — 연금나침반 엔진으로 인출 순서 4가지 전략의 총 세금을 비교한다 (v2, 2026-10-22).
 ///
@@ -98,7 +99,10 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('인출 계획')),
+      appBar: AppBar(
+        title: const Text('인출 계획'),
+        actions: const [SettingsButton()],
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
         children: [
@@ -548,8 +552,7 @@ class _EmptyCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            '연금저축·IRP·ISA 잔액과 월 인출액을 내 자산 탭에 입력하면, 네 가지 인출 순서의 '
-            '총 세금을 계산합니다.',
+            '내 자산 탭에 잔액·월 인출액을 넣으면 인출 순서 4가지의 세금을 비교해요',
             style: AppTextStyles.body.copyWith(color: AppColors.gray600),
           ),
           if (onGoToAssets != null) ...[

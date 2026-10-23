@@ -153,14 +153,6 @@ class CashflowEngine {
     final monthlyTaxable = pensionMonthlyWithdrawal(accounts);
     final monthlyTaxFree = _monthlyWithdrawalByType(accounts, AccountType.isa);
     final pensionGross = monthlyTaxable + monthlyTaxFree;
-    // 사적연금 절벽: 연 인출액(과세분)이 1,500만원을 초과하면 저율(3.3~5.5%)이 아니라
-    // 전액 16.5% 분리과세 (분리과세 선택 가정). 초과분이 아니라 전액에 적용.
-    final annualPensionTaxable = monthlyTaxable * 12;
-    final pensionRate = annualPensionTaxable > kPensionLowRateLimit
-        ? kPensionCliffRate
-        : pensionTaxRate(input.currentAge);
-    final basePensionNet =
-        (monthlyTaxable * (1 - pensionRate)).round() + monthlyTaxFree;
 
     final start = DateTime(from.year, from.month, 1);
     // 전역 인출 개시월 — 이 월 이전 달은 모든 인출(연금·계좌 monthlyWithdrawal)을
@@ -172,6 +164,19 @@ class CashflowEngine {
             input.withdrawalStartMonth!.year,
             input.withdrawalStartMonth!.month,
           );
+    // 사적연금 절벽: 그 해 실제 인출액(과세분)이 1,500만원을 초과하면 저율(3.3~5.5%)이
+    // 아니라 전액 16.5% 분리과세 (분리과세 선택 가정). 초과분이 아니라 전액에 적용.
+    // 연 인출액 = 월 인출 × 그 해 인출 개월 수(개시월 반영) — buildGauges 와 같은 기준.
+    // (v2.3 전엔 × 12 고정이라 연중 개시 시 게이지는 한도 안인데 달력만 16.5% 적용.)
+    int pensionNetIn(int year) {
+      final annualTaxable =
+          monthlyTaxable * _withdrawingMonthsInYear(gateStart, year);
+      final rate = annualTaxable > kPensionLowRateLimit
+          ? kPensionCliffRate
+          : pensionTaxRate(input.currentAge);
+      return (monthlyTaxable * (1 - rate)).round() + monthlyTaxFree;
+    }
+
     final result = <MonthlyCashflow>[];
 
     for (var i = 0; i < monthCount; i++) {
@@ -179,7 +184,7 @@ class CashflowEngine {
       // 개시월 이전이면 인출 0, 개시월(포함) 이후면 기존대로.
       final gated = gateStart != null && month.isBefore(gateStart);
       final monthPensionGross = gated ? 0 : pensionGross;
-      final monthPensionNet = gated ? 0 : basePensionNet;
+      final monthPensionNet = gated ? 0 : pensionNetIn(month.year);
 
       final lines = <DividendLine>[];
       final reinvestLines = <DividendLine>[];
@@ -408,7 +413,7 @@ class CashflowEngine {
   ) {
     var sum = 0;
     for (final a in accounts) {
-      if (a.type == type && a.isWithdrawing) sum += a.monthlyWithdrawal;
+      if (a.type == type && a.withdrawalActive) sum += a.monthlyWithdrawal;
     }
     return sum;
   }

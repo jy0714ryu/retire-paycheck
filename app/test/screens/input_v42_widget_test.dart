@@ -81,28 +81,51 @@ void main() {
     );
   });
 
-  testWidgets('④ 잔액 0(미입력) + 인출 ON + 월 인출>0 이면 소진 캡션 숨김', (tester) async {
+  testWidgets('④ v2.3 잔액 0(미입력)이면 인출 개시 스위치를 켤 수 없다 + 안내', (tester) async {
     SharedPreferences.setMockInitialValues({});
     await tester.pumpWidget(
       const ProviderScope(child: MaterialApp(home: InputScreen())),
     );
     await tester.pumpAndSettle();
 
-    // 잔액은 입력하지 않고(0) ISA 인출 스위치만 ON.
+    final isaSwitch = find.byKey(const ValueKey('withdrawSwitch_default_isa'));
+    await tester.ensureVisible(isaSwitch);
+    expect(tester.widget<SwitchListTile>(isaSwitch).onChanged, isNull);
+    expect(find.text('현금성 잔액을 먼저 입력하세요'), findsWidgets);
+    await tester.tap(isaSwitch);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('withdrawal_default_isa')), findsNothing);
+  });
+
+  testWidgets('④ v2.3 인출 켠 뒤 잔액을 0으로 지우면 경고, 월 인출이 잔액보다 크면 부족 경고', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    await tester.pumpWidget(
+      const ProviderScope(child: MaterialApp(home: InputScreen())),
+    );
+    await tester.pumpAndSettle();
+
+    final balance = find.byKey(const ValueKey('balance_default_isa'));
+    await tester.ensureVisible(balance);
+    await tester.enterText(balance, '50');
+    await tester.pumpAndSettle();
     final isaSwitch = find.byKey(const ValueKey('withdrawSwitch_default_isa'));
     await tester.ensureVisible(isaSwitch);
     await tester.tap(isaSwitch);
     await tester.pumpAndSettle();
 
-    // 월 인출 100만원 입력(만원 단위 100).
-    final withdrawalField = find.byKey(
-      const ValueKey('withdrawal_default_isa'),
-    );
-    await tester.ensureVisible(withdrawalField);
-    await tester.enterText(withdrawalField, '100');
+    final withdrawal = find.byKey(const ValueKey('withdrawal_default_isa'));
+    await tester.ensureVisible(withdrawal);
+    await tester.enterText(withdrawal, '100');
     await tester.pumpAndSettle();
+    expect(find.text('잔액이 월 인출 1번분보다 적어요'), findsOneWidget);
 
-    // 잔액 0 → totalMonths<1 → 캡션 미노출.
-    expect(find.text('이 속도면 약 0개월분'), findsNothing);
+    await tester.ensureVisible(balance);
+    await tester.enterText(balance, '0');
+    await tester.pumpAndSettle();
+    expect(find.text('현금성 잔액이 0원이라 인출이 반영되지 않아요'), findsOneWidget);
+    // 이미 켜진 스위치는 끌 수 있어야 한다.
+    expect(tester.widget<SwitchListTile>(isaSwitch).onChanged, isNotNull);
   });
 }
