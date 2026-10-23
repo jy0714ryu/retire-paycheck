@@ -10,7 +10,6 @@ import '../models/retirement_input.dart';
 import '../providers/app_providers.dart';
 import '../services/ad_service.dart';
 import '../services/cashflow_engine.dart';
-import '../services/tax_constants.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 import '../utils/currency_format.dart';
@@ -74,7 +73,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     setState(() {
       _month = DateTime(_month.year, _month.month + delta, 1);
     });
-    // 월 넘김 5회당 1회 + 직전 광고 3분 경과 시에만 전면 광고(ad_service).
+    // 월 넘김 3회당 1회 + 직전 광고 3분 경과 시에만 전면 광고(ad_service).
     AdService().showInterstitialIfEligible();
   }
 
@@ -161,12 +160,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final overThreshold =
         gauges.financialIncome.ratio > 1.0 || gauges.pensionLowRate.ratio > 1.0;
 
-    // 사적연금 연 인출액이 저율 한도(1,500만원)를 초과하면 전액 16.5% 절벽 적용.
-    // pension 유형 계좌 monthlyWithdrawal 합산 × 12 (엔진 buildGauges.pensionLowRate
-    // 와 동일 SSOT — 계좌별 Account.isWithdrawing 게이트 적용, 전역 게이트 없음).
-    final pensionOverLowRate =
-        CashflowEngine.pensionMonthlyWithdrawal(effectiveAccounts) * 12 >
-        kPensionLowRateLimit;
+    // 사적연금 그 해 실제 인출액이 저율 한도(1,500만원)를 넘으면 전액 16.5% 절벽.
+    // 세금 탭 게이지(buildGauges.pensionLowRate — 개시월 반영 개월 수)를 그대로 쓴다.
+    // 월 인출 × 12 로 따로 재면 연중 개시 때 화면끼리 판정이 어긋난다(v2.3 리뷰 I1).
+    final pensionOverLowRate = gauges.pensionLowRate.ratio > 1.0;
 
     // 막대 = 보기별 월 금액. 총계·연금은 세후, 배당금은 세전(필터 반영).
     final byMonth = [
@@ -387,13 +384,13 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final withdrawing = [
       for (final a in accounts)
         if (a.type != AccountType.general &&
-            a.isWithdrawing &&
+            a.withdrawalActive &&
             a.monthlyWithdrawal > 0)
           a,
     ];
     final start = input.withdrawalStartMonth;
     final String? emptyText = withdrawing.isEmpty
-        ? "인출 중인 계좌가 없어요\n내 자산 탭에서 '인출 개시'를 켜세요"
+        ? "인출 중인 계좌가 없어요\n내 자산 탭에서 현금성 잔액과 '인출 개시'를 확인하세요"
         : cf.pensionGross == 0 && start != null
         ? '${start.year}년 ${start.month}월부터 인출해요'
         : null;

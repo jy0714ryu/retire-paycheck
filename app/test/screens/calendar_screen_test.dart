@@ -56,6 +56,7 @@ List<Override> _withdrawAccountsOverride() => [
           name: '연금인출',
           type: AccountType.pension,
           monthlyWithdrawal: 1000000,
+          balance: 100000000,
           isWithdrawing: true,
         ),
       )
@@ -65,6 +66,7 @@ List<Override> _withdrawAccountsOverride() => [
           name: 'ISA인출',
           type: AccountType.isa,
           monthlyWithdrawal: 500000,
+          balance: 100000000,
           isWithdrawing: true,
         ),
       ),
@@ -258,6 +260,7 @@ void main() {
                   name: '연금인출',
                   type: AccountType.pension,
                   monthlyWithdrawal: 2000000,
+                  balance: 100000000,
                   isWithdrawing: true,
                 ),
               ), // ×12 = 2,400만 초과

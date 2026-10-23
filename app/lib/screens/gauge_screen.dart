@@ -104,7 +104,9 @@ class GaugeScreen extends ConsumerWidget {
         ).isBefore(DateTime(start.year, start.month));
     final pensionIsReference =
         globalStartInFuture ||
-        !accounts.any((a) => a.type == AccountType.pension && a.isWithdrawing);
+        !accounts.any(
+          (a) => a.type == AccountType.pension && a.withdrawalActive,
+        );
 
     return ListView(
       padding: const EdgeInsets.all(16),

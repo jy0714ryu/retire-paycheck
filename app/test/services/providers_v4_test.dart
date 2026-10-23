@@ -14,7 +14,11 @@ void main() {
 
     container
         .read(accountsProvider.notifier)
-        .updateDefaults('default_pension_savings', isWithdrawing: true);
+        .updateDefaults(
+          'default_pension_savings',
+          balance: 100000000,
+          isWithdrawing: true,
+        );
     await Future<void>.delayed(Duration.zero);
 
     final eff = container.read(effectiveAccountsProvider);
@@ -40,7 +44,7 @@ void main() {
         );
     container
         .read(accountsProvider.notifier)
-        .updateUser('u1', isWithdrawing: true);
+        .updateUser('u1', balance: 100000000, isWithdrawing: true);
     await Future<void>.delayed(Duration.zero);
     expect(
       container

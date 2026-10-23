@@ -4,17 +4,17 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 /// AdMob 전면(Interstitial) 광고 서비스.
 ///
-/// 달 넘기기 등 액션마다 호출되지만, 실제 노출은 5회마다 1회 + 직전 광고 후
+/// 달 넘기기 등 액션마다 호출되지만, 실제 노출은 3회마다 1회 + 직전 광고 후
 /// 3분이 지났을 때만 발생한다(v2.3 — 2회마다는 "넘길 때마다 광고"로 느껴진다는 피드백).
-/// 첫 4번은 광고 없이 가치를 먼저 경험 — AdMob 방해성 광고 정책·리텐션 보호.
+/// 첫 2번은 광고 없이 가치를 먼저 경험 — AdMob 방해성 광고 정책·리텐션 보호.
 /// 광고가 준비되지 않았거나 로드에 실패해도 사용자 흐름은 절대 막지 않고 조용히 넘어간다.
 class AdService {
   static final AdService _instance = AdService._internal();
   factory AdService() => _instance;
   AdService._internal();
 
-  /// 5회마다 1회 노출 (5·10·15…번째 호출 — 첫 4번은 면제)
-  static const int _showEveryNCalls = 5;
+  /// 3회마다 1회 노출 (3·6·9…번째 호출 — 첫 2번은 면제)
+  static const int _showEveryNCalls = 3;
 
   /// 직전 광고 노출 후 최소 간격 — 빠르게 넘겨도 연달아 뜨지 않게.
   static const Duration _minInterval = Duration(minutes: 3);
@@ -104,7 +104,7 @@ class AdService {
     );
   }
 
-  /// 액션마다 호출. 5회마다 1회(직전 광고 후 3분 경과 시) 전면 광고를 표시한다.
+  /// 액션마다 호출. 3회마다 1회(직전 광고 후 3분 경과 시) 전면 광고를 표시한다.
   /// 광고가 준비되지 않았으면 조용히 skip (UX 차단 금지).
   Future<void> showInterstitialIfEligible() async {
     _callCount++;

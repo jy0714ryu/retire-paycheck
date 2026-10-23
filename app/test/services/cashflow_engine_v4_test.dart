@@ -26,6 +26,7 @@ void main() {
     final accounts = [
       kDefaultAccounts[2].copyWith(
         monthlyWithdrawal: 800000,
+        balance: 100000000,
         isWithdrawing: true,
       ), // 연금저축 ON
       kDefaultAccounts[3].copyWith(
@@ -48,10 +49,12 @@ void main() {
     final accounts = [
       kDefaultAccounts[2].copyWith(
         monthlyWithdrawal: 700000,
+        balance: 100000000,
         isWithdrawing: true,
       ),
       kDefaultAccounts[3].copyWith(
         monthlyWithdrawal: 600000,
+        balance: 100000000,
         isWithdrawing: true,
       ),
     ];

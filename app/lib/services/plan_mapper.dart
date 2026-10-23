@@ -73,10 +73,10 @@ PlanBalances planBalancesFrom(List<Account> accounts) {
         } else {
           pension += a.balance;
         }
-        if (a.isWithdrawing) monthly += a.monthlyWithdrawal;
+        if (a.withdrawalActive) monthly += a.monthlyWithdrawal;
       case AccountType.isa:
         isa += a.balance;
-        if (a.isWithdrawing) monthly += a.monthlyWithdrawal;
+        if (a.withdrawalActive) monthly += a.monthlyWithdrawal;
       case AccountType.general:
         break;
     }

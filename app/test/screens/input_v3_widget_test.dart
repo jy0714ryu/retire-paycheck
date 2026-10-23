@@ -42,6 +42,11 @@ void main() {
     // OFF(기본) → 월 인출 필드 없음.
     expect(find.text('월 인출'), findsNothing);
 
+    // v2.3: 현금성 잔액이 있어야 인출 개시를 켤 수 있다 — ISA 잔액 1,000만원 입력.
+    final isaBalance = find.byKey(const ValueKey('balance_default_isa'));
+    await tester.ensureVisible(isaBalance);
+    await tester.enterText(isaBalance, '1000');
+    await tester.pumpAndSettle();
     // v4: 계좌별 스위치 — 첫 스위치(ISA) ON → 그 계좌에만 노출.
     final firstSwitch = find.byType(Switch).first;
     await tester.ensureVisible(firstSwitch);

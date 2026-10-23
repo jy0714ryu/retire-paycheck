@@ -176,6 +176,7 @@ void main() {
           name: '연금인출',
           type: AccountType.pension,
           monthlyWithdrawal: 500000,
+          balance: 100000000,
           isWithdrawing: true,
         ),
       ],

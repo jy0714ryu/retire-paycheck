@@ -29,6 +29,10 @@ class Account {
 
   bool get isDefault => id.startsWith('default_');
 
+  /// 실제로 인출이 반영되는지 — 인출 개시를 켰고 현금성 잔액이 있어야 한다(v2.3).
+  /// 잔액 0 인 계좌는 꺼낼 돈이 없으므로 달력·세금·계획 어디에도 인출을 넣지 않는다.
+  bool get withdrawalActive => isWithdrawing && balance > 0;
+
   Account copyWith({
     String? name,
     int? balance,

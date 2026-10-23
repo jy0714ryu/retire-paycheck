@@ -79,6 +79,7 @@ Future<void> _pumpGauge(
                 name: '연금인출',
                 type: AccountType.pension,
                 monthlyWithdrawal: monthlyPensionWithdrawal,
+                balance: 100000000,
                 isWithdrawing: true,
               ),
             ),
