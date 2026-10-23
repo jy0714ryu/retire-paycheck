@@ -129,6 +129,11 @@ void main() {
     await t.tap(find.byIcon(Icons.account_balance_wallet_outlined));
     await t.pumpAndSettle();
     await expectLater(find.byType(MaterialApp), matchesGoldenFile('${_dir}4_assets.png'));
+    final dep = find.byKey(const ValueKey('depletion_default_pension_savings'));
+    await t.scrollUntilVisible(dep, 300, scrollable: find.byType(Scrollable).first);
+    await Scrollable.ensureVisible(t.element(dep), alignment: 0.4);
+    await t.pumpAndSettle();
+    await expectLater(find.byType(MaterialApp), matchesGoldenFile('${_dir}4b_depletion.png'));
   });
 
   testWidgets('quick start', (t) async {

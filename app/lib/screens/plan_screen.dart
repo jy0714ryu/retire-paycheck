@@ -34,10 +34,10 @@ String planStrategyName(String id, String fallback) => switch (id) {
 };
 
 String planStrategyDesc(String id) => switch (id) {
-  'defer_taxable' => 'ISA·원금·퇴직금을 먼저 쓰고, 공제받은 연금은 세율이 낮아지는 70세 이후에',
-  'tax_free_first' => 'ISA·공제 안 받은 원금부터, 연금은 연 1,500만원 안에서',
-  'fill_bracket' => '공제받은 연금을 매년 1,500만원까지 먼저, 모자라면 ISA·원금',
-  'pension_first' => '한도를 따지지 않고 연금저축부터 차례로',
+  'defer_taxable' => 'ISA·원금·퇴직금부터 쓰고, 공제받은 연금은 세율이 낮아지는 70세부터 꺼내요',
+  'tax_free_first' => 'ISA와 공제 안 받은 원금을 먼저 쓰고, 연금은 해마다 1,500만원을 넘지 않게 꺼내요',
+  'fill_bracket' => '공제받은 연금을 해마다 1,500만원까지 먼저 쓰고, 모자라면 ISA·원금으로 채워요',
+  'pension_first' => '1,500만원 한도를 따지지 않고 연금저축부터 차례로 꺼내요',
   _ => '',
 };
 
@@ -694,7 +694,9 @@ class _YearlyTable extends StatelessWidget {
             Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                '연 단위 · 국민연금은 연금계좌 인출과 따로 들어오는 돈이라 세금 계산에서 뺐어요.',
+                '처음엔 세금 없는 돈(ISA·원금)부터 써서 세금이 0원이에요. 그 뒤 연금에 붙는 세율은 '
+                '나이 들수록 낮아져요: 69세까지 5.5% → 70~79세 4.4% → 80세부터 3.3%. '
+                '국민연금은 따로 들어오는 돈이라 이 표의 세금엔 넣지 않았어요.',
                 style: AppTextStyles.caption.copyWith(color: AppColors.gray500),
               ),
             ),

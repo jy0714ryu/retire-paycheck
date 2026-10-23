@@ -197,7 +197,9 @@ class PensionSimulator {
       var bracketRemaining = kAnnualPensionBracket;
       // 국민연금이 목표를 초과해도 연금계좌 인출은 0에서 멈춘다 (음수 인출 금지).
       var remaining = withdrawalActive
-          ? (input.targetAnnualWithdrawal - npsAnnualAmount).clamp(0, kNoLimit)
+          ? (input.targetAnnualWithdrawal -
+                    (input.npsReducesTarget ? npsAnnualAmount : 0))
+                .clamp(0, kNoLimit)
           : 0;
       final ledger = <WithdrawalSource, DrawSplit>{};
 

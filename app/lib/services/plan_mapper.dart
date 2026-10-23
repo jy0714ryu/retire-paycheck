@@ -130,6 +130,9 @@ PensionInput? buildPlanInput({
       0.0,
       0.45,
     ),
+    // 은퇴월급의 인출 목표 = 계좌에서 꺼낼 돈(내 자산 월 인출액). 국민연금은 따로 들어오므로
+    // 인출을 줄이지 않는다 — 줄이면 월 120만 인출이 30만으로 계산돼 세금·소진이 과소 추정됐다.
+    npsReducesTarget: false,
   );
   return input.isValid ? input : null;
 }
