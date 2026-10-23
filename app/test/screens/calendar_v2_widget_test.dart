@@ -221,13 +221,17 @@ void main() {
 
     // 총계 보기: 일반계좌 라인 gross 500,000 × (1-0.154) = 423,000 → 세후 "42.3만원"
     // (엔진 amountNet 그대로 — 화면에서 재계산 금지).
+    // v2.3.1 총계 = 모든 계좌 배당 + 연금: 큰 숫자 92.3(일반 세후 42.3 + ISA 50),
+    // 이 중 통장 입금은 일반 세후 42.3 만.
+    expect(findWon('92.3'), findsOneWidget);
+    expect(find.text('이 중 통장 입금'), findsOneWidget);
+    expect(find.textContaining('연금계좌·ISA 배당 50만원은 계좌에 쌓여요'), findsOneWidget);
     final generalLine = find.text('일반주');
     await tester.scrollUntilVisible(generalLine, 200);
-    // 총계 카드(ISA 배당은 계좌에 남아 일반 세후만) + 일반 라인 = 42.3 두 곳.
-    expect(findWon('42.3'), findsNWidgets(2));
-    // ISA 라인은 총계에 없음 — 하단 한 줄 안내로만.
-    expect(find.text('ISA주'), findsNothing);
-    expect(find.textContaining('연금계좌·ISA에 쌓인 배당 50만원은'), findsOneWidget);
+    // 내역: 일반 라인은 세후 42.3, ISA 라인은 비과세 50 그대로(재계산 금지).
+    expect(findWon('42.3'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('ISA주'), 200);
+    expect(findWon('50'), findsOneWidget);
 
     // 배당금 보기: 카드·막대와 같은 세전 기준 + ISA 라인에 계좌 이름 배지.
     await _showAllDividends(tester);
@@ -262,10 +266,12 @@ void main() {
     );
 
     // 세전 = 500 × 1,000 = 500,000원 → 총계에선 빠지고 안내만.
-    final note = find.text('연금계좌·ISA에 쌓인 배당 50만원은 제외');
+    final note = find.text('연금계좌·ISA 배당 50만원은 계좌에 쌓여요 (세금은 꺼낼 때)');
     await tester.scrollUntilVisible(note, 200);
     expect(note, findsOneWidget);
-    expect(find.text('연금주'), findsNothing);
+    // v2.3.1: 총계 내역에도 연금계좌 배당이 계좌 배지와 함께 나온다.
+    await tester.scrollUntilVisible(find.text('연금주'), 200);
+    expect(find.text('연금주'), findsOneWidget);
 
     await _showAllDividends(tester);
     await tester.scrollUntilVisible(find.text('연금주'), 200);
@@ -417,7 +423,7 @@ void main() {
       events: [_eventGeneral],
       initialMonth: DateTime(2026, 4),
     );
-    expect(find.text('4월 통장 입금 (세후)'), findsOneWidget);
+    expect(find.text('4월 총계 (세후)'), findsOneWidget);
     await _showAllDividends(tester);
     expect(find.text('4월 배당금 (세전)'), findsOneWidget);
     final prefs = await SharedPreferences.getInstance();

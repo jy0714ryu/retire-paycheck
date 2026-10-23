@@ -169,7 +169,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final byMonth = [
       for (final m in yearMonths)
         switch (view) {
-          CalendarView.total => m.totalNet,
+          // 총계 = 모든 계좌 배당 + 연금 + 이자 (연금계좌·ISA 배당은 세금이 꺼낼 때라 그대로).
+          CalendarView.total => m.totalNet + m.reinvestGross,
           CalendarView.dividends => _dividendsGross(m, filter),
           CalendarView.pension => m.pensionNet,
         },
@@ -259,7 +260,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             const SizedBox(height: 12),
             _YearlyBarChart(
               title: switch (view) {
-                CalendarView.total => '올해 통장 입금',
+                CalendarView.total => '올해 총계',
                 CalendarView.dividends => '올해 배당',
                 CalendarView.pension => '올해 연금',
               },
@@ -303,19 +304,29 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     );
   }
 
-  /// 총계 — 그 달 통장에 들어오는 돈(세후): 일반계좌 배당 · 연금 인출 · 이자.
+  /// 총계 — 그 달 생기는 돈(세후): 모든 계좌 배당 · 연금 인출 · 이자.
   List<Widget> _totalSection(
     MonthlyCashflow cf,
     bool pensionOverLowRate,
     Widget Function(DividendLine, int, {String? badge}) lineTile,
   ) {
     final hasAny =
-        cf.lines.isNotEmpty || cf.pensionGross > 0 || cf.interestNet > 0;
+        cf.lines.isNotEmpty ||
+        cf.reinvestLines.isNotEmpty ||
+        cf.pensionGross > 0 ||
+        cf.interestNet > 0;
     return [
-      Text('${cf.month.month}월 들어오는 돈 (세후)', style: AppTextStyles.h4),
+      Text('${cf.month.month}월 내역 (세후)', style: AppTextStyles.h4),
       const SizedBox(height: 8),
       if (!hasAny) const _EmptyMonth('이 달 들어오는 돈 없음'),
       for (final line in cf.lines) lineTile(line, line.amountNet),
+      // 연금계좌·ISA 배당 — 세금은 꺼낼 때라 지금 금액 그대로, 계좌 이름 배지.
+      for (final line in cf.reinvestLines)
+        lineTile(
+          line,
+          line.amountGross,
+          badge: line.accountType == AccountType.isa ? 'ISA' : '연금계좌',
+        ),
       if (cf.pensionGross > 0)
         _SimpleTile(
           icon: Icons.account_balance,
@@ -480,14 +491,22 @@ class _MainCard extends StatelessWidget {
       String? note,
     ) = switch (view) {
       CalendarView.total => (
-        '$month월 통장 입금 (세후)',
-        divNet + penNet + interest,
+        '$month월 총계 (세후)',
+        divNet + inAccount + penNet + interest,
         [
-          _Row('배당금 (통장 입금분)', divNet),
-          _Row('연금 (통장 입금분)', penNet),
+          _Row('배당금 (모든 계좌)', divNet + inAccount),
+          _Row('연금', penNet),
           if (interest > 0) _Row('이자', interest),
+          _Row(
+            '이 중 통장 입금',
+            divNet + penNet + interest,
+            strong: true,
+            separated: true,
+          ),
         ],
-        inAccount > 0 ? '연금계좌·ISA에 쌓인 배당 ${_m(inAccount)}만원은 제외' : null,
+        inAccount > 0
+            ? '연금계좌·ISA 배당 ${_m(inAccount)}만원은 계좌에 쌓여요 (세금은 꺼낼 때)'
+            : null,
       ),
       CalendarView.dividends => (
         '$month월 배당금 (세전)',
@@ -573,7 +592,8 @@ class _MainCard extends StatelessWidget {
           const SizedBox(height: 12),
           const Divider(),
           const SizedBox(height: 10),
-          for (final row in rows)
+          for (final row in rows) ...[
+            if (row.separated) const Divider(height: 16),
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 3),
               child: Row(
@@ -604,6 +624,7 @@ class _MainCard extends StatelessWidget {
                 ],
               ),
             ),
+          ],
           if (note != null) ...[
             const SizedBox(height: 6),
             Text(
@@ -657,7 +678,15 @@ class _Row {
   final int amount;
   final bool strong;
 
-  const _Row(this.label, this.amount, {this.strong = false});
+  /// 위에 구분선 — "이 중 통장 입금" 처럼 합계의 일부를 따로 보여 줄 때.
+  final bool separated;
+
+  const _Row(
+    this.label,
+    this.amount, {
+    this.strong = false,
+    this.separated = false,
+  });
 }
 
 /// 배당 라인 타일 — 종목명(+계좌 배지) / 주당×수량 / 금액. 예측이면 흐린 색+"예상" 배지.
