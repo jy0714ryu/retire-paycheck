@@ -2,6 +2,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
+import 'ad_consent.dart';
+
 /// AdMob 전면(Interstitial) 광고 서비스.
 ///
 /// 달 넘기기 등 액션마다 호출되지만, 실제 노출은 3회마다 1회 + 직전 광고 후
@@ -48,21 +50,27 @@ class AdService {
     return lastShownAt == null || now.difference(lastShownAt) >= _minInterval;
   }
 
-  /// SDK 초기화 + 첫 광고 미리 로드.
+  bool _initialized = false;
+
+  /// 광고 동의 확인 → 허용되면 SDK 초기화 + 첫 광고 미리 로드.
   ///
-  /// 플랫폼 채널이 없는 테스트 환경(flutter test)에서 호출돼도
-  /// MissingPluginException 등은 조용히 흡수하고 앱 흐름을 막지 않는다.
+  /// 동의 전(EEA 등)에는 광고를 요청하지 않고, 허용되는 순간 로드한다.
+  /// 테스트·미지원 플랫폼에서는 no-op 이며 앱 흐름을 막지 않는다.
   Future<void> initialize() async {
-    try {
-      await MobileAds.instance.initialize();
-      _loadInterstitialAd();
-    } catch (e) {
-      debugPrint('📢 AdMob 초기화 실패 (테스트 환경 또는 플랫폼 미지원): $e');
-    }
+    if (_initialized) return;
+    _initialized = true;
+    AdConsent.instance.canRequestAds.addListener(_onConsentChanged);
+    await AdConsent.instance.gather();
+    _onConsentChanged();
+  }
+
+  void _onConsentChanged() {
+    if (AdConsent.instance.canRequestAds.value) _loadInterstitialAd();
   }
 
   /// 전면 광고 미리 로드 (노출 전 준비)
   void _loadInterstitialAd() {
+    if (!AdConsent.instance.canRequestAds.value) return;
     if (_isLoading || _interstitialAd != null) return;
     _isLoading = true;
 

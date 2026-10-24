@@ -25,9 +25,10 @@ Future<void> main() async {
   // 웹 체험판 빌드에서만 예시 자산을 채운다(앱 빌드에선 상수 false 로 빠짐).
   await seedDemoIfNeeded(prefs);
   await runMigrations(prefs);
-  // AdMob SDK 초기화 (플랫폼 채널 부재 환경에서는 조용히 흡수).
-  AdService().initialize();
   runApp(const ProviderScope(child: RetirePaycheckApp()));
+  // 광고 동의 확인 → 허용 시 AdMob 초기화. 앱 화면이 뜬 뒤 실행해야 동의창이 그 위에 표시된다.
+  // (테스트·미지원 플랫폼에서는 no-op)
+  AdService().initialize();
 }
 
 class RetirePaycheckApp extends StatelessWidget {

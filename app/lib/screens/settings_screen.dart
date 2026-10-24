@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../providers/app_providers.dart';
+import '../services/ad_consent.dart';
 import '../services/cashflow_engine.dart';
 import '../services/excel_export.dart';
 import '../theme/app_colors.dart';
@@ -96,6 +97,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (!ok) _snack('메일 앱을 열 수 없어요 — $kSupportEmail');
   }
 
+  Future<void> _openAdPrivacyOptions() async {
+    final error = await AdConsent.instance.showPrivacyOptionsForm();
+    if (error != null) _snack('광고 개인정보 선택 화면을 열 수 없어요');
+  }
+
   Future<void> _openUrl(String url) async {
     final ok = await launchUrl(
       Uri.parse(url),
@@ -164,6 +170,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             title: '개인정보처리방침',
             subtitle: '자산 정보는 이 폰에만 저장돼요',
             onTap: () => _openUrl(kPrivacyUrl),
+          ),
+          // 유럽 등 동의가 필요한 지역 사용자에게만 보인다 (한국 사용자에겐 숨김).
+          AdPrivacyOptionsGate(
+            builder: (_) => _tile(
+              key: 'settings_ad_privacy',
+              icon: Icons.manage_accounts_outlined,
+              title: '광고 개인정보 선택',
+              onTap: _openAdPrivacyOptions,
+            ),
           ),
           _tile(
             icon: Icons.gavel_outlined,

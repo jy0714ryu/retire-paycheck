@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
+import '../services/ad_consent.dart';
+
 /// 달력·게이지 화면 하단에 상시 배치되는 적응형 배너 광고.
 ///
 /// 로드 실패·예외(플랫폼 채널 부재 등 테스트 환경 포함) 시
@@ -27,13 +29,19 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
   BannerAd? _bannerAd;
   bool _isLoaded = false;
 
+  bool _requested = false;
+
   @override
   void initState() {
     super.initState();
+    // 광고 동의가 아직이면 허용되는 순간 로드한다.
+    AdConsent.instance.canRequestAds.addListener(_loadBannerAd);
     _loadBannerAd();
   }
 
   Future<void> _loadBannerAd() async {
+    if (!mounted || _requested || !AdConsent.instance.canRequestAds.value) return;
+    _requested = true;
     try {
       final ad = BannerAd(
         adUnitId: _adUnitId,
@@ -65,6 +73,7 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
 
   @override
   void dispose() {
+    AdConsent.instance.canRequestAds.removeListener(_loadBannerAd);
     _bannerAd?.dispose();
     super.dispose();
   }
